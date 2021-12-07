@@ -12,3 +12,10 @@ pub const UNEXPECTED_TOKEN: &str = "Unexpected token";
 
 pub const UNEXPECTED_SYMBOL: &str = "Expected symbol";
 pub const UNEXPECTED_SYMBOL_FORMAT: &str = "Expected symbol {}";
+
+
+pub const NOVALUE_ASSIGN: &str = "Tried assigning a variable to a statement which doesn't have a value";
+pub const VARIABLE_NOT_DECLARED: &str = "The variable is not declared in this context";
+pub const CANT_SUM_FUNCTION: &str = "Cannot sum a function";
+pub const NOVALUE_LEFT_OPERATOR: &str = "Error left statement has not value";
+pub const NOVALUE_RIGHT_OPERATOR: &str = "Error right statement has not value";

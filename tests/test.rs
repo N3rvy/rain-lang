@@ -6,15 +6,25 @@ mod tests {
     use reverse::parser::parse;
     use reverse::tokenizer::tokenize;
     use reverse::ast::node::ASTNode;
-    use reverse::common::lang_value::LangValue;
+    use reverse::vm::scope::Scope;
+    use reverse::vm::vm::evaluate;
+    use reverse::vm::vm::EvalResult;
 
     #[test]
     fn basic() {
-        let script = "var i = func { 10 }";
+        let script = "10 + 10";
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         let root = parse::parse(tokens);
         
         print_node(&root, 0);
+        
+        let value = evaluate(&root, &mut Scope::new(None));
+        
+        match value {
+            EvalResult::None => (),
+            EvalResult::Some(value) => print_indented(&value.to_string(), 0),
+            EvalResult::Err(err) => println!("{}", err),
+        }
     }
     
     fn print_node(node: &ASTChild, ind: i32) {
@@ -44,20 +54,17 @@ mod tests {
             },
             ASTNode::Literal { value } => {
                 println!("Literal:");
-                match value {
-                    LangValue::String(string) => print_indented(string, ind + 1),
-                    LangValue::Int(int) => print_indented(&int.to_string(), ind + 1),
-                    LangValue::Float(float) => print_indented(&float.to_string(), ind + 1),
-                    LangValue::Number(number) => print_indented(&number.to_string(), ind + 1),
-                    LangValue::Bool(bool) => print_indented(&bool.to_string(), ind + 1),
-                    LangValue::Function(body) => {
-                        print_indented(&"[Function]:".to_string(), ind + 1);
-                        
-                        for child in body {
-                            print_node(child, ind + 2);
-                        }
-                    },
-                };
+                print_indented(&value.to_string(), ind + 1);
+            },
+            ASTNode::MathOperation { operation, left, right } => {
+                println!("MathOperator:");
+                print_node(left, ind + 1);
+                print_node(right , ind + 1);
+            },
+            ASTNode::BoolOperation { operation, left, right } => {
+                println!("BoolOperator:");
+                print_node(left, ind + 1);
+                print_node(right , ind + 1);
             },
         }
     }

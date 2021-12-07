@@ -1,4 +1,4 @@
-use crate::common::lang_value::LangValue;
+use crate::{common::lang_value::LangValue, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 
 pub type ASTBody = Vec<ASTChild>;
@@ -21,6 +21,16 @@ pub enum ASTNode {
     Literal {
         value: LangValue,
     },
+    MathOperation {
+        operation: MathOperatorKind,
+        left: ASTChild,
+        right: ASTChild,
+    },
+    BoolOperation {
+        operation: BoolOperatorKind,
+        left: ASTChild,
+        right: ASTChild,
+    },
 }
 
 impl ASTNode {
@@ -42,5 +52,13 @@ impl ASTNode {
     
     pub fn new_literal(value: LangValue) -> ASTChild {
         Box::new(ASTNode::Literal { value })
+    }
+    
+    pub fn new_math_operation(operation: MathOperatorKind, left: ASTChild, right: ASTChild) -> ASTChild {
+        Box::new(ASTNode::MathOperation { operation, left, right })
+    }
+
+    pub fn new_bool_operation(operation: BoolOperatorKind, left: ASTChild, right: ASTChild) -> ASTChild {
+        Box::new(ASTNode::BoolOperation { operation, left, right })
     }
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN}, lang_value::LangValue}};
 use crate::common::messages::{UNEXPECTED_ERROR, UNEXPECTED_SYMBOL};
 use crate::tokenizer::tokens::OperatorKind;
@@ -19,7 +21,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
         return Err(LangError::new_parser(UNEXPECTED_END_OF_FILE.to_string()));
     }
     
-    match token.unwrap() {
+    let result = match token.unwrap() {
         Token::Function => {
             let next= tokens.pop();
             
@@ -35,7 +37,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                                     ASTNode::new_variable_decl(
                                         name,
                                         ASTNode::new_literal(
-                                            LangValue::Function(body)))),
+                                            LangValue::Function(Arc::new(body))))),
                                 Err(err) => Err(err),
                             }
                         }
@@ -48,7 +50,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     match parse_body(tokens) {
                         Ok(body) => Ok(
                             ASTNode::new_literal(
-                                LangValue::Function(body))),
+                                LangValue::Function(Arc::new(body)))),
                         Err(err) => Err(err),
                     }
                 },
@@ -87,5 +89,40 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 _ => Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string()))
             }
         },
+    };
+    
+
+    match result {
+        Ok(left) => {
+            let next = tokens.pop(); 
+
+            match next {
+                Some(Token::MathOperator(operator)) => {
+                    let right = parse_statement(tokens);
+                    
+                    match right {
+                        Ok(right) => Ok(ASTNode::new_math_operation(operator.clone(), left, right)),
+                        Err(err) => Err(err),
+                    }
+                },
+                Some(Token::BoolOperator(operator)) => {
+                    let right = parse_statement(tokens);
+                    
+                    match right {
+                        Ok(right) => Ok(ASTNode::new_bool_operation(operator.clone(), left, right)),
+                        Err(err) => Err(err),
+                    }
+
+                }
+
+                Some(next) => {
+                    tokens.push(next);
+                    Ok(left)
+                },
+                
+                _ => Ok(left),
+            }
+        },
+        Err(err ) => Err(err),
     }
 }
