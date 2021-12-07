@@ -1,3 +1,3 @@
 mod resolvers;
-pub mod tokenizer;
+pub mod tokenize;
 pub mod tokens;

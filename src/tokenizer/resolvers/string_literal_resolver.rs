@@ -1,28 +1,26 @@
-use crate::{tokenizer::tokens::Token, common::lang_value::LangValue, error::LangError};
-use super::resolver::{Resolver, AddAction, ResolverKind};
+use crate::{tokenizer::tokens::Token, common::lang_value::LangValue};
+use super::resolver::{Resolver, ResolverKind, AddResult};
 
 impl Resolver {
-    pub(super) fn new_string_literal() -> Self {
+    pub(crate) fn new_string_literal() -> Self {
         Self {
             kind: ResolverKind::StringLiteral,
             add_fn: Self::add_string_literal,
-            end_fn: Self::end_string_literal,
+            chars: Default::default(),
         }
     }
     
-    fn add_string_literal(char: char, chars: &Vec<char>) -> Result<AddAction, LangError> {
+    fn add_string_literal(&mut self, char: char) -> AddResult {
         if char == '"' {
-            return if chars.len() == 0 {
-                Ok(AddAction::Ignore)
+            return if self.chars.len() == 0 {
+                AddResult::Ok
             } else {
-                Ok(AddAction::End)
+                AddResult::End(Token::Literal(LangValue::String(self.chars.clone())))
             }
         }
         
-        Ok(AddAction::Add)
-    }
-    
-    fn end_string_literal(string: String) -> Result<Token, LangError> {
-        Ok(Token::Literal(LangValue::String(string)))
+        self.add_char(char);
+
+        AddResult::Ok
     }
 }

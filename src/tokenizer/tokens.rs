@@ -2,12 +2,11 @@ use crate::common::lang_value::LangValue;
 
 
 pub enum Token {
-    Root,
     Function,
     Variable,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
-    MathOperatorKind(MathOperatorKind),
+    MathOperator(MathOperatorKind),
     Symbol(String),
     Literal(LangValue),
 }

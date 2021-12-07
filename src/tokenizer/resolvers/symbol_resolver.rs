@@ -1,25 +1,30 @@
-use crate::{tokenizer::tokens::Token, error::LangError};
-use super::resolver::{Resolver, AddAction, ResolverKind};
+use crate::tokenizer::tokens::Token;
+use super::resolver::{Resolver, ResolverKind, AddResult};
 
 impl Resolver {
-    pub(super) fn new_symbol() -> Self {
+    pub(crate) fn new_symbol() -> Self {
         Self {
             kind: ResolverKind::Symbol,
             add_fn: Self::add_symbol,
-            end_fn: Self::end_symbol,
+            chars: Default::default(),
         }
     }
     
-    fn add_symbol(char: char, _: &Vec<char>) -> Result<AddAction, LangError> {
-        Ok(AddAction::Add)
+    fn add_symbol(&mut self, char: char) -> AddResult {
+        if char.is_whitespace() {
+            AddResult::End(self.end_symbol())
+        } else {
+            self.add_char(char);
+            AddResult::Ok
+        }
     }
     
-    fn end_symbol(string: String) -> Result<Token, LangError> {
-        Ok(match string.as_str() {
+    fn end_symbol(&self) -> Token {
+        match self.chars.as_str() {
             "func" => Token::Function, 
             "var" => Token::Variable,
 
-            _ => Token::Symbol(string),
-        })
+            _ => Token::Symbol(self.chars.clone()),
+        }
     }
 }
