@@ -1,5 +1,7 @@
 use std::fmt::{Display, Debug};
 
+use crate::{tokenizer::tokens::Token, ast::node::ASTNode};
+
 
 pub enum ErrorKind {
     Tokenizer,
@@ -9,8 +11,6 @@ pub enum ErrorKind {
 
 pub struct LangError {
     pub kind: ErrorKind,
-    pub row: i32,
-    pub column: i32,
     pub message: String,
 }
 
@@ -29,48 +29,33 @@ impl Display for LangError {
 }
 
 impl LangError {
-    pub fn new_tokenizer(row: i32, column: i32, message: String) -> Self  {
+    pub fn new_tokenizer(message: String) -> Self  {
         Self {
             kind: ErrorKind::Tokenizer,
-            row,
-            column,
             message
         }
     }
 
-    pub fn new_parser(row: i32, column: i32, message: String) -> Self  {
+    pub fn new_parser(message: String) -> Self  {
         Self {
             kind: ErrorKind::Parser,
-            row,
-            column,
             message
         }
     }
 
-    pub fn new_runtime(row: i32, column: i32, message: String) -> Self  {
+    pub fn new_runtime(message: String) -> Self  {
         Self {
             kind: ErrorKind::Runtime,
-            row,
-            column,
             message
         }
     }
     
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) {
-        let _ = f.write_str(format!(
-            "Error during {} at row {}, and column {}:",
-            Self::to_stage_verg(&self.kind),
-            self.row,
-            self.column,
-        ).as_str());
-        let _ = f.write_str(self.message.as_str());
-    }
-    
-    fn to_stage_verg(kind: &ErrorKind) -> &'static str {
-        match kind {
-            ErrorKind::Tokenizer => "tokenization",
-            ErrorKind::Parser => "parsing",
-            ErrorKind::Runtime => "execution",
-        }
+        let message = match self.kind {
+            ErrorKind::Tokenizer => format!("Error while tokenizing the script:\n{}", self.message),
+            ErrorKind::Parser => format!("Error while parsing the token {}\n{}", /* TODO: Implement token name */"Not-Implemented", self.message),
+            ErrorKind::Runtime => format!("Error while parsing the node {}\n{}", /* TODO: Implement node name */"Not-Implemented", self.message),
+        };
+        let _ = f.write_str(message.as_str());
     }
 }

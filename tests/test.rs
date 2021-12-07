@@ -8,7 +8,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let script = "var i = 10";
+        let script = "var i = 10 == 10";
         let tokens = tokenize(script.to_string()).unwrap();
         
         for token in tokens {
@@ -20,6 +20,7 @@ mod tests {
                 Token::MathOperator(_) => "MathOperator",
                 Token::Symbol(_) => "Symbol",
                 Token::Literal(_) => "Literal",
+                Token::Parenthesis(_, _) => "Parenthesis",
             };
             
             println!("{}", str);

@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::{tokenizer::tokens::Token, error::LangError, common::messages::UNEXPECTED_ERROR};
 
 pub(crate) enum ResolverKind {
@@ -11,6 +13,7 @@ pub(crate) enum ResolverKind {
 pub(crate) enum AddResult {
     Ok,
     End(Token),
+    Changed(Token, Resolver),
     Err(LangError),
 }
 
@@ -23,6 +26,26 @@ pub(crate) struct Resolver {
 impl Resolver {
     pub(crate) fn new_empty() -> Self {
         Default::default()
+    }
+    
+    pub(crate) fn from_char(char: char) -> Option<Resolver> {
+        Some(match char {
+            c if c.is_whitespace() => return None,
+            '0'..='9' => Resolver::new_number(),
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' => Resolver::new_operator(),
+            '(' | ')' | '[' | ']' | '{' | '}' => Resolver::new_parenthesis(),
+            '"' => Resolver::new_string_literal(),
+            _ => Resolver::new_symbol(),
+        })
+    }
+    
+    pub(crate) fn from_char_and_add(char: char) -> Result<Resolver, LangError> {
+        let mut resolver = Resolver::from_char(char);
+
+        match resolver {
+            Some(res) => Ok(res),
+            None => Err(LangError::new_tokenizer( UNEXPECTED_ERROR.to_string())),
+        }
     }
 
     pub(crate) fn add(&mut self, char: char) -> AddResult {
@@ -39,7 +62,7 @@ impl Default for Resolver {
         Self {
             kind: ResolverKind::None,
             chars: Default::default(),
-            add_fn: |_, _| AddResult::Err(LangError::new_tokenizer(0, 0, UNEXPECTED_ERROR.to_string())),
+            add_fn: |_, _| AddResult::Err(LangError::new_tokenizer(UNEXPECTED_ERROR.to_string())),
         }
     }
 }
