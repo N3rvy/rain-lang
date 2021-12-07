@@ -129,7 +129,7 @@ impl ToString for LangValue {
             LangValue::Int(int) => int.to_string(),
             LangValue::Float(float) => float.to_string(),
             LangValue::Bool(bool) => bool.to_string(),
-            LangValue::Function(function) => "[Function]".to_string(),
+            LangValue::Function(_) => "[Function]".to_string(),
             LangValue::Nothing => "Nothing".to_string(),
             LangValue::NaN => "NaN".to_string(),
         }
