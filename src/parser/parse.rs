@@ -7,12 +7,22 @@ use crate::tokenizer::tokens::OperatorKind;
 use super::utils::parse_body;
 
 
-pub fn parse(mut tokens: Vec<Token>) -> Box<ASTNode> {
+pub fn parse(mut tokens: Vec<Token>) -> Result<Box<ASTNode>, LangError> {
     // Reversing the vector for using it as a stack
     tokens.reverse();
     
+    let mut body = Vec::new(); 
     
-    ASTNode::new_root(vec![parse_statement(&mut tokens).unwrap()])
+    loop {
+        if tokens.is_empty() { break }
+
+        match parse_statement(&mut tokens) {
+            Ok(node) => body.push(node),
+            Err(err) => return Err(err),
+        }
+    }
+    
+    Ok(ASTNode::new_root(body))
 }
 
 pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangError> {
