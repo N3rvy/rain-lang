@@ -120,6 +120,68 @@ impl LangValue {
             (_, _) => LangValue::NaN,
         }
     }
+    
+    pub fn equals(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LangValue::Int(x), LangValue::Int(y)) => x == y,
+            (LangValue::Float(x), LangValue::Float(y)) => x == y,
+            
+            (LangValue::Int(x), LangValue::Float(y)) => *x as f32 == *y,
+            (LangValue::Float(x), LangValue::Int(y)) => *x == *y as f32,
+
+            (LangValue::Nothing, LangValue::Nothing) => true,
+            (LangValue::NaN, LangValue::NaN) => true,
+            (LangValue::String(x), LangValue::String(y)) => x == y,
+            (LangValue::Bool(x), LangValue::Bool(y)) => x == y,
+            (LangValue::Function(x), LangValue::Function(y)) => {
+                x as *const _ == y as *const _
+            },
+            
+            _ => false,
+        }
+    }
+    
+    pub fn bigger(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LangValue::Int(x), LangValue::Int(y)) => x > y,
+            (LangValue::Float(x), LangValue::Float(y)) => x > y,
+            
+            (LangValue::Int(x), LangValue::Float(y)) => *x as f32 > *y,
+            (LangValue::Float(x), LangValue::Int(y)) => *x > *y as f32,
+
+            (LangValue::String(x), LangValue::String(y)) => x.len() > y.len(),
+            (LangValue::Bool(x), LangValue::Bool(y)) => *x && !y,
+            
+            _ => false,
+        }
+    }
+    
+    pub fn smaller(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LangValue::Int(x), LangValue::Int(y)) => x < y,
+            (LangValue::Float(x), LangValue::Float(y)) => x < y,
+            
+            (LangValue::Int(x), LangValue::Float(y)) => (*x as f32) < *y,
+            (LangValue::Float(x), LangValue::Int(y)) => *x < *y as f32,
+
+            (LangValue::String(x), LangValue::String(y)) => x.len() < y.len(),
+            (LangValue::Bool(x), LangValue::Bool(y)) => !*x && *y,
+            
+            _ => false,
+        }
+    }
+    
+    pub fn not_equals(&self, other: &Self) -> bool {
+        !self.equals(other)
+    }
+    
+    pub fn smaller_eq(&self, other: &Self) -> bool {
+        !self.bigger(other)
+    }
+    
+    pub fn bigger_eq(&self, other: &Self) -> bool {
+        !self.smaller(other)
+    }
 }
 
 impl ToString for LangValue {

@@ -72,15 +72,15 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             match (left, right) {
                 (EvalResult::Some(left), EvalResult::Some(right)) => {
                     let value = match operation {
-                        BoolOperatorKind::Equal => todo!(),
-                        BoolOperatorKind::Different => todo!(),
-                        BoolOperatorKind::Bigger => todo!(),
-                        BoolOperatorKind::Smaller => todo!(),
-                        BoolOperatorKind::BiggerEq => todo!(),
-                        BoolOperatorKind::SmallerEq => todo!(),
+                        BoolOperatorKind::Equal => left.equals(&right),
+                        BoolOperatorKind::Different => left.not_equals(&right),
+                        BoolOperatorKind::Bigger => left.bigger(&right),
+                        BoolOperatorKind::Smaller => left.smaller(&right),
+                        BoolOperatorKind::BiggerEq => left.bigger_eq(&right),
+                        BoolOperatorKind::SmallerEq => left.smaller_eq(&right),
                     };
                     
-                    EvalResult::Some(value)
+                    EvalResult::Some(LangValue::Bool(value))
                 },
                 (EvalResult::Err(err), _) => EvalResult::Err(err),
                 (_, EvalResult::Err(err)) => EvalResult::Err(err),
