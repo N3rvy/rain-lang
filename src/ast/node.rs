@@ -1,7 +1,7 @@
 use crate::common::lang_value::LangValue;
 
 
-pub type ASTBody = Vec<ASTNode>;
+pub type ASTBody = Vec<ASTChild>;
 pub type ASTChild = Box<ASTNode>;
 
 pub enum ASTNode {

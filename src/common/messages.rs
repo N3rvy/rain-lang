@@ -9,3 +9,6 @@ pub const INT_PARSE_ERROR: &str = "Error while parsing integer";
 
 pub const UNEXPECTED_END_OF_FILE: &str = "Unexpected end of file";
 pub const UNEXPECTED_TOKEN: &str = "Unexpected token";
+
+pub const UNEXPECTED_SYMBOL: &str = "Expected symbol";
+pub const UNEXPECTED_SYMBOL_FORMAT: &str = "Expected symbol {}";

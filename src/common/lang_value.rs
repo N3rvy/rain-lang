@@ -1,4 +1,4 @@
-use crate::ast::node::ASTNode;
+use crate::ast::node::{ASTNode, ASTBody};
 
 pub enum LangValue {
     String(String),
@@ -6,5 +6,5 @@ pub enum LangValue {
     Float(f32),
     Number(f32),
     Bool(bool),
-    Function(Box<ASTNode>),
+    Function(ASTBody),
 }
