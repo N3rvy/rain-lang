@@ -36,7 +36,12 @@ impl Resolver {
 
             _ => {
                 match self.end_number() {
-                    Ok(token) => AddResult::End(token),
+                    Ok(token) => {
+                        match Resolver::from_char_and_add(char) {
+                            Some(res) => AddResult::Changed(token, res),
+                            None => AddResult::End(token),
+                        }
+                    },
                     Err(err) => AddResult::Err(err),
                 }
             }

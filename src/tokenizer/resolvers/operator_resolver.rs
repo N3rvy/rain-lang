@@ -15,25 +15,17 @@ impl Resolver {
                 self.add_char(char);
                 AddResult::Ok
             },
-            c if c.is_whitespace() => {
-                match self.end_operator() {
-                    Ok(token) => AddResult::End(token),
-                    Err(err) => AddResult::Err(err),
-                }
-            }
+
             _ => {
-                let result = match self.end_operator() {
+                match self.end_operator() {
                     Ok(token) => {
                         match Resolver::from_char_and_add(char) {
-                            Ok(res) => AddResult::Changed(token, res),
-                            Err(err) => AddResult::Err(err),
+                            Some(res) => AddResult::Changed(token, res),
+                            None => AddResult::End(token),
                         }
-                        
                     },
                     Err(err) => AddResult::Err(err),
-                };
-                
-                result
+                }
             },
         }
     }

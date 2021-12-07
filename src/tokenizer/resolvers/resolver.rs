@@ -39,12 +39,15 @@ impl Resolver {
         })
     }
     
-    pub(crate) fn from_char_and_add(char: char) -> Result<Resolver, LangError> {
-        let mut resolver = Resolver::from_char(char);
-
+    pub(crate) fn from_char_and_add(char: char) -> Option<Resolver> {
+        let resolver = Resolver::from_char(char);
+        
         match resolver {
-            Some(res) => Ok(res),
-            None => Err(LangError::new_tokenizer( UNEXPECTED_ERROR.to_string())),
+            Some(mut res) => {
+                res.add(char);
+                Some(res)
+            },
+            None => resolver,
         }
     }
 
