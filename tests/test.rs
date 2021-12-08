@@ -12,9 +12,16 @@ mod tests {
 
     #[test]
     fn basic() {
-        let script = "10 + 10";
+        let script = r#"
+        func test {}
+        
+        test
+        "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
-        let root = parse::parse(tokens);
+        
+        println!("Token count: {}", tokens.len());
+
+        let root = parse::parse(tokens).unwrap();
         
         print_node(&root, 0);
         

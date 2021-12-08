@@ -26,5 +26,8 @@ pub(super) fn parse_body(tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> 
         body.push(node);
     }
     
+    // Popping the last }
+    tokens.pop();
+    
     Ok(body)
 }
