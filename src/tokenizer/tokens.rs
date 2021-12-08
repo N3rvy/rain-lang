@@ -1,5 +1,6 @@
 use crate::common::lang_value::LangValue;
 
+#[derive(Clone, Debug)]
 pub enum Token {
     Function,
     Variable,
@@ -11,27 +12,27 @@ pub enum Token {
     Parenthesis(ParenthesisKind, ParenthesisState)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ParenthesisKind {
     Round,
     Square,
     Curly,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ParenthesisState {
     Open,
     Close,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum OperatorKind {
     Assign,
     Range,
     Comma,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BoolOperatorKind {
     Equal,
     Different,
@@ -41,7 +42,7 @@ pub enum BoolOperatorKind {
     SmallerEq,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum MathOperatorKind {
     Plus,
     Minus,

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, fmt::Debug};
 
 use crate::ast::node::ASTBody;
 
@@ -181,6 +181,12 @@ impl LangValue {
     
     pub fn bigger_eq(&self, other: &Self) -> bool {
         !self.smaller(other)
+    }
+}
+
+impl Debug for LangValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_string().as_str()) 
     }
 }
 

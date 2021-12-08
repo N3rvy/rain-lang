@@ -11,11 +11,16 @@ impl Resolver {
     }
     
     fn add_symbol(&mut self, char: char) -> AddResult {
-        if char.is_whitespace() {
-            AddResult::End(self.end_symbol())
-        } else {
-            self.add_char(char);
-            AddResult::Ok
+        match char {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                self.add_char(char);
+                AddResult::Ok
+            },
+            _ => {
+                let token = self.end_symbol();
+                
+                AddResult::Change(token, char)
+            },
         }
     }
     

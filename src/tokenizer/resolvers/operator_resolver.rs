@@ -18,12 +18,7 @@ impl Resolver {
 
             _ => {
                 match self.end_operator() {
-                    Ok(token) => {
-                        match Resolver::from_char_and_add(char) {
-                            Some(res) => AddResult::Changed(token, res),
-                            None => AddResult::End(token),
-                        }
-                    },
+                    Ok(token) => AddResult::Change(token, char),
                     Err(err) => AddResult::Err(err),
                 }
             },

@@ -1,4 +1,4 @@
-use crate::{tokenizer::tokens::{Token, OperatorKind, MathOperatorKind, BoolOperatorKind, ParenthesisKind, ParenthesisState}, common::{lang_value::LangValue, messages::INVALID_OPERATOR_TOKEN_ERROR}, error::LangError};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, common::messages::INVALID_OPERATOR_TOKEN_ERROR, error::LangError};
 use super::resolver::{Resolver, ResolverKind, AddResult};
 
 impl Resolver {

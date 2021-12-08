@@ -15,7 +15,7 @@ pub(super) fn parse_body(tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> 
         let result = match token {
             Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => break,
             Some(_) => parse_statement(tokens),
-            None => return Err(LangError::new_parser(UNEXPECTED_END_OF_FILE.to_string())),
+            None => return Err(LangError::new_parser_end_of_file()),
         };
         
         let node = match result {

@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{sync::Arc, num::NonZeroI128};
 
-use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN}, lang_value::LangValue}};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::LangValue}};
 use crate::common::messages::{UNEXPECTED_ERROR, UNEXPECTED_SYMBOL};
 use crate::tokenizer::tokens::OperatorKind;
 
@@ -28,10 +28,12 @@ pub fn parse(mut tokens: Vec<Token>) -> Result<Box<ASTNode>, LangError> {
 pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangError> {
     let token = tokens.pop();
     if let None = token {
-        return Err(LangError::new_parser(UNEXPECTED_END_OF_FILE.to_string()));
+        return Err(LangError::new_parser_end_of_file());
     }
     
-    let result = match token.unwrap() {
+    let token = token.unwrap();
+    
+    let result = match &token {
         Token::Function => {
             let next= tokens.pop();
             
@@ -43,96 +45,115 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                         Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open)) => {
                             // ...}
                             match parse_body(tokens) {
-                                Ok(body) => Ok(
+                                Ok(body) => 
                                     ASTNode::new_variable_decl(
                                         name,
                                         ASTNode::new_literal(
-                                            LangValue::Function(Arc::new(body))))),
-                                Err(err) => Err(err),
+                                            LangValue::Function(Arc::new(body)))),
+                                Err(err) => return Err(err),
                             }
                         }
-                        _ => Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string())),
+                        Some(token) => return Err(LangError::new_parser_unexpected_token(token.clone())),
+                        None => return Err(LangError::new_parser_end_of_file()),
                     }
                     
                 },
                 Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open)) => {
                     // ...}
                     match parse_body(tokens) {
-                        Ok(body) => Ok(
+                        Ok(body) => 
                             ASTNode::new_literal(
-                                LangValue::Function(Arc::new(body)))),
-                        Err(err) => Err(err),
+                                LangValue::Function(Arc::new(body))),
+                        Err(err) => return Err(err),
                     }
                 },
-                None => Err(LangError::new_parser(UNEXPECTED_END_OF_FILE.to_string())),
-                _ => Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string())),
+                Some(token) => return Err(LangError::new_parser_unexpected_token(token.clone())),
+                None => return Err(LangError::new_parser_end_of_file()),
             }
         },
         Token::Variable => {
             let name = tokens.pop();
             let assign = tokens.pop();
+            
+            let name = match name {
+                Some(Token::Symbol(name)) => name,
+                Some(token) => return Err(LangError::new_parser_unexpected_token(token)),
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
 
-            if !matches!(assign, Some(Token::Operator(OperatorKind::Assign))) {
-                return Err(LangError::new_parser(UNEXPECTED_SYMBOL.to_string()));
+            match assign {
+                Some(Token::Operator(OperatorKind::Assign)) => (),
+                Some(token) => return Err(LangError::new_parser_unexpected_token(token.clone())),
+                None => return Err(LangError::new_parser_end_of_file()),
             }
 
             let value = parse_statement(tokens);
 
-            match (name, value) {
-                (Some(Token::Symbol(name)), Ok(node)) => Ok(ASTNode::new_variable_decl(name, node)),
-                _ => Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()))
+            match value {
+                Ok(node) => ASTNode::new_variable_decl(name, node),
+                Err(err) => return Err(err),
             }
         },
-        Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string())),
-        Token::Symbol(name) => Ok(ASTNode::new_variable_ref(name)),
-        Token::Literal(value) => Ok(ASTNode::new_literal(value)),
+        Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => return Err(LangError::new_parser_unexpected_token(token.clone())),
+        Token::Symbol(name) => ASTNode::new_variable_ref(name.clone()),
+        Token::Literal(value) => ASTNode::new_literal(value.clone()),
         Token::Parenthesis(kind, state) => {
             match (kind, state) {
                 (ParenthesisKind::Round, ParenthesisState::Open) => {
                     let result = parse_statement(tokens);
-                    if matches!(tokens.pop(), Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close))) {
-                        result
-                    } else {
-                        Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string()))
+                    
+                    match tokens.pop() {
+                        Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => (),
+                        Some(token) => return Err(LangError::new_parser_unexpected_token(token)),
+                        None => return Err(LangError::new_parser_end_of_file()),
                     }
+                    
+                    result?
                 },
-                _ => Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string()))
+                _ => return Err(LangError::new_parser_unexpected_token(token.clone()))
             }
         },
     };
     
+    
+    // Getting the infix and returning if it's None
+    let infix = tokens.last().cloned();
+    if matches!(infix, None) { return Ok(result) }
+    
+    let infix = infix.unwrap();
 
-    match result {
-        Ok(left) => {
-            let next = tokens.pop(); 
-
-            match next {
-                Some(Token::MathOperator(operator)) => {
-                    let right = parse_statement(tokens);
-                    
-                    match right {
-                        Ok(right) => Ok(ASTNode::new_math_operation(operator.clone(), left, right)),
-                        Err(err) => Err(err),
-                    }
-                },
-                Some(Token::BoolOperator(operator)) => {
-                    let right = parse_statement(tokens);
-                    
-                    match right {
-                        Ok(right) => Ok(ASTNode::new_bool_operation(operator.clone(), left, right)),
-                        Err(err) => Err(err),
-                    }
-
-                }
-
-                Some(next) => {
-                    tokens.push(next);
-                    Ok(left)
-                },
-                
-                _ => Ok(left),
+    match infix {
+        Token::MathOperator(operator) => {
+            tokens.pop();
+            let right = parse_statement(tokens);
+            
+            match right {
+                Ok(right) => Ok(ASTNode::new_math_operation(operator.clone(), result, right)),
+                Err(err) => Err(err),
             }
         },
-        Err(err ) => Err(err),
+        Token::BoolOperator(operator) => {
+            tokens.pop();
+            let right = parse_statement(tokens);
+            
+            match right {
+                Ok(right) => Ok(ASTNode::new_bool_operation(operator.clone(), result, right)),
+                Err(err) => Err(err),
+            }
+
+        },
+        Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
+            tokens.pop();
+
+            // Checking for the closed parenthesis ")"
+            match tokens.pop() {
+                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => Ok(
+                    ASTNode::new_function_invok(result)
+                ),
+                _ => Err(LangError::new_runtime(UNEXPECTED_TOKEN.to_string())),
+            }
+        },
+        
+        _ => Ok(result),
     }
 }

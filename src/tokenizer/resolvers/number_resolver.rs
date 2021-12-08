@@ -20,12 +20,7 @@ impl Resolver {
                 // If there is a second point then switch this resolver from a number resolver to an operator resolver
                 if self.chars.contains('.') {
                     match self.end_number() {
-                        Ok(token) => {
-                            let mut resolver = Resolver::new_operator();
-                            resolver.add(char);
-
-                            AddResult::Changed(token, resolver)
-                        },
+                        Ok(token) => AddResult::Change(token, char),
                         Err(err) => AddResult::Err(err),
                     }
                 } else {
@@ -36,12 +31,7 @@ impl Resolver {
 
             _ => {
                 match self.end_number() {
-                    Ok(token) => {
-                        match Resolver::from_char_and_add(char) {
-                            Some(res) => AddResult::Changed(token, res),
-                            None => AddResult::End(token),
-                        }
-                    },
+                    Ok(token) => AddResult::Change(token, char),
                     Err(err) => AddResult::Err(err),
                 }
             }

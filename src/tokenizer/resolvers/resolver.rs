@@ -13,7 +13,7 @@ pub(crate) enum ResolverKind {
 pub(crate) enum AddResult {
     Ok,
     End(Token),
-    Changed(Token, Resolver),
+    Change(Token, char),
     Err(LangError),
 }
 
@@ -28,26 +28,14 @@ impl Resolver {
         Default::default()
     }
     
-    pub(crate) fn from_char(char: char) -> Option<Resolver> {
-        Some(match char {
-            c if c.is_whitespace() => return None,
+    pub(crate) fn from_char(char: char) -> Resolver {
+        match char {
+            c if c.is_whitespace() => Resolver::new_empty(),
             '0'..='9' => Resolver::new_number(),
             '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' => Resolver::new_operator(),
             '(' | ')' | '[' | ']' | '{' | '}' => Resolver::new_parenthesis(),
             '"' => Resolver::new_string_literal(),
             _ => Resolver::new_symbol(),
-        })
-    }
-    
-    pub(crate) fn from_char_and_add(char: char) -> Option<Resolver> {
-        let resolver = Resolver::from_char(char);
-        
-        match resolver {
-            Some(mut res) => {
-                res.add(char);
-                Some(res)
-            },
-            None => resolver,
         }
     }
 

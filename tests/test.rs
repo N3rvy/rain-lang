@@ -13,13 +13,14 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        func test {}
-        
-        test
+        func { 10 }()
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
         println!("Token count: {}", tokens.len());
+        for token in &tokens {
+            println!("{:?}", token);
+        }
 
         let root = parse::parse(tokens).unwrap();
         

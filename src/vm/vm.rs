@@ -1,8 +1,9 @@
-use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{NOVALUE_ASSIGN, VARIABLE_NOT_DECLARED, NOVALUE_RIGHT_OPERATOR, NOVALUE_LEFT_OPERATOR}}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
+use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{NOVALUE_ASSIGN, VARIABLE_NOT_DECLARED, NOVALUE_RIGHT_OPERATOR, NOVALUE_LEFT_OPERATOR, VARIABLE_IS_NOT_A_FUNCTION}}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 use super::scope::Scope;
 
 
+// TODO: Remove none because lang value already has nothing
 pub enum EvalResult {
     None,
     Some(LangValue),
@@ -38,7 +39,29 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                 None => EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
             }
         },
-        ASTNode::FunctionInvok { variable: _ } => todo!(),
+        ASTNode::FunctionInvok { variable } => {
+            let func_node = match evaluate(variable, scope) {
+                EvalResult::None => return EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
+                EvalResult::Err(err) => return EvalResult::Err(err),
+
+                EvalResult::Some(LangValue::Function(node)) => node,
+                EvalResult::Some(_) => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
+            };
+
+
+            let mut func_scope = Scope::new(Some(scope));
+            let mut result = EvalResult::None;
+
+            for child in func_node.as_ref() {
+                result = match evaluate(child, &mut func_scope) {
+                    EvalResult::None => EvalResult::None,
+                    EvalResult::Some(value) => EvalResult::Some(value),
+                    EvalResult::Err(err) => EvalResult::Err(err),
+                }
+            }
+            
+            result
+        },
         ASTNode::Literal { value } => {
             EvalResult::Some(value.clone())
         },
@@ -51,10 +74,10 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                     let value = match operation {
                         MathOperatorKind::Plus => left.sum(right),
                         MathOperatorKind::Minus => left.minus(right),
-                        MathOperatorKind::Multiply => todo!(),
-                        MathOperatorKind::Divide => todo!(),
-                        MathOperatorKind::Modulus => todo!(),
-                        MathOperatorKind::Power => todo!(),
+                        MathOperatorKind::Multiply => left.multiply(right),
+                        MathOperatorKind::Divide => left.divide(right),
+                        MathOperatorKind::Modulus => left.modulus(right),
+                        MathOperatorKind::Power => left.power(right),
                     };
                     
                     EvalResult::Some(value)
