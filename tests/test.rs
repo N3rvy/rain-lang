@@ -29,8 +29,7 @@ mod tests {
         let value = evaluate(&root, &mut Scope::new(None));
         
         match value {
-            EvalResult::None => (),
-            EvalResult::Some(value) => print_indented(&value.to_string(), 0),
+            EvalResult::Ok(value) | EvalResult::Ret(value) => print_indented(&value.to_string(), 0),
             EvalResult::Err(err) => println!("{}", err),
         }
     }
