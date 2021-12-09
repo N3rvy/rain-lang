@@ -13,7 +13,7 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        func { 10 }()
+        return func { return 10 }()
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -64,7 +64,7 @@ mod tests {
                 print_indented(&value.to_string(), ind + 1);
             },
             ASTNode::MathOperation { operation, left, right } => {
-                println!("MathOperator:");
+                println!("MathOperator():");
                 print_node(left, ind + 1);
                 print_node(right , ind + 1);
             },
@@ -72,6 +72,10 @@ mod tests {
                 println!("BoolOperator:");
                 print_node(left, ind + 1);
                 print_node(right , ind + 1);
+            },
+            ASTNode::ReturnStatement { value } => {
+                println!("Return:");
+                print_node(value, ind + 1);
             },
         }
     }

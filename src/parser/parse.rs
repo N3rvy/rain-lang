@@ -1,6 +1,6 @@
 use std::{sync::Arc, num::NonZeroI128};
 
-use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::LangValue}};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::LangValue}, vm::vm::EvalResult};
 use crate::common::messages::{UNEXPECTED_ERROR, UNEXPECTED_SYMBOL};
 use crate::tokenizer::tokens::OperatorKind;
 
@@ -112,6 +112,11 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 },
                 _ => return Err(LangError::new_parser_unexpected_token(token.clone()))
             }
+        },
+        Token::Return => {
+            let value = parse_statement(tokens)?;
+            
+            ASTNode::new_return_statement(value)
         },
     };
     

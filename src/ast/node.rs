@@ -31,6 +31,9 @@ pub enum ASTNode {
         left: ASTChild,
         right: ASTChild,
     },
+    ReturnStatement {
+        value: ASTChild,
+    },
 }
 
 impl ASTNode {
@@ -60,5 +63,9 @@ impl ASTNode {
 
     pub fn new_bool_operation(operation: BoolOperatorKind, left: ASTChild, right: ASTChild) -> ASTChild {
         Box::new(ASTNode::BoolOperation { operation, left, right })
+    }
+    
+    pub fn new_return_statement(value: ASTChild) -> ASTChild {
+        Box::new(ASTNode::ReturnStatement { value })
     }
 }

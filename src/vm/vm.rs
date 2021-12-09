@@ -109,5 +109,6 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             
             EvalResult::Ok(LangValue::Bool(value))
         },
+        ASTNode::ReturnStatement { value } => EvalResult::Ret(evaluate(value, scope)?),
     }
 }

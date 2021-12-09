@@ -4,6 +4,7 @@ use crate::common::lang_value::LangValue;
 pub enum Token {
     Function,
     Variable,
+    Return,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),

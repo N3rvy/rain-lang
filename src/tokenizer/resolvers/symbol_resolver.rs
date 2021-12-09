@@ -28,6 +28,7 @@ impl Resolver {
         match self.chars.as_str() {
             "func" => Token::Function, 
             "var" => Token::Variable,
+            "return" => Token::Return,
 
             _ => Token::Symbol(self.chars.clone()),
         }
