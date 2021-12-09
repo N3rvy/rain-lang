@@ -1,11 +1,19 @@
-use std::{sync::Arc, num::NonZeroI128};
-
-use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::LangValue}, vm::vm::EvalResult};
-use crate::common::messages::{UNEXPECTED_ERROR, UNEXPECTED_SYMBOL};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::{LangValue, Function}}, vm::vm::EvalResult};
 use crate::tokenizer::tokens::OperatorKind;
 
-use super::utils::parse_body;
+use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
 
+macro_rules! expect_token {
+    ($token: expr, $pattern: pat_param) => {
+        let tok = $token;
+
+        match tok {
+            Some($pattern) => (),
+            Some(token) => return Err(LangError::new_parser_unexpected_token(token)),
+            None => return Err(LangError::new_parser_end_of_file()),
+        }
+    };
+}
 
 pub fn parse(mut tokens: Vec<Token>) -> Result<Box<ASTNode>, LangError> {
     // Reversing the vector for using it as a stack
@@ -37,35 +45,38 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
         Token::Function => {
             let next= tokens.pop();
             
-            // "name" | {
+            // "name" | (
             match next {
                 Some(Token::Symbol(name)) => {
-                    // {
-                    match tokens.pop() {
-                        Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open)) => {
-                            // ...}
-                            match parse_body(tokens) {
-                                Ok(body) => 
-                                    ASTNode::new_variable_decl(
-                                        name,
-                                        ASTNode::new_literal(
-                                            LangValue::Function(Arc::new(body)))),
-                                Err(err) => return Err(err),
-                            }
-                        }
-                        Some(token) => return Err(LangError::new_parser_unexpected_token(token.clone())),
-                        None => return Err(LangError::new_parser_end_of_file()),
-                    }
+                    // (
+                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
                     
-                },
-                Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open)) => {
+                    // ...)
+                    let parameters = parse_parameter_names(tokens)?;
+                    
+                    // {
+                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+
                     // ...}
-                    match parse_body(tokens) {
-                        Ok(body) => 
-                            ASTNode::new_literal(
-                                LangValue::Function(Arc::new(body))),
-                        Err(err) => return Err(err),
-                    }
+                    let body = parse_body(tokens)?;
+
+                    ASTNode::new_variable_decl(
+                        name,
+                        ASTNode::new_literal(
+                            LangValue::Function(Function::new(body, parameters))))
+                },
+                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
+                    // ...)
+                    let parameters = parse_parameter_names(tokens)?;
+
+                    // {
+                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+
+                    // ...}
+                    let body = parse_body(tokens)?;
+                    
+                    ASTNode::new_literal(
+                        LangValue::Function(Function::new(body, parameters)))
                 },
                 Some(token) => return Err(LangError::new_parser_unexpected_token(token.clone())),
                 None => return Err(LangError::new_parser_end_of_file()),
@@ -150,13 +161,9 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
         Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
             tokens.pop();
 
-            // Checking for the closed parenthesis ")"
-            match tokens.pop() {
-                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => Ok(
-                    ASTNode::new_function_invok(result)
-                ),
-                _ => Err(LangError::new_runtime(UNEXPECTED_TOKEN.to_string())),
-            }
+            let parameters = parse_parameter_values(tokens)?;
+
+            Ok(ASTNode::new_function_invok(result, parameters))
         },
         
         _ => Ok(result),

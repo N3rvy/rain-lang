@@ -9,7 +9,18 @@ pub enum LangValue {
     Float(f32),
     NaN,
     Bool(bool),
-    Function(Arc<ASTBody>),
+    Function(Arc<Function>),
+}
+
+pub struct Function {
+    pub body: ASTBody,
+    pub parameters: Vec<String>,
+}
+
+impl Function {
+    pub fn new(body: ASTBody, parameters: Vec<String>) -> Arc<Self> {
+        Arc::new(Self { body, parameters })
+    }
 }
 
 impl LangValue {

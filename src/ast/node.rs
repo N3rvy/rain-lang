@@ -17,6 +17,7 @@ pub enum ASTNode {
     },
     FunctionInvok {
         variable: ASTChild,
+        parameters: ASTBody,
     },
     Literal {
         value: LangValue,
@@ -49,8 +50,8 @@ impl ASTNode {
         Box::new(ASTNode::VaraibleRef { name })
     }
     
-    pub fn new_function_invok(variable: ASTChild) -> ASTChild {
-        Box::new(ASTNode::FunctionInvok { variable })
+    pub fn new_function_invok(variable: ASTChild, parameters: ASTBody) -> ASTChild {
+        Box::new(ASTNode::FunctionInvok { variable, parameters })
     }
     
     pub fn new_literal(value: LangValue) -> ASTChild {

@@ -13,7 +13,8 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        return func { return 10 }()
+        var i = 10
+        return func(x) { return x }(i)
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -55,7 +56,7 @@ mod tests {
                 println!("VariableRef:");
                 print_indented(name, ind + 1);
             },
-            ASTNode::FunctionInvok { variable } => {
+            ASTNode::FunctionInvok { variable, parameters } => {
                 println!("FunctionInvok:");
                 print_node(variable, ind + 1);
             },
