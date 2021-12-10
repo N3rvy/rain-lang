@@ -128,7 +128,8 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             
             EvalResult::Ok(LangValue::Bool(value))
         },
-        ASTNode::ReturnStatement { value } => EvalResult::Ret(evaluate(value, scope)?, ReturnKind::Return),
+        ASTNode::ReturnStatement { value: Some(value ), kind } => EvalResult::Ret(evaluate(value, scope)?, kind.clone()),
+        ASTNode::ReturnStatement { value: None, kind } => EvalResult::Ret(LangValue::Nothing, kind.clone()),
         ASTNode::IfStatement { condition, body } => {
             let condition = evaluate(condition, scope)?;
             

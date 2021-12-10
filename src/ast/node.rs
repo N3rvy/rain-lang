@@ -1,4 +1,4 @@
-use crate::{common::lang_value::LangValue, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
+use crate::{common::{lang_value::LangValue, types::ReturnKind}, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 
 pub type ASTBody = Vec<ASTChild>;
@@ -33,7 +33,8 @@ pub enum ASTNode {
         right: ASTChild,
     },
     ReturnStatement {
-        value: ASTChild,
+        value: Option<ASTChild>,
+        kind: ReturnKind,
     },
     IfStatement {
         condition: ASTChild,
@@ -80,8 +81,8 @@ impl ASTNode {
         Box::new(ASTNode::BoolOperation { operation, left, right })
     }
     
-    pub fn new_return_statement(value: ASTChild) -> ASTChild {
-        Box::new(ASTNode::ReturnStatement { value })
+    pub fn new_return_statement(value: Option<ASTChild>, kind: ReturnKind) -> ASTChild {
+        Box::new(ASTNode::ReturnStatement { value, kind })
     }
     
     pub fn new_if_statement(condition: ASTChild, body: ASTBody) -> ASTChild {

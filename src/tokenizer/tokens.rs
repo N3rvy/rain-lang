@@ -5,6 +5,7 @@ pub enum Token {
     Function,
     Variable,
     Return,
+    Break,
     If,
     For,
     While,

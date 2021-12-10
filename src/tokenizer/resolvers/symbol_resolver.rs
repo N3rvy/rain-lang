@@ -29,6 +29,7 @@ impl Resolver {
             "func" => Token::Function, 
             "var" => Token::Variable,
             "return" => Token::Return,
+            "break" => Token::Break,
             "in" => Token::Operator(OperatorKind::In),
             "if" => Token::If,
             "for" => Token::For,

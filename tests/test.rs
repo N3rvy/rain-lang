@@ -3,18 +3,20 @@ extern crate reverse;
 #[cfg(test)]
 mod tests {
     use reverse::ast::node::ASTChild;
+    use reverse::common::types::ReturnKind;
     use reverse::parser::parse;
     use reverse::tokenizer::tokenize;
     use reverse::ast::node::ASTNode;
     use reverse::vm::scope::Scope;
-    use reverse::vm::vm::ReturnKind;
     use reverse::vm::vm::evaluate;
     use reverse::vm::vm::EvalResult;
 
     #[test]
     fn basic() {
         let script = r#"
-        while 1 == 1 {}
+        return while 1 == 1 {
+            break 10
+        }
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -31,12 +33,12 @@ mod tests {
         
         match value {
             EvalResult::Ok(value) => println!("Ok {}", value.to_string()),
-            EvalResult::Ret(value, kind) => println!("Return ({}) {}", kind_to_string(kind), value.to_string()),
+            EvalResult::Ret(value, kind) => println!("Return ({}) {}", kind_to_string(&kind), value.to_string()),
             EvalResult::Err(err) => println!("Error {}", err),
         }
     }
     
-    fn kind_to_string(kind: ReturnKind) -> &'static str  {
+    fn kind_to_string(kind: &ReturnKind) -> &'static str  {
         match kind {
             ReturnKind::Return => "Return",
             ReturnKind::Break => "Break",
@@ -83,9 +85,12 @@ mod tests {
                 print_node(left, ind + 1);
                 print_node(right , ind + 1);
             },
-            ASTNode::ReturnStatement { value } => {
-                println!("Return:");
+            ASTNode::ReturnStatement { value: Some(value), kind } => {
+                println!("Return ({}):", kind_to_string(kind));
                 print_node(value, ind + 1);
+            },
+            ASTNode::ReturnStatement { value: None, kind } => {
+                println!("Return ({})", kind_to_string(kind));
             },
             ASTNode::IfStatement { condition, body } => {
                 println!("IfStatement:");

@@ -1,4 +1,4 @@
-use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_TOKEN}, lang_value::{LangValue, Function}}};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_TOKEN}, lang_value::{LangValue, Function}, types::ReturnKind}};
 use crate::tokenizer::tokens::OperatorKind;
 
 use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
@@ -124,10 +124,24 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 _ => return Err(LangError::new_parser_unexpected_token(token.clone()))
             }
         },
-        Token::Return => {
-            let value = parse_statement(tokens)?;
+        Token::Return | Token::Break => {
+            let value = match tokens.last() {
+                Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => {
+                    None
+                },
+                Some(_) => {
+                    Some(parse_statement(tokens)?)
+                },
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
             
-            ASTNode::new_return_statement(value)
+            let kind = match &token {
+                Token::Return => ReturnKind::Return,
+                Token::Break => ReturnKind::Break,
+                _ => panic!("Like WTF"),
+            };
+
+            ASTNode::new_return_statement(value, kind)
         },
         Token::If => {
             // condition
