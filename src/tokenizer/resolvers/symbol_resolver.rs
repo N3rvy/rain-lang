@@ -32,6 +32,7 @@ impl Resolver {
             "in" => Token::Operator(OperatorKind::In),
             "if" => Token::If,
             "for" => Token::For,
+            "while" => Token::While,
 
             _ => Token::Symbol(self.chars.clone()),
         }

@@ -7,6 +7,7 @@ pub enum Token {
     Return,
     If,
     For,
+    While,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),

@@ -159,5 +159,16 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             
             EvalResult::Ok(LangValue::Nothing)
         },
+        ASTNode::WhileStatement { condition, body } => {
+            while evaluate(condition, scope)?.truthy() {
+                let mut while_scope = Scope::new(Some(scope));
+                
+                for child in body {
+                    evaluate(child, &mut while_scope)?;
+                }
+            }
+
+            EvalResult::Ok(LangValue::Nothing)
+        },
     }
 }

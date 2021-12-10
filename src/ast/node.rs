@@ -44,6 +44,10 @@ pub enum ASTNode {
         right: ASTChild,
         body: ASTBody,
         iter_name: String,
+    },
+    WhileStatement {
+        condition: ASTChild,
+        body: ASTBody,
     }
 }
 
@@ -86,5 +90,9 @@ impl ASTNode {
     
     pub fn new_for_statement(left: ASTChild, right: ASTChild, body: ASTBody, iter_name: String) -> ASTChild {
         Box::new(ASTNode::ForStatement { left, right, body, iter_name })
+    }
+    
+    pub fn new_while_statement(condition: ASTChild, body: ASTBody) -> ASTChild {
+        Box::new(ASTNode::WhileStatement { condition, body })
     }
 }

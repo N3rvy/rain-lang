@@ -166,6 +166,16 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             
             ASTNode::new_for_statement(min, max, body, iter_name)
         },
+        Token::While => {
+            // condition 
+            let condition = parse_statement(tokens)?;
+            // {
+            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+            // ...}
+            let body = parse_body(tokens)?;
+            
+            ASTNode::new_while_statement(condition, body)
+        },
     };
     
     
