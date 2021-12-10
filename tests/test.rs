@@ -7,6 +7,7 @@ mod tests {
     use reverse::tokenizer::tokenize;
     use reverse::ast::node::ASTNode;
     use reverse::vm::scope::Scope;
+    use reverse::vm::vm::ReturnKind;
     use reverse::vm::vm::evaluate;
     use reverse::vm::vm::EvalResult;
 
@@ -29,8 +30,17 @@ mod tests {
         let value = evaluate(&root, &mut Scope::new(None));
         
         match value {
-            EvalResult::Ok(value) | EvalResult::Ret(value) => print_indented(&value.to_string(), 0),
-            EvalResult::Err(err) => println!("{}", err),
+            EvalResult::Ok(value) => println!("Ok {}", value.to_string()),
+            EvalResult::Ret(value, kind) => println!("Return ({}) {}", kind_to_string(kind), value.to_string()),
+            EvalResult::Err(err) => println!("Error {}", err),
+        }
+    }
+    
+    fn kind_to_string(kind: ReturnKind) -> &'static str  {
+        match kind {
+            ReturnKind::Return => "Return",
+            ReturnKind::Break => "Break",
+            ReturnKind::Panic => "Panic",
         }
     }
     

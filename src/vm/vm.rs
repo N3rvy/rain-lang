@@ -7,8 +7,14 @@ use super::scope::Scope;
 
 pub enum EvalResult {
     Ok(LangValue),
-    Ret(LangValue),
+    Ret(LangValue, ReturnKind),
     Err(LangError),
+}
+
+pub enum ReturnKind {
+    Return,
+    Break,
+    Panic,
 }
 
 impl FromResidual for EvalResult {
@@ -28,7 +34,7 @@ impl Try for EvalResult {
     fn branch(self) -> std::ops::ControlFlow<Self::Residual, Self::Output> {
         match self {
             EvalResult::Ok(value) => ControlFlow::Continue(value),
-            EvalResult::Ret(value) => ControlFlow::Break(EvalResult::Ret(value)),
+            EvalResult::Ret(value, kind) => ControlFlow::Break(EvalResult::Ret(value, kind)),
             EvalResult::Err(err) => ControlFlow::Break(EvalResult::Err(err)),
         }
     }
@@ -87,7 +93,8 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                 // Matching to make the return statement stop
                 match evaluate(child, &mut func_scope) {
                     EvalResult::Ok(_) => (),
-                    EvalResult::Ret(value) => return EvalResult::Ok(value),
+                    EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
+                    EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
                     EvalResult::Err(err) => return EvalResult::Err(err),
                 }
             }
@@ -127,7 +134,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             
             EvalResult::Ok(LangValue::Bool(value))
         },
-        ASTNode::ReturnStatement { value } => EvalResult::Ret(evaluate(value, scope)?),
+        ASTNode::ReturnStatement { value } => EvalResult::Ret(evaluate(value, scope)?, ReturnKind::Return),
         ASTNode::IfStatement { condition, body } => {
             let condition = evaluate(condition, scope)?;
             
@@ -153,7 +160,12 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                 for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
                 
                 for child in body {
-                    evaluate(child, &mut for_scope)?;
+                    match evaluate(child, &mut for_scope) {
+                        EvalResult::Ok(_) => (),
+                        EvalResult::Ret(value, ReturnKind::Break) => return EvalResult::Ok(value),
+                        EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
+                        EvalResult::Err(err) => return EvalResult::Err(err),
+                    }
                 }
             }
             
@@ -164,7 +176,12 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                 let mut while_scope = Scope::new(Some(scope));
                 
                 for child in body {
-                    evaluate(child, &mut while_scope)?;
+                    match evaluate(child, &mut while_scope) {
+                        EvalResult::Ok(_) => (),
+                        EvalResult::Ret(value, ReturnKind::Break) => return EvalResult::Ok(value),
+                        EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
+                        EvalResult::Err(err) => return EvalResult::Err(err),
+                    }
                 }
             }
 
