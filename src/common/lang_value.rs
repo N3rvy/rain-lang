@@ -24,6 +24,19 @@ impl Function {
 }
 
 impl LangValue {
+    
+    pub fn truthy(&self) -> bool {
+        match self {
+            LangValue::Nothing => false,
+            LangValue::String(string) => string.len() > 0,
+            LangValue::Int(int) => *int != 0,
+            LangValue::Float(float) => *float != 0.0,
+            LangValue::NaN => false,
+            LangValue::Bool(bool) => *bool,
+            LangValue::Function(_) => true,
+        }
+    }
+    
     pub fn sum(&self, other: Self) -> LangValue  {
         let values = (self, other);
 

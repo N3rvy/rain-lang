@@ -29,6 +29,7 @@ impl Resolver {
             "func" => Token::Function, 
             "var" => Token::Variable,
             "return" => Token::Return,
+            "if" => Token::If,
 
             _ => Token::Symbol(self.chars.clone()),
         }

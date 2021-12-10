@@ -35,6 +35,10 @@ pub enum ASTNode {
     ReturnStatement {
         value: ASTChild,
     },
+    IfStatement {
+        condition: ASTChild,
+        body: ASTBody,
+    },
 }
 
 impl ASTNode {
@@ -68,5 +72,9 @@ impl ASTNode {
     
     pub fn new_return_statement(value: ASTChild) -> ASTChild {
         Box::new(ASTNode::ReturnStatement { value })
+    }
+    
+    pub fn new_if_statement(condition: ASTChild, body: ASTBody) -> ASTChild {
+        Box::new(ASTNode::IfStatement { condition, body })
     }
 }

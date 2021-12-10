@@ -129,6 +129,16 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             
             ASTNode::new_return_statement(value)
         },
+        Token::If => {
+            // condition
+            let condition = parse_statement(tokens)?;
+            // {
+            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+            // ...}
+            let body = parse_body(tokens)?;
+            
+            ASTNode::new_if_statement(condition, body)
+        },
     };
     
     

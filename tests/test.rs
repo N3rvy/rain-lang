@@ -13,8 +13,10 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        var i = 10
-        return func(x) { return x }(i)
+        if 10 == 10 {
+            return 10
+        }
+        return 5
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -77,6 +79,14 @@ mod tests {
             ASTNode::ReturnStatement { value } => {
                 println!("Return:");
                 print_node(value, ind + 1);
+            },
+            ASTNode::IfStatement { condition, body } => {
+                println!("IfStatement");
+                print_node(condition, ind + 1);
+                print_indented(&"Body:".to_string(), ind + 1);
+                for child in body {
+                    print_node(child, ind + 2);
+                }
             },
         }
     }

@@ -5,6 +5,7 @@ pub enum Token {
     Function,
     Variable,
     Return,
+    If,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),

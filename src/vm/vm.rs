@@ -119,5 +119,18 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             EvalResult::Ok(LangValue::Bool(value))
         },
         ASTNode::ReturnStatement { value } => EvalResult::Ret(evaluate(value, scope)?),
+        ASTNode::IfStatement { condition, body } => {
+            let condition = evaluate(condition, scope)?;
+            
+            if condition.truthy() {
+                let mut if_scope = Scope::new(Some(scope));
+
+                for child in body {
+                    evaluate(child, &mut if_scope)?;
+                }
+            }
+            
+            EvalResult::Ok(LangValue::Nothing)
+        },
     }
 }
