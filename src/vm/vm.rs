@@ -1,6 +1,6 @@
 use std::ops::{Try, FromResidual, ControlFlow};
 
-use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{VARIABLE_IS_NOT_A_NUMBER, VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
+use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{VARIABLE_IS_NOT_A_NUMBER, VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}, types::ReturnKind}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 use super::scope::Scope;
 
@@ -9,12 +9,6 @@ pub enum EvalResult {
     Ok(LangValue),
     Ret(LangValue, ReturnKind),
     Err(LangError),
-}
-
-pub enum ReturnKind {
-    Return,
-    Break,
-    Panic,
 }
 
 impl FromResidual for EvalResult {
