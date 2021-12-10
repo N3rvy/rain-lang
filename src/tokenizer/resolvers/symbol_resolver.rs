@@ -1,4 +1,4 @@
-use crate::tokenizer::tokens::Token;
+use crate::tokenizer::tokens::{Token, OperatorKind};
 use super::resolver::{Resolver, ResolverKind, AddResult};
 
 impl Resolver {
@@ -29,7 +29,9 @@ impl Resolver {
             "func" => Token::Function, 
             "var" => Token::Variable,
             "return" => Token::Return,
+            "in" => Token::Operator(OperatorKind::In),
             "if" => Token::If,
+            "for" => Token::For,
 
             _ => Token::Symbol(self.chars.clone()),
         }

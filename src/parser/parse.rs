@@ -1,4 +1,4 @@
-use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_END_OF_FILE, UNEXPECTED_TOKEN, TOKEN_NOT_HANDLED_FORMAT}, lang_value::{LangValue, Function}}, vm::vm::EvalResult};
+use crate::{tokenizer::tokens::{Token, ParenthesisKind, ParenthesisState}, ast::node::{ASTNode, ASTChild}, error::LangError, common::{messages::{UNEXPECTED_TOKEN}, lang_value::{LangValue, Function}}};
 use crate::tokenizer::tokens::OperatorKind;
 
 use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
@@ -138,6 +138,33 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             let body = parse_body(tokens)?;
             
             ASTNode::new_if_statement(condition, body)
+        },
+        Token::For => {
+            // iter name
+            let iter_name = match tokens.pop() {
+                Some(Token::Symbol(name)) => name,
+                _ => return Err(LangError::new_runtime(UNEXPECTED_TOKEN.to_string())),
+            };
+            
+            // in
+            expect_token!(tokens.pop(), Token::Operator(OperatorKind::In));
+            
+            // min value
+            let min = parse_statement(tokens)?;
+            
+            // ..
+            expect_token!(tokens.pop(), Token::Operator(OperatorKind::Range));
+            
+            // max value
+            let max = parse_statement(tokens)?;
+            
+            // {
+            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+            
+            // ...}
+            let body = parse_body(tokens)?;
+            
+            ASTNode::new_for_statement(min, max, body, iter_name)
         },
     };
     

@@ -6,6 +6,7 @@ pub enum Token {
     Variable,
     Return,
     If,
+    For,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),
@@ -30,6 +31,7 @@ pub enum ParenthesisState {
 #[derive(Clone, Debug)]
 pub enum OperatorKind {
     Assign,
+    In,
     Range,
     Comma,
 }

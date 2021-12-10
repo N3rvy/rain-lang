@@ -1,6 +1,8 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::ast::node::ASTBody;
+use crate::{ast::node::ASTBody, error::LangError};
+
+use super::messages::VARIABLE_IS_NOT_A_NUMBER;
 
 pub enum LangValue {
     Nothing,
@@ -34,6 +36,22 @@ impl LangValue {
             LangValue::NaN => false,
             LangValue::Bool(bool) => *bool,
             LangValue::Function(_) => true,
+        }
+    }
+    
+    pub fn as_i32(&self) -> Option<i32> {
+        match self {
+            LangValue::Int(int) => Some(*int),
+            LangValue::Float(float) => Some(*float as i32),
+            _ => None,
+        }
+    }
+    
+    pub fn as_f32(&self) -> Option<f32> {
+        match self {
+            LangValue::Int(int) => Some(*int as f32),
+            LangValue::Float(float) => Some(*float),
+            _ => None,
         }
     }
     

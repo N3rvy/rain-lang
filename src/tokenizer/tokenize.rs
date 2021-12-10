@@ -40,6 +40,19 @@ fn handle_result(result: AddResult, tokens: &mut Vec<Token>, resolver: &mut Reso
             *resolver = Resolver::new_empty();
             Ok(())
         },
+        AddResult::ChangeChars(token, chars) => {
+            println!("token: {:?}, chars: {:?}", token, chars);
+            tokens.push(token);
+            
+            *resolver = Resolver::from_char(chars[0]);
+            
+            for i in 0..chars.len() {
+                let result = resolver.add(chars[i]);
+                handle_result(result, tokens, resolver)?;
+            }
+            
+            Ok(())
+        }
         AddResult::Change(token, char) => {
             tokens.push(token);
             

@@ -26,3 +26,5 @@ pub const NOVALUE_RIGHT_OPERATOR: &str = "Error right statement has not value";
 
 pub const VARIABLE_IS_NOT_A_FUNCTION: &str = "Tried invoking a variable that is not a function";
 pub const INCORRECT_NUMBER_OF_PARAMETERS: &str = "Incorrect number of parameters passed to function";
+
+pub const VARIABLE_IS_NOT_A_NUMBER: &str = "Variable is not a number";

@@ -13,10 +13,11 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        if 10 == 10 {
-            return 10
+        for i in 0..100 {
+            if i == 54 {
+                return "Finally found"
+            }
         }
-        return 5
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -81,8 +82,18 @@ mod tests {
                 print_node(value, ind + 1);
             },
             ASTNode::IfStatement { condition, body } => {
-                println!("IfStatement");
+                println!("IfStatement:");
                 print_node(condition, ind + 1);
+                print_indented(&"Body:".to_string(), ind + 1);
+                for child in body {
+                    print_node(child, ind + 2);
+                }
+            },
+            ASTNode::ForStatement { left, right, body, iter_name } => {
+                println!("ForStatement:");
+                print_node(left, ind + 1);
+                print_node(right, ind + 1);
+                print_indented(&format!("iter_name: {}", iter_name), ind + 1);
                 print_indented(&"Body:".to_string(), ind + 1);
                 for child in body {
                     print_node(child, ind + 2);

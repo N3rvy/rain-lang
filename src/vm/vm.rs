@@ -1,6 +1,6 @@
 use std::ops::{Try, FromResidual, ControlFlow};
 
-use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{NOVALUE_ASSIGN, VARIABLE_NOT_DECLARED, NOVALUE_RIGHT_OPERATOR, NOVALUE_LEFT_OPERATOR, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
+use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{VARIABLE_IS_NOT_A_NUMBER, VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 use super::scope::Scope;
 
@@ -32,6 +32,15 @@ impl Try for EvalResult {
             EvalResult::Err(err) => ControlFlow::Break(EvalResult::Err(err)),
         }
     }
+}
+
+macro_rules! expect_some {
+    ($value:expr, $err:expr) => {
+        match $value {
+            Some(val) => val,
+            None => return EvalResult::Err(LangError::new_runtime($err)),
+        }
+    };
 }
 
 
@@ -127,6 +136,24 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
 
                 for child in body {
                     evaluate(child, &mut if_scope)?;
+                }
+            }
+            
+            EvalResult::Ok(LangValue::Nothing)
+        },
+        ASTNode::ForStatement { left, right, body, iter_name } => {
+            let left = evaluate(left, scope)?.as_i32();
+            let right = evaluate(right, scope)?.as_i32();
+            
+            let min = expect_some!(left, VARIABLE_IS_NOT_A_NUMBER.to_string());
+            let max = expect_some!(right, VARIABLE_IS_NOT_A_NUMBER.to_string());
+            
+            for i in min..max {
+                let mut for_scope = Scope::new(Some(scope));
+                for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
+                
+                for child in body {
+                    evaluate(child, &mut for_scope)?;
                 }
             }
             

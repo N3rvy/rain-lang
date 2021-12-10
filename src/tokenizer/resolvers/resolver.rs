@@ -14,6 +14,7 @@ pub(crate) enum AddResult {
     Ok,
     End(Token),
     Change(Token, char),
+    ChangeChars(Token, Vec<char>),
     Err(LangError),
 }
 

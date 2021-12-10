@@ -19,9 +19,19 @@ impl Resolver {
             '.' => {
                 // If there is a second point then switch this resolver from a number resolver to an operator resolver
                 if self.chars.contains('.') {
-                    match self.end_number() {
-                        Ok(token) => AddResult::Change(token, char),
-                        Err(err) => AddResult::Err(err),
+                    if self.chars.chars().last().unwrap() == '.' {
+                        // Removing the last "."
+                        self.chars.remove(self.chars.len() - 1);
+                        
+                        match self.end_number() {
+                            Ok(token) => AddResult::ChangeChars(token, vec!['.', '.']),
+                            Err(err) => AddResult::Err(err),
+                        }
+                    } else {
+                        match self.end_number() {
+                            Ok(token) => AddResult::Change(token, char),
+                            Err(err) => AddResult::Err(err),
+                        }
                     }
                 } else {
                     self.chars.push(char);

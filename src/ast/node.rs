@@ -39,6 +39,12 @@ pub enum ASTNode {
         condition: ASTChild,
         body: ASTBody,
     },
+    ForStatement {
+        left: ASTChild,
+        right: ASTChild,
+        body: ASTBody,
+        iter_name: String,
+    }
 }
 
 impl ASTNode {
@@ -76,5 +82,9 @@ impl ASTNode {
     
     pub fn new_if_statement(condition: ASTChild, body: ASTBody) -> ASTChild {
         Box::new(ASTNode::IfStatement { condition, body })
+    }
+    
+    pub fn new_for_statement(left: ASTChild, right: ASTChild, body: ASTBody, iter_name: String) -> ASTChild {
+        Box::new(ASTNode::ForStatement { left, right, body, iter_name })
     }
 }
