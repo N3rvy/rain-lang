@@ -14,9 +14,12 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        return while 1 == 1 {
-            break 10
+        var i = 0
+        while i < 10 {
+            i = i + 1
         }
+        
+        return i
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
@@ -117,6 +120,11 @@ mod tests {
                 for child in body {
                     print_node(child, ind + 2);
                 }
+            },
+            ASTNode::VariableAsgn { name, value } => {
+                println!("VariableAsgn:");
+                print_indented(name, ind + 1);
+                print_node(value, ind + 1);
             },
         }
     }

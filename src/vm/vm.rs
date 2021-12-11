@@ -65,6 +65,12 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                 None => EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
             }
         },
+        ASTNode::VariableAsgn { name, value } => {
+            let value = evaluate(value, scope)?;
+            scope.set_var(name, value);
+            
+            EvalResult::Ok(LangValue::Nothing)
+        },
         ASTNode::FunctionInvok { variable, parameters } => {
             let func_node = match evaluate(variable, scope)? {
                 LangValue::Function(node) => node,

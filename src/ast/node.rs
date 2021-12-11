@@ -15,6 +15,10 @@ pub enum ASTNode {
     VaraibleRef {
         name: String,
     },
+    VariableAsgn {
+        name: String,
+        value: ASTChild,
+    },
     FunctionInvok {
         variable: ASTChild,
         parameters: ASTBody,
@@ -49,7 +53,7 @@ pub enum ASTNode {
     WhileStatement {
         condition: ASTChild,
         body: ASTBody,
-    }
+    },
 }
 
 impl ASTNode {
@@ -63,6 +67,10 @@ impl ASTNode {
     
     pub fn new_variable_ref(name: String) -> ASTChild {
         Box::new(ASTNode::VaraibleRef { name })
+    }
+    
+    pub fn new_variable_asgn(name: String, value: ASTChild) -> ASTChild {
+        Box::new(ASTNode::VariableAsgn { name, value })
     }
     
     pub fn new_function_invok(variable: ASTChild, parameters: ASTBody) -> ASTChild {

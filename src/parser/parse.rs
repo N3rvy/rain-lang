@@ -226,6 +226,18 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
 
             Ok(ASTNode::new_function_invok(result, parameters))
         },
+        Token::Operator(OperatorKind::Assign) => {
+            let name = match result.as_ref()  {
+                ASTNode::VaraibleRef { name } => name.to_string(),
+                _ => return Ok(result),
+            };
+
+            tokens.pop();
+
+            let value = parse_statement(tokens)?;
+
+            Ok(ASTNode::new_variable_asgn(name, value))
+        },
         
         _ => Ok(result),
     }
