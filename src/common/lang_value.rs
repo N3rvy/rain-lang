@@ -1,15 +1,12 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::node::ASTBody, error::LangError};
-
-use super::messages::VARIABLE_IS_NOT_A_NUMBER;
+use crate::ast::node::ASTBody;
 
 pub enum LangValue {
     Nothing,
     String(String),
     Int(i32),
     Float(f32),
-    NaN,
     Bool(bool),
     Function(Arc<Function>),
 }
@@ -33,7 +30,6 @@ impl LangValue {
             LangValue::String(string) => string.len() > 0,
             LangValue::Int(int) => *int != 0,
             LangValue::Float(float) => *float != 0.0,
-            LangValue::NaN => false,
             LangValue::Bool(bool) => *bool,
             LangValue::Function(_) => true,
         }
@@ -87,7 +83,7 @@ impl LangValue {
             (LangValue::Float(left), LangValue::Float(right )) => LangValue::Float(left - right),
             
             // Others -> String
-            (_, _) => LangValue::NaN,
+            (_, _) => LangValue::Nothing,
         }
     }
     
@@ -104,7 +100,7 @@ impl LangValue {
             (LangValue::Float(left), LangValue::Float(right )) => LangValue::Float(left * right),
             
             // Others -> String
-            (_, _) => LangValue::NaN,
+            (_, _) => LangValue::Nothing,
         }
     }
     
@@ -121,7 +117,7 @@ impl LangValue {
             (LangValue::Float(left), LangValue::Float(right )) => LangValue::Float(left / right),
             
             // Others -> String
-            (_, _) => LangValue::NaN,
+            (_, _) => LangValue::Nothing,
         }
     }
     
@@ -138,15 +134,15 @@ impl LangValue {
             (LangValue::Float(left), LangValue::Float(right )) => LangValue::Float(left % right),
             
             // Others -> String
-            (_, _) => LangValue::NaN,
+            (_, _) => LangValue::Nothing,
         }
     }
     
     pub fn power(&self, other: Self) -> LangValue {
         match (self, other) {
             // If the exponent is less than 0 then the result will be NaN
-            (_, LangValue::Int(int)) if int < 0 => LangValue::NaN,
-            (_, LangValue::Float(float)) if float < 0.0 => LangValue::NaN,
+            (_, LangValue::Int(int)) if int < 0 => LangValue::Nothing,
+            (_, LangValue::Float(float)) if float < 0.0 => LangValue::Nothing,
 
             // Int -> Int
             (LangValue::Int(left), LangValue::Int(right)) => LangValue::Float((*left as f32).powf(right as f32)),
@@ -159,7 +155,7 @@ impl LangValue {
             (LangValue::Float(left), LangValue::Float(right )) => LangValue::Float(left.powf(right)),
             
             // Others -> String
-            (_, _) => LangValue::NaN,
+            (_, _) => LangValue::Nothing,
         }
     }
     
@@ -172,7 +168,6 @@ impl LangValue {
             (LangValue::Float(x), LangValue::Int(y)) => *x == *y as f32,
 
             (LangValue::Nothing, LangValue::Nothing) => true,
-            (LangValue::NaN, LangValue::NaN) => true,
             (LangValue::String(x), LangValue::String(y)) => x == y,
             (LangValue::Bool(x), LangValue::Bool(y)) => x == y,
             (LangValue::Function(x), LangValue::Function(y)) => {
@@ -241,7 +236,6 @@ impl ToString for LangValue {
             LangValue::Bool(bool) => bool.to_string(),
             LangValue::Function(_) => "[Function]".to_string(),
             LangValue::Nothing => "Nothing".to_string(),
-            LangValue::NaN => "NaN".to_string(),
         }
     }
 }
@@ -255,7 +249,6 @@ impl Clone for LangValue {
             Self::Bool(bool) => Self::Bool(bool.clone()),
             Self::Function(body) => Self::Function(body.clone()),
             Self::Nothing => Self::Nothing,
-            Self::NaN => Self::NaN,
         }
     }
 }
