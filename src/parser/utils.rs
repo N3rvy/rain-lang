@@ -70,27 +70,28 @@ pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>) -> Result<ASTBody,
     loop {
         let token = tokens.last();
             
-        let result = match token {
+        match token {
             Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
             Some(Token::Operator(OperatorKind::Comma)) => {
                 if next_is_argument {
                     return Err(LangError::new_parser(token.unwrap().clone(), PARAMETERS_EXPECTING_PARAMETER.to_string()));
                 } else {
+                    tokens.pop();
+
                     next_is_argument = true;
                     continue;
                 }
             }
             Some(_) => {
                 if next_is_argument {
-                    parse_statement(tokens)?
+                    next_is_argument = false;
+                    body.push(parse_statement(tokens)?);
                 } else {
                     return Err(LangError::new_parser(token.unwrap().clone(), PARAMETERS_EXPECTING_COMMA.to_string()));
                 }
             },
             None => return Err(LangError::new_parser_end_of_file()),
         };
-        
-        body.push(result);
     }
     
     // Popping the last )

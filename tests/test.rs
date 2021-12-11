@@ -14,12 +14,11 @@ mod tests {
     #[test]
     fn basic() {
         let script = r#"
-        var i = 0
-        while i < 10 {
-            i = i + 1
+        var sum = func(a, b) {
+            return a + b
         }
         
-        return i
+        return sum(20, 10)
         "#;
         let tokens = tokenize::tokenize(script.to_string()).unwrap();
         
