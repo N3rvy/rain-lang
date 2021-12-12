@@ -2,7 +2,10 @@ extern crate reverse;
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use reverse::ast::node::ASTChild;
+    use reverse::common::lang_value::LangValue;
     use reverse::common::types::ReturnKind;
     use reverse::parser::parse;
     use reverse::tokenizer::tokenize;
@@ -10,6 +13,7 @@ mod tests {
     use reverse::vm::scope::Scope;
     use reverse::vm::vm::evaluate;
     use reverse::vm::vm::EvalResult;
+    use crate::reverse::vm::externals::functions::IntoExtFunc;
 
     #[test]
     fn basic() {
@@ -32,6 +36,28 @@ mod tests {
         print_node(&root, 0);
         
         let value = evaluate(&root, &mut Scope::new(None));
+        
+        match value {
+            EvalResult::Ok(value) => println!("Ok {}", value.to_string()),
+            EvalResult::Ret(value, kind) => println!("Return ({}) {}", kind_to_string(&kind), value.to_string()),
+            EvalResult::Err(err) => println!("Error {}", err),
+        }
+    }
+    
+    #[test]
+    fn external() {
+        let script = r#"
+        return getnum()
+        "#;
+        let tokens = tokenize::tokenize(script.to_string()).unwrap();
+        let root = parse::parse(tokens).unwrap();
+        
+        let get_10: fn() -> LangValue = || LangValue::Int(10);
+
+        let mut scope = Scope::new(None);
+        scope.declare_var("getnum".to_string(), LangValue::ExtFunction(Arc::new(get_10.external_func())));
+
+        let value = evaluate(&root, &mut scope);
         
         match value {
             EvalResult::Ok(value) => println!("Ok {}", value.to_string()),

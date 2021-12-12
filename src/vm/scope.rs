@@ -16,7 +16,7 @@ impl<'a> Scope<'a> {
         }
     }
     
-    pub(super) fn declare_var(&self, name: String, value: LangValue) {
+    pub fn declare_var(&self, name: String, value: LangValue) {
         self.variables.borrow_mut().insert(name, value); 
     }
     

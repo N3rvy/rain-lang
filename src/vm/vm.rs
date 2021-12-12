@@ -1,6 +1,6 @@
 use std::ops::{Try, FromResidual, ControlFlow};
 
-use crate::{ast::node::ASTNode, common::{lang_value::LangValue, messages::{VARIABLE_IS_NOT_A_NUMBER, VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}, types::ReturnKind}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
+use crate::{ast::node::ASTNode, common::{lang_value::{LangValue, Function}, messages::{VARIABLE_IS_NOT_A_NUMBER, VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS}, types::ReturnKind}, error::LangError, tokenizer::tokens::{MathOperatorKind, BoolOperatorKind}};
 
 use super::scope::Scope;
 
@@ -72,34 +72,54 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
             EvalResult::Ok(LangValue::Nothing)
         },
         ASTNode::FunctionInvok { variable, parameters } => {
-            let func_node = match evaluate(variable, scope)? {
-                LangValue::Function(node) => node,
+            let func = evaluate(variable, scope)?;
+
+            let args_count = match &func {
+                LangValue::Function(func) => func.parameters.len(),
+                LangValue::ExtFunction(func) => func.args_count(),
                 _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
             };
-            let func_node = func_node.as_ref();
-            
-            let mut func_scope = Scope::new(Some(scope));
             
             // Parameters
-            if parameters.len() != func_node.parameters.len() {
+            if parameters.len() != args_count {
                 return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
             }
-            for i in 0..parameters.len() {
-                let value = evaluate(&parameters[i], &mut func_scope)?;
-                func_scope.declare_var(func_node.parameters[i].to_string(), value);
-            }
-
-            for child in &func_node.body {
-                // Matching to make the return statement stop
-                match evaluate(child, &mut func_scope) {
-                    EvalResult::Ok(_) => (),
-                    EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
-                    EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
-                    EvalResult::Err(err) => return EvalResult::Err(err),
-                }
+            
+            let mut param_values = Vec::new();
+            
+            for param in parameters {
+                let value = evaluate(param, scope)?;
+                param_values.push(value);
             }
             
-            EvalResult::Ok(LangValue::Nothing)
+            match &func {
+                LangValue::Function(func) => {
+                    let mut func_scope = Scope::new(Some(scope));
+                    for i in 0..parameters.len() {
+                        // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
+                        func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
+                    }
+
+                    for child in &func.body {
+                        // Matching to make the return statement stop
+                        match evaluate(child, &mut func_scope) {
+                            EvalResult::Ok(_) => (),
+                            EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
+                            EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
+                            EvalResult::Err(err) => return EvalResult::Err(err),
+                        }
+                    }
+                    
+                    EvalResult::Ok(LangValue::Nothing)
+                },
+                LangValue::ExtFunction(func) => {
+                    match func.run(param_values) {
+                        Ok(value ) => EvalResult::Ok(value),
+                        Err(err) => EvalResult::Err(err),
+                    }
+                },
+                _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
+            }
         },
         ASTNode::Literal { value } => {
             EvalResult::Ok(value.clone())
