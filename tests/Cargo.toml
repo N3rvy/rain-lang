@@ -4,7 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-common = { path = "../common" }
-tokenizer = { path = "../tokenizer" }
-parser = { path = "../parser" }
-vm = { path = "../vm" }
+reverse = { path = "../reverse" }

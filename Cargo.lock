@@ -15,13 +15,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "tests"
+name = "reverse"
 version = "0.1.0"
 dependencies = [
  "common",
  "parser",
  "tokenizer",
  "vm",
+]
+
+[[package]]
+name = "tests"
+version = "0.1.0"
+dependencies = [
+ "reverse",
 ]
 
 [[package]]
