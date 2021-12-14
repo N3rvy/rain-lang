@@ -28,3 +28,5 @@ pub const VARIABLE_IS_NOT_A_FUNCTION: &str = "Tried invoking a variable that is 
 pub const INCORRECT_NUMBER_OF_PARAMETERS: &str = "Incorrect number of parameters passed to function";
 
 pub const VARIABLE_IS_NOT_A_NUMBER: &str = "Variable is not a number";
+
+pub const EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE: &str = "A parameter passed to an external function has a wrong type"; 

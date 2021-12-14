@@ -1,8 +1,7 @@
 pub use common::lang_value::LangValue;
-pub use common::external_functions::IntoExtFunc;
+pub use common::errors::LangError;
 pub use vm::scope::Scope;
 
-use common::errors::LangError;
 use parser::parser::parse;
 use tokenizer::tokenizer::tokenize;
 use vm::vm::EvalResult;
