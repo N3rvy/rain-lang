@@ -27,6 +27,25 @@ pub trait IntoExternalFunctionRunner<A, R: ExtFuncParam> {
 }
 
 
+// TODO: Maybe make a macro for this
+
+impl<R, F> IntoExternalFunctionRunner<(), R> for F
+where
+    R: ExtFuncParam,
+    F: Fn<(), Output = R> + 'static
+{
+    fn external(self) -> ExternalFunctionRunner {
+        ExternalFunctionRunner {
+            args_count: 0,
+            func: Box::new(move |_| {
+                let res = self();
+                
+                Some(R::from(res))
+            }),
+        }
+    }
+}
+
 impl<A0, R, F> IntoExternalFunctionRunner<(A0,), R> for F
 where
     A0: ExtFuncParam,
@@ -40,6 +59,78 @@ where
                 let arg0 = A0::into(&args[0])?;
                 
                 let res = self(arg0);
+                
+                Some(R::from(res))
+            }),
+        }
+    }
+}
+
+impl<A0, A1, R, F> IntoExternalFunctionRunner<(A0,A1), R> for F
+where
+    A0: ExtFuncParam,
+    A1: ExtFuncParam,
+    R: ExtFuncParam,
+    F: Fn<(A0,A1), Output = R> + 'static
+{
+    fn external(self) -> ExternalFunctionRunner {
+        ExternalFunctionRunner {
+            args_count: 2,
+            func: Box::new(move |args| {
+                let arg0 = A0::into(&args[0])?;
+                let arg1 = A1::into(&args[1])?;
+                
+                let res = self(arg0, arg1);
+                
+                Some(R::from(res))
+            }),
+        }
+    }
+}
+
+impl<A0, A1, A2, R, F> IntoExternalFunctionRunner<(A0,A1,A2), R> for F
+where
+    A0: ExtFuncParam,
+    A1: ExtFuncParam,
+    A2: ExtFuncParam,
+    R: ExtFuncParam,
+    F: Fn<(A0,A1,A2), Output = R> + 'static
+{
+    fn external(self) -> ExternalFunctionRunner {
+        ExternalFunctionRunner {
+            args_count: 2,
+            func: Box::new(move |args| {
+                let arg0 = A0::into(&args[0])?;
+                let arg1 = A1::into(&args[1])?;
+                let arg2 = A2::into(&args[2])?;
+                
+                let res = self(arg0, arg1, arg2);
+                
+                Some(R::from(res))
+            }),
+        }
+    }
+}
+
+impl<A0, A1, A2, A3, R, F> IntoExternalFunctionRunner<(A0,A1,A2,A3), R> for F
+where
+    A0: ExtFuncParam,
+    A1: ExtFuncParam,
+    A2: ExtFuncParam,
+    A3: ExtFuncParam,
+    R: ExtFuncParam,
+    F: Fn<(A0,A1,A2,A3), Output = R> + 'static
+{
+    fn external(self) -> ExternalFunctionRunner {
+        ExternalFunctionRunner {
+            args_count: 2,
+            func: Box::new(move |args| {
+                let arg0 = A0::into(&args[0])?;
+                let arg1 = A1::into(&args[1])?;
+                let arg2 = A2::into(&args[2])?;
+                let arg3 = A3::into(&args[3])?;
+                
+                let res = self(arg0, arg1, arg2, arg3);
                 
                 Some(R::from(res))
             }),

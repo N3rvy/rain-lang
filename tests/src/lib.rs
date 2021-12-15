@@ -29,7 +29,7 @@ mod tests {
         
         let mut scope = Scope::new(None);
         scope.declare_ext_func("add2", ext_add2.external());
-        // scope.declare_ext_func("sum", ext_sum.external());
+        scope.declare_ext_func("sum", ext_sum.external());
         
         let result = evaluate_scope(script.to_string(), &mut scope);
         
