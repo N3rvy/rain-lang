@@ -1,6 +1,6 @@
-use std::{collections::HashMap, cell::RefCell};
+use std::{collections::HashMap, cell::RefCell, sync::Arc};
 
-use common::{lang_value::LangValue, external_functions::{ExtFunc, IntoExtFunc}};
+use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
@@ -19,9 +19,8 @@ impl<'a> Scope<'a> {
         self.variables.borrow_mut().insert(name, value); 
     }
     
-    pub fn declare_ext_func(&self, name: String, func: impl IntoExtFunc) {
-        let func = func.into();
-        self.variables.borrow_mut().insert(name, LangValue::ExtFunction(func));
+    pub fn declare_ext_func(&self, name: &str, runner: ExternalFunctionRunner)  {
+        self.variables.borrow_mut().insert(name.to_string(), LangValue::ExtFunction(Arc::new(runner)));
     }
     
     pub(super) fn get_var(&'a self, name: &String) -> Option<LangValue> {

@@ -3,47 +3,49 @@ use std::sync::Arc;
 use crate::{lang_value::{LangValue, Function}, errors::LangError, messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE}};
 
 
-pub trait ExtFunc {
-    fn args_count(&self) -> usize;
-    fn run(&self, args: Vec<LangValue>) -> Result<LangValue, LangError> {
-        if args.len() != self.args_count() {
+pub struct ExternalFunctionRunner {
+    args_count: usize, 
+    func: Box<dyn Fn(Vec<LangValue>) -> Option<LangValue>>,
+}
+
+impl ExternalFunctionRunner {
+    pub fn run(&self, args: Vec<LangValue>) -> Result<LangValue, LangError> {
+        if args.len() != self.args_count {
             return Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
         }
-
-        match self.run_internal(args) {
+        
+        match (self.func)(args) {
             Some(val) => Ok(val),
             None => Err(LangError::new_runtime(EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE.to_string())),
         }
     }
-    
-    fn run_internal(&self, args: Vec<LangValue>) -> Option<LangValue>;
 }
 
 
-pub trait IntoExtFunc {
-    fn into(self) -> Arc<dyn ExtFunc>;
+pub trait IntoExternalFunctionRunner<A, R: ExtFuncParam> {
+    fn external(self) -> ExternalFunctionRunner;
 }
 
 
-pub struct ExtFunc1<A: ExtFuncParam, R: ExtFuncParam>(fn(A) -> R);
-impl<'a, A: ExtFuncParam, R: ExtFuncParam> ExtFunc for ExtFunc1<A, R> {
-    fn args_count(&self) -> usize { 1 }
-
-    fn run_internal(&self, args: Vec<LangValue>) -> Option<LangValue> {
-        let arg0 = A::into(args.get(0)?)?;
-        
-        let res = (self.0)(arg0);
-        Some(R::from(res))
-    }
-}
-
-impl<A: ExtFuncParam, R: ExtFuncParam> IntoExtFunc for fn(A) -> R
+impl<A0, R, F> IntoExternalFunctionRunner<(A0,), R> for F
+where
+    A0: ExtFuncParam,
+    R: ExtFuncParam,
+    F: Fn<(A0,), Output = R> + 'static
 {
-    fn into(self) -> Arc<dyn ExtFunc> {
-        Arc::new(ExtFunc1(self))
+    fn external(self) -> ExternalFunctionRunner {
+        ExternalFunctionRunner {
+            args_count: 1,
+            func: Box::new(move |args| {
+                let arg0 = A0::into(&args[0])?;
+                
+                let res = self(arg0);
+                
+                Some(R::from(res))
+            }),
+        }
     }
-} 
-
+}
 
 
 pub trait ExtFuncParam
@@ -104,12 +106,12 @@ impl ExtFuncParam for Arc<Function> {
     }
 }
 
-impl ExtFuncParam for Arc<dyn ExtFunc> {
-    fn from(val: Self) -> LangValue {
-        LangValue::ExtFunction(val)
-    }
+// impl ExtFuncParam for Arc<> {
+//     fn from(val: Self) -> LangValue {
+//         LangValue::ExtFunction(val)
+//     }
 
-    fn into(val: &LangValue) -> Option<Self> {
-        val.as_ext_function()
-    }
-}
+//     fn into(val: &LangValue) -> Option<Self> {
+//         val.as_ext_function()
+//     }
+// }

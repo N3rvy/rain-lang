@@ -1,5 +1,6 @@
 pub use common::lang_value::LangValue;
 pub use common::errors::LangError;
+pub use common::external_functions::IntoExternalFunctionRunner;
 pub use vm::scope::Scope;
 
 use parser::parser::parse;

@@ -2,7 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use std::{assert_matches::assert_matches};
+    use reverse::IntoExternalFunctionRunner;
+    use std::assert_matches::assert_matches;
     use reverse::{LangValue, Scope, evaluate_scope};
 
     #[test]
@@ -26,10 +27,9 @@ mod tests {
         return add2(2)
         "#;
         
-        let ext: fn(i32) -> i32 = ext_add2;
-        
         let mut scope = Scope::new(None);
-        scope.declare_ext_func("add2".to_string(), ext);
+        scope.declare_ext_func("add2", ext_add2.external());
+        // scope.declare_ext_func("sum", ext_sum.external());
         
         let result = evaluate_scope(script.to_string(), &mut scope);
         
@@ -38,5 +38,9 @@ mod tests {
     
     fn ext_add2(i: i32) -> i32 {
         i + 2
+    }
+    
+    fn ext_sum(a: i32, b: i32) -> i32 {
+        a + b
     }
 }

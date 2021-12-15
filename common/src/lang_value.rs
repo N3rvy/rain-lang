@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, external_functions::ExtFunc};
+use crate::{ast::ASTBody, external_functions::ExternalFunctionRunner};
 
 pub enum LangValue {
     Nothing,
@@ -9,7 +9,7 @@ pub enum LangValue {
     Float(f32),
     Bool(bool),
     Function(Arc<Function>),
-    ExtFunction(Arc<dyn ExtFunc>),
+    ExtFunction(Arc<ExternalFunctionRunner>),
 }
 
 pub struct Function {
@@ -74,7 +74,7 @@ impl LangValue {
         }
     }
     
-    pub fn as_ext_function(&self) -> Option<Arc<dyn ExtFunc>> {
+    pub fn as_ext_function(&self) -> Option<Arc<ExternalFunctionRunner>> {
         match self {
             LangValue::ExtFunction(ext_func) => Some(ext_func.clone()),
             _ => None,

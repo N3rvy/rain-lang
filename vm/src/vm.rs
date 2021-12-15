@@ -1,5 +1,5 @@
-use std::ops::{Try, FromResidual, ControlFlow};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER}};
+use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
 
@@ -72,27 +72,20 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
         },
         ASTNode::FunctionInvok { variable, parameters } => {
             let func = evaluate(variable, scope)?;
-
-            let args_count = match &func {
-                LangValue::Function(func) => func.parameters.len(),
-                LangValue::ExtFunction(func) => func.args_count(),
-                _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
-            };
-            
-            // Parameters
-            if parameters.len() != args_count {
-                return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
-            }
-            
+                    
             let mut param_values = Vec::new();
-            
             for param in parameters {
                 let value = evaluate(param, scope)?;
                 param_values.push(value);
             }
-            
+
             match &func {
                 LangValue::Function(func) => {
+                    // Parameters
+                    if parameters.len() != func.parameters.len() {
+                        return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
+                    }
+            
                     let mut func_scope = Scope::new(Some(scope));
                     for i in 0..parameters.len() {
                         // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
@@ -112,7 +105,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
                     EvalResult::Ok(LangValue::Nothing)
                 },
                 LangValue::ExtFunction(func) => {
-                    match func.run(param_values) {
+                    match (func.borrow() as &ExternalFunctionRunner).run(param_values) {
                         Ok(value ) => EvalResult::Ok(value),
                         Err(err) => EvalResult::Err(err),
                     }
