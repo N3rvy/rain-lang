@@ -22,7 +22,7 @@ impl ExternalFunctionRunner {
 }
 
 
-pub trait IntoExternalFunctionRunner<A, R: ExtFuncParam> {
+pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
     fn external(self) -> ExternalFunctionRunner;
 }
 
@@ -31,7 +31,7 @@ pub trait IntoExternalFunctionRunner<A, R: ExtFuncParam> {
 
 impl<R, F> IntoExternalFunctionRunner<(), R> for F
 where
-    R: ExtFuncParam,
+    R: ConvertLangValue,
     F: Fn<(), Output = R> + 'static
 {
     fn external(self) -> ExternalFunctionRunner {
@@ -48,8 +48,8 @@ where
 
 impl<A0, R, F> IntoExternalFunctionRunner<(A0,), R> for F
 where
-    A0: ExtFuncParam,
-    R: ExtFuncParam,
+    A0: ConvertLangValue,
+    R: ConvertLangValue,
     F: Fn<(A0,), Output = R> + 'static
 {
     fn external(self) -> ExternalFunctionRunner {
@@ -68,9 +68,9 @@ where
 
 impl<A0, A1, R, F> IntoExternalFunctionRunner<(A0,A1), R> for F
 where
-    A0: ExtFuncParam,
-    A1: ExtFuncParam,
-    R: ExtFuncParam,
+    A0: ConvertLangValue,
+    A1: ConvertLangValue,
+    R: ConvertLangValue,
     F: Fn<(A0,A1), Output = R> + 'static
 {
     fn external(self) -> ExternalFunctionRunner {
@@ -90,10 +90,10 @@ where
 
 impl<A0, A1, A2, R, F> IntoExternalFunctionRunner<(A0,A1,A2), R> for F
 where
-    A0: ExtFuncParam,
-    A1: ExtFuncParam,
-    A2: ExtFuncParam,
-    R: ExtFuncParam,
+    A0: ConvertLangValue,
+    A1: ConvertLangValue,
+    A2: ConvertLangValue,
+    R: ConvertLangValue,
     F: Fn<(A0,A1,A2), Output = R> + 'static
 {
     fn external(self) -> ExternalFunctionRunner {
@@ -114,11 +114,11 @@ where
 
 impl<A0, A1, A2, A3, R, F> IntoExternalFunctionRunner<(A0,A1,A2,A3), R> for F
 where
-    A0: ExtFuncParam,
-    A1: ExtFuncParam,
-    A2: ExtFuncParam,
-    A3: ExtFuncParam,
-    R: ExtFuncParam,
+    A0: ConvertLangValue,
+    A1: ConvertLangValue,
+    A2: ConvertLangValue,
+    A3: ConvertLangValue,
+    R: ConvertLangValue,
     F: Fn<(A0,A1,A2,A3), Output = R> + 'static
 {
     fn external(self) -> ExternalFunctionRunner {
@@ -139,7 +139,7 @@ where
 }
 
 
-pub trait ExtFuncParam
+pub trait ConvertLangValue
     where Self: Sized + 'static
 {
     fn from(val: Self) -> LangValue;
@@ -147,7 +147,7 @@ pub trait ExtFuncParam
 }
 
 
-impl ExtFuncParam for i32 {
+impl ConvertLangValue for i32 {
     fn from(val: Self) -> LangValue {
         LangValue::Int(val)
     }
@@ -157,7 +157,7 @@ impl ExtFuncParam for i32 {
     }
 }
 
-impl ExtFuncParam for f32 {
+impl ConvertLangValue for f32 {
     fn from(val: Self) -> LangValue {
         LangValue::Float(val)
     }
@@ -167,7 +167,7 @@ impl ExtFuncParam for f32 {
     }
 }
 
-impl ExtFuncParam for bool {
+impl ConvertLangValue for bool {
     fn from(val: Self) -> LangValue {
         LangValue::Bool(val)
     }
@@ -177,7 +177,7 @@ impl ExtFuncParam for bool {
     }
 }
 
-impl ExtFuncParam for String {
+impl ConvertLangValue for String {
     fn from(val: Self) -> LangValue {
         LangValue::String(val)
     }
@@ -187,7 +187,7 @@ impl ExtFuncParam for String {
     }
 }
 
-impl ExtFuncParam for Arc<Function> {
+impl ConvertLangValue for Arc<Function> {
     fn from(val: Self) -> LangValue {
         LangValue::Function(val)
     }
