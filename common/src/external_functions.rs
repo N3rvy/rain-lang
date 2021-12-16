@@ -23,7 +23,7 @@ impl ExternalFunctionRunner {
 
 
 pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
-    fn external(self) -> ExternalFunctionRunner;
+    fn external(self) -> Arc<ExternalFunctionRunner>;
 }
 
 
@@ -34,15 +34,15 @@ where
     R: ConvertLangValue,
     F: Fn<(), Output = R> + 'static
 {
-    fn external(self) -> ExternalFunctionRunner {
-        ExternalFunctionRunner {
+    fn external(self) -> Arc<ExternalFunctionRunner> {
+        Arc::new(ExternalFunctionRunner {
             args_count: 0,
             func: Box::new(move |_| {
                 let res = self();
                 
                 Some(R::from(res))
             }),
-        }
+        })
     }
 }
 
@@ -52,8 +52,8 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,), Output = R> + 'static
 {
-    fn external(self) -> ExternalFunctionRunner {
-        ExternalFunctionRunner {
+    fn external(self) -> Arc<ExternalFunctionRunner> {
+        Arc::new(ExternalFunctionRunner {
             args_count: 1,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -62,7 +62,7 @@ where
                 
                 Some(R::from(res))
             }),
-        }
+        })
     }
 }
 
@@ -73,8 +73,8 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1), Output = R> + 'static
 {
-    fn external(self) -> ExternalFunctionRunner {
-        ExternalFunctionRunner {
+    fn external(self) -> Arc<ExternalFunctionRunner> {
+        Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -84,7 +84,7 @@ where
                 
                 Some(R::from(res))
             }),
-        }
+        })
     }
 }
 
@@ -96,8 +96,8 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1,A2), Output = R> + 'static
 {
-    fn external(self) -> ExternalFunctionRunner {
-        ExternalFunctionRunner {
+    fn external(self) -> Arc<ExternalFunctionRunner> {
+        Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -108,7 +108,7 @@ where
                 
                 Some(R::from(res))
             }),
-        }
+        })
     }
 }
 
@@ -121,8 +121,8 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1,A2,A3), Output = R> + 'static
 {
-    fn external(self) -> ExternalFunctionRunner {
-        ExternalFunctionRunner {
+    fn external(self) -> Arc<ExternalFunctionRunner> {
+        Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -134,7 +134,7 @@ where
                 
                 Some(R::from(res))
             }),
-        }
+        })
     }
 }
 
@@ -197,12 +197,12 @@ impl ConvertLangValue for Arc<Function> {
     }
 }
 
-impl ConvertLangValue for ExternalFunctionRunner {
+impl ConvertLangValue for Arc<ExternalFunctionRunner> {
     fn from(val: Self) -> LangValue {
-        LangValue::ExtFunction(Arc::new(val))
+        LangValue::ExtFunction(val)
     }
 
     fn into(val: &LangValue) -> Option<Self> {
-        todo!("Need Arc at conversion level")
+        val.as_ext_function()
     }
 }
