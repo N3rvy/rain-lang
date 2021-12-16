@@ -43,7 +43,7 @@ macro_rules! expect_some {
 }
 
 
-pub fn evaluate(ast: &Box<ASTNode>, scope: &mut Scope) -> EvalResult {
+pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
     match ast.as_ref() {
         ASTNode::Root { body } => {
             for child in body {

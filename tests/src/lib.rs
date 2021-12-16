@@ -2,9 +2,9 @@
 
 #[cfg(test)]
 mod tests {
-    use reverse::IntoExternalFunctionRunner;
+    use reverse::{IntoExternalFunctionRunner, IntoScript};
     use std::assert_matches::assert_matches;
-    use reverse::{LangValue, Scope, evaluate_scope};
+    use reverse::{LangValue, Scope, Vm};
 
     #[test]
     fn basic() {
@@ -14,24 +14,25 @@ mod tests {
         }
         
         return sum(20, 10)
-        "#;
+        "#.to_string().script().unwrap();
         
-        let result = reverse::evaluate(script.to_string());
+        let vm = Vm::new();
+        let result = vm.evaluate(script).unwrap();
         
-        assert_matches!(result, Ok(LangValue::Int(30)))
+        assert_matches!(result, LangValue::Int(30))
     }
     
     #[test]
     fn external() {
         let script = r#"
         return add2(2)
-        "#;
+        "#.to_string().script().unwrap();
         
-        let mut scope = Scope::new(None);
-        scope.declare_ext_func("add2", ext_add2.external());
-        scope.declare_ext_func("sum", ext_sum.external());
+        let vm = Vm::new();
+        vm.register("add2", ext_add2.external());
+        vm.register("sum", ext_sum.external());
         
-        let result = evaluate_scope(script.to_string(), &mut scope);
+        let result = vm.evaluate(script);
         
         assert_matches!(result, Ok(LangValue::Int(4)))
     }

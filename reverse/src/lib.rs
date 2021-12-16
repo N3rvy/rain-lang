@@ -1,25 +1,23 @@
 pub use common::lang_value::LangValue;
 pub use common::errors::LangError;
 pub use common::external_functions::IntoExternalFunctionRunner;
-pub use vm::scope::Scope;
-
 use parser::parser::parse;
 use tokenizer::tokenizer::tokenize;
-use vm::vm::EvalResult;
-use vm;
+pub use vm::scope::Scope;
+pub use vm::Vm;
+
+use common::script::Script;
 
 
-pub fn evaluate(script: String) -> Result<LangValue, LangError> {
-    let mut scope = Scope::new(None);
-    evaluate_scope(script, &mut scope)
+pub trait IntoScript {
+    fn script(self) -> Result<Script, LangError>;
 }
 
-pub fn evaluate_scope(script: String, scope: &mut Scope) -> Result<LangValue, LangError> {
-    let tokens = tokenize(script)?;
-    let ast = parse(tokens)?;
-    match vm::vm::evaluate(&ast, scope) {
-        EvalResult::Ok(value) => Ok(value),
-        EvalResult::Ret(value, _) => Ok(value),
-        EvalResult::Err(err) => Err(err),
+impl IntoScript for String {
+    fn script(self) -> Result<Script, LangError> {
+        let tokens = tokenize(self)?;
+        let ast = parse(tokens)?;
+
+        Ok(Script { ast })
     }
 }

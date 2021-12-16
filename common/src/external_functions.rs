@@ -197,12 +197,12 @@ impl ConvertLangValue for Arc<Function> {
     }
 }
 
-// impl ExtFuncParam for Arc<> {
-//     fn from(val: Self) -> LangValue {
-//         LangValue::ExtFunction(val)
-//     }
+impl ConvertLangValue for ExternalFunctionRunner {
+    fn from(val: Self) -> LangValue {
+        LangValue::ExtFunction(Arc::new(val))
+    }
 
-//     fn into(val: &LangValue) -> Option<Self> {
-//         val.as_ext_function()
-//     }
-// }
+    fn into(val: &LangValue) -> Option<Self> {
+        todo!("Need Arc at conversion level")
+    }
+}

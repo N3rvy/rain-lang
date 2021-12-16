@@ -6,3 +6,4 @@ pub mod types;
 pub mod errors;
 pub mod ast;
 pub mod external_functions;
+pub mod script;
