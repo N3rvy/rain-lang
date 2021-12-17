@@ -1,17 +1,27 @@
 use std::{collections::HashMap, cell::RefCell, sync::Arc};
 
-use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
+use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     variables: RefCell<HashMap<String, LangValue>>,
+    pub registry: Arc<HelperRegistry>,
 }
 
 impl<'a> Scope<'a> {
-    pub fn new(parent: Option<&'a Scope<'a>>) -> Self {
+    pub fn new(registry: Arc<HelperRegistry>) -> Self {
         Self {
-            parent,
+            parent: None,
             variables: RefCell::new(HashMap::new()),
+            registry,
+        }
+    }
+
+    pub fn new_child(parent: &'a Scope<'a>) -> Self {
+        Self {
+            parent: Some(parent),
+            variables: RefCell::new(HashMap::new()),
+            registry: parent.registry.clone(),
         }
     }
     

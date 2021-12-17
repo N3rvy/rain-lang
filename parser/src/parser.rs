@@ -226,6 +226,17 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
 
             Ok(ASTNode::new_function_invok(result, parameters))
         },
+        Token::Operator(OperatorKind::Dot) => {
+            tokens.pop();
+
+            let field_name = match tokens.pop() {
+                Some(Token::Symbol(field_name)) => field_name,
+                Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
+            
+            Ok(ASTNode::new_field_access(result, field_name))
+        },
         Token::Operator(OperatorKind::Assign) => {
             let name = match result.as_ref()  {
                 ASTNode::VaraibleRef { name } => name.to_string(),

@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, external_functions::ExternalFunctionRunner};
+use crate::{ast::ASTBody, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
 pub enum LangValue {
     Nothing,
@@ -10,6 +10,31 @@ pub enum LangValue {
     Bool(bool),
     Function(Arc<Function>),
     ExtFunction(Arc<ExternalFunctionRunner>),
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum LangValueDiscriminant {
+    Nothing,
+    String,
+    Int,
+    Float,
+    Bool,
+    Function,
+    ExtFunction,
+}
+
+impl From<&LangValue> for LangValueDiscriminant {
+    fn from(val: &LangValue) -> Self {
+        match val {
+            LangValue::Nothing => LangValueDiscriminant::Nothing,
+            LangValue::String(_) => LangValueDiscriminant::String,
+            LangValue::Int(_) => LangValueDiscriminant::Int,
+            LangValue::Float(_) => LangValueDiscriminant::Float,
+            LangValue::Bool(_) => LangValueDiscriminant::Bool,
+            LangValue::Function(_) => LangValueDiscriminant::Function,
+            LangValue::ExtFunction(_) => LangValueDiscriminant::ExtFunction,
+        }
+    }
 }
 
 pub struct Function {
@@ -35,6 +60,10 @@ impl LangValue {
             LangValue::Function(_) => true,
             LangValue::ExtFunction(_) => true,
         }
+    }
+
+    pub fn get_field<'a>(&self, registry: &'a HelperRegistry, name: &String) -> Option<&'a LangValue> {
+        registry.get_helper(self)?.get(name)
     }
     
     pub fn as_i32(&self) -> Option<i32> {

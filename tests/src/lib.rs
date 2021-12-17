@@ -3,8 +3,8 @@
 #[cfg(test)]
 mod tests {
     use reverse::{IntoExternalFunctionRunner, IntoScript};
-    use std::assert_matches::assert_matches;
-    use reverse::{LangValue, Scope, Vm};
+    use std::assert_matches::{assert_matches, self};
+    use reverse::{LangValue, Vm};
 
     #[test]
     fn basic() {
@@ -35,6 +35,21 @@ mod tests {
         let result = vm.evaluate(script);
         
         assert_matches!(result, Ok(LangValue::Int(4)))
+    }
+    
+    #[test]
+    fn helpers() {
+        let script = r#"
+        var a = 10
+        var i = a.max
+        return i
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script);
+        
+        assert_matches!(result, Ok(LangValue::Int(i32::MAX)));
     }
     
     fn ext_add2(i: i32) -> i32 {

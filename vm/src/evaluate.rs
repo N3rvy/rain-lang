@@ -86,7 +86,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
                         return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
                     }
             
-                    let mut func_scope = Scope::new(Some(scope));
+                    let mut func_scope = Scope::new_child(scope);
                     for i in 0..parameters.len() {
                         // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
                         func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
@@ -152,7 +152,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             let condition = evaluate(condition, scope)?;
             
             if condition.truthy() {
-                let mut if_scope = Scope::new(Some(scope));
+                let mut if_scope = Scope::new_child(scope);
 
                 for child in body {
                     evaluate(child, &mut if_scope)?;
@@ -169,7 +169,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             let max = expect_some!(right, VARIABLE_IS_NOT_A_NUMBER.to_string());
             
             for i in min..max {
-                let mut for_scope = Scope::new(Some(scope));
+                let mut for_scope = Scope::new_child(scope);
                 for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
                 
                 for child in body {
@@ -186,7 +186,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
         },
         ASTNode::WhileStatement { condition, body } => {
             while evaluate(condition, scope)?.truthy() {
-                let mut while_scope = Scope::new(Some(scope));
+                let mut while_scope = Scope::new_child(scope);
                 
                 for child in body {
                     match evaluate(child, &mut while_scope) {
@@ -199,6 +199,16 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             }
 
             EvalResult::Ok(LangValue::Nothing)
+        },
+        ASTNode::FieldAccess { variable, field_name } => {
+            let value = evaluate(variable, scope)?;
+            
+            let result = match value.get_field(scope.registry.borrow(), field_name) {
+                Some(value) => value.clone(),
+                None => LangValue::Nothing,
+            };
+            
+            EvalResult::Ok(result)
         },
     }
 }

@@ -7,3 +7,4 @@ pub mod errors;
 pub mod ast;
 pub mod external_functions;
 pub mod script;
+pub mod helper;

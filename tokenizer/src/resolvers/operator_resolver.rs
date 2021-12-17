@@ -35,6 +35,7 @@ impl Resolver {
             "=" => Token::Operator(OperatorKind::Assign),
             ".." => Token::Operator(OperatorKind::Range),
             "," => Token::Operator(OperatorKind::Comma),
+            "." => Token::Operator(OperatorKind::Dot),
             
             // Math operator
             "+" => Token::MathOperator(MathOperatorKind::Plus),

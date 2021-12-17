@@ -18,6 +18,7 @@ pub enum OperatorKind {
     In,
     Range,
     Comma,
+    Dot,
 }
 
 #[derive(Clone, Debug)]

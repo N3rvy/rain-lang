@@ -53,6 +53,10 @@ pub enum ASTNode {
         condition: ASTChild,
         body: ASTBody,
     },
+    FieldAccess {
+        variable: ASTChild,
+        field_name: String,
+    }
 }
 
 impl ASTNode {
@@ -102,5 +106,9 @@ impl ASTNode {
     
     pub fn new_while_statement(condition: ASTChild, body: ASTBody) -> ASTChild {
         Box::new(ASTNode::WhileStatement { condition, body })
+    }
+
+    pub fn new_field_access(variable: ASTChild, field_name: String) -> ASTChild {
+        Box::new(ASTNode::FieldAccess { variable, field_name })
     }
 }
