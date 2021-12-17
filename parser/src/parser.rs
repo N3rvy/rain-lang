@@ -114,7 +114,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     let result = parse_statement(tokens);
                     
                     match tokens.pop() {
-                        Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => (),
+                        Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => (),
                         Some(token) => return Err(LangError::new_parser_unexpected_token()),
                         None => return Err(LangError::new_parser_end_of_file()),
                     }
