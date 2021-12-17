@@ -121,6 +121,11 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     
                     result?
                 },
+                (ParenthesisKind::Square, ParenthesisState::Open) => {
+                    let values = parse_parameter_values(tokens, ParenthesisKind::Square)?;
+                    
+                    ASTNode::new_vector_literal(values)
+                },
                 _ => return Err(LangError::new_parser_unexpected_token())
             }
         },
@@ -222,7 +227,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
         Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
             tokens.pop();
 
-            let parameters = parse_parameter_values(tokens)?;
+            let parameters = parse_parameter_values(tokens, ParenthesisKind::Round)?;
 
             Ok(ASTNode::new_function_invok(result, parameters))
         },

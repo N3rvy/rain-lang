@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use reverse::{IntoExternalFunctionRunner, IntoScript};
-    use std::assert_matches::{assert_matches, self};
+    use std::{assert_matches::{assert_matches, self}, borrow::Borrow};
     use reverse::{LangValue, Vm};
 
     #[test]
@@ -50,6 +50,23 @@ mod tests {
         let result = vm.evaluate(script);
         
         assert_matches!(result, Ok(LangValue::Int(i32::MAX)));
+    }
+    
+    #[test]
+    fn vectors() {
+        let script = r#"
+        return [10, 0, 10]
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script).unwrap();
+        
+        assert!(match result {
+            LangValue::Vector(vec)
+                => matches!(vec.as_ref()[..], [LangValue::Int(10), LangValue::Int(0), LangValue::Int(10)]),
+            _ => false,
+        })
     }
     
     fn ext_add2(i: i32) -> i32 {

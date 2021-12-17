@@ -1,4 +1,4 @@
-use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow};
+use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc};
 use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
@@ -209,6 +209,15 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             };
             
             EvalResult::Ok(result)
+        },
+        ASTNode::VectorLiteral { values } => {
+            let mut eval_values = Vec::new();
+            
+            for val in values {
+                eval_values.push(evaluate(val, scope)?);
+            }
+            
+            EvalResult::Ok(LangValue::Vector(Arc::new(eval_values)))
         },
     }
 }

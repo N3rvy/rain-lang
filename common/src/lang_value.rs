@@ -10,6 +10,7 @@ pub enum LangValue {
     Bool(bool),
     Function(Arc<Function>),
     ExtFunction(Arc<ExternalFunctionRunner>),
+    Vector(Arc<Vec<LangValue>>),
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -21,6 +22,7 @@ pub enum LangValueDiscriminant {
     Bool,
     Function,
     ExtFunction,
+    Vector,
 }
 
 impl From<&LangValue> for LangValueDiscriminant {
@@ -33,6 +35,7 @@ impl From<&LangValue> for LangValueDiscriminant {
             LangValue::Bool(_) => LangValueDiscriminant::Bool,
             LangValue::Function(_) => LangValueDiscriminant::Function,
             LangValue::ExtFunction(_) => LangValueDiscriminant::ExtFunction,
+            LangValue::Vector(vec ) => LangValueDiscriminant::Vector,
         }
     }
 }
@@ -59,6 +62,7 @@ impl LangValue {
             LangValue::Bool(bool) => *bool,
             LangValue::Function(_) => true,
             LangValue::ExtFunction(_) => true,
+            LangValue::Vector(vec) => vec.len() != 0,
         }
     }
 
@@ -106,6 +110,13 @@ impl LangValue {
     pub fn as_ext_function(&self) -> Option<Arc<ExternalFunctionRunner>> {
         match self {
             LangValue::ExtFunction(ext_func) => Some(ext_func.clone()),
+            _ => None,
+        }
+    }
+    
+    pub fn as_vec(&self) -> Option<Arc<Vec<LangValue>>> {
+        match self {
+            LangValue::Vector(vec) => Some(vec.clone()),
             _ => None,
         }
     }
@@ -296,6 +307,7 @@ impl ToString for LangValue {
             LangValue::Function(_) => "[Function]".to_string(),
             LangValue::Nothing => "Nothing".to_string(),
             LangValue::ExtFunction(_) => "[External Function]".to_string(),
+            LangValue::Vector(vec) => "[Vector]".to_string(),
         }
     }
 }
@@ -310,6 +322,7 @@ impl Clone for LangValue {
             Self::Function(body) => Self::Function(body.clone()),
             Self::Nothing => Self::Nothing,
             Self::ExtFunction(func) => Self::ExtFunction(func.clone()),
+            Self::Vector(vec) => Self::Vector(vec.clone()),
         }
     }
 }

@@ -64,7 +64,7 @@ pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<Vec<Strin
     Ok(names)
 }
 
-pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> {
+pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>, parenthesis_kind: ParenthesisKind) -> Result<ASTBody, LangError> {
     let mut body = Vec::new();
     let mut next_is_argument = true;
     
@@ -72,7 +72,8 @@ pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>) -> Result<ASTBody,
         let token = tokens.last();
             
         match token {
-            Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
+            Some(Token::Parenthesis(kind, ParenthesisState::Close))
+                if kind == &parenthesis_kind => break,
             Some(Token::Operator(OperatorKind::Comma)) => {
                 if next_is_argument {
                     return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
