@@ -30,3 +30,5 @@ pub const INCORRECT_NUMBER_OF_PARAMETERS: &str = "Incorrect number of parameters
 pub const VARIABLE_IS_NOT_A_NUMBER: &str = "Variable is not a number";
 
 pub const EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE: &str = "A parameter passed to an external function has a wrong type"; 
+
+pub const INVALID_VALUE_FIELD_ACCESS: &str = "Invalid value field access";

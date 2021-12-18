@@ -1,5 +1,5 @@
 use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER}, external_functions::ExternalFunctionRunner};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
 
@@ -218,6 +218,15 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             }
             
             EvalResult::Ok(LangValue::Vector(Arc::new(eval_values)))
+        },
+        ASTNode::ValueFieldAccess { variable, value } => {
+            let variable = evaluate(variable, scope)?;
+            let value = evaluate(value, scope)?;
+
+            match variable.get_value_field(value) {
+                Some(value) => EvalResult::Ok(value.clone()),
+                None => EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
+            }
         },
     }
 }

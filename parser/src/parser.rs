@@ -224,6 +224,15 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             }
 
         },
+        Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
+            tokens.pop();
+            
+            let value = parse_statement(tokens)?;
+            
+            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
+            
+            Ok(ASTNode::new_value_field_access(result, value))
+        },
         Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
             tokens.pop();
 

@@ -70,6 +70,18 @@ impl LangValue {
         registry.get_helper(self)?.get(name)
     }
     
+    pub fn get_value_field(&self, value: LangValue) -> Option<&LangValue> {
+        match self {
+            LangValue::Vector(vec) => {
+                match value.as_i32() {
+                    Some(i) => vec.get(i as usize),
+                    None => None,
+                }
+            },
+            _ => None,
+        }
+    }
+    
     pub fn as_i32(&self) -> Option<i32> {
         match self {
             LangValue::Int(int) => Some(*int),

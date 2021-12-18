@@ -60,6 +60,10 @@ pub enum ASTNode {
     VectorLiteral {
         values: Vec<ASTChild>
     },
+    ValueFieldAccess {
+        variable: ASTChild,
+        value: ASTChild,
+    },
 }
 
 impl ASTNode {
@@ -117,5 +121,9 @@ impl ASTNode {
 
     pub fn new_vector_literal(values: Vec<ASTChild>) -> ASTChild {
         Box::new(ASTNode::VectorLiteral { values })
+    }
+ 
+    pub fn new_value_field_access(variable: ASTChild, value: ASTChild) -> ASTChild {
+        Box::new(ASTNode::ValueFieldAccess { variable, value })
     }
 }

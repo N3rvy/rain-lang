@@ -69,6 +69,19 @@ mod tests {
         })
     }
     
+    #[test]
+    fn vector_access() {
+        let script = r#"
+        return [1, 2, 3][1]
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script).unwrap();
+        
+        assert_matches!(result, LangValue::Int(2));
+    }
+    
     fn ext_add2(i: i32) -> i32 {
         i + 2
     }
