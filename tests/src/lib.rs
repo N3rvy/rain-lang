@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use reverse::{IntoExternalFunctionRunner, IntoScript};
-    use std::{assert_matches::{assert_matches, self}, borrow::Borrow};
+    use std::assert_matches::assert_matches;
     use reverse::{LangValue, Vm};
 
     #[test]

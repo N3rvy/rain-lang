@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::{HelperRegistry, Helper}};
+use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry};
 use helpers::DefaultHelperRegistry;
 use scope::Scope;
 

@@ -9,7 +9,7 @@ macro_rules! expect_token {
 
         match tok {
             Some($pattern) => (),
-            Some(token) => return Err(LangError::new_parser_unexpected_token()),
+            Some(_) => return Err(LangError::new_parser_unexpected_token()),
             None => return Err(LangError::new_parser_end_of_file()),
         }
     };
@@ -78,7 +78,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     ASTNode::new_literal(
                         LangValue::Function(Function::new(body, parameters)))
                 },
-                Some(token) => return Err(LangError::new_parser_unexpected_token()),
+                Some(_) => return Err(LangError::new_parser_unexpected_token()),
                 None => return Err(LangError::new_parser_end_of_file()),
             }
         },
@@ -88,13 +88,13 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             
             let name = match name {
                 Some(Token::Symbol(name)) => name,
-                Some(token) => return Err(LangError::new_parser_unexpected_token()),
+                Some(_) => return Err(LangError::new_parser_unexpected_token()),
                 None => return Err(LangError::new_parser_end_of_file()),
             };
 
             match assign {
                 Some(Token::Operator(OperatorKind::Assign)) => (),
-                Some(token) => return Err(LangError::new_parser_unexpected_token()),
+                Some(_) => return Err(LangError::new_parser_unexpected_token()),
                 None => return Err(LangError::new_parser_end_of_file()),
             }
 
@@ -115,7 +115,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     
                     match tokens.pop() {
                         Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => (),
-                        Some(token) => return Err(LangError::new_parser_unexpected_token()),
+                        Some(_) => return Err(LangError::new_parser_unexpected_token()),
                         None => return Err(LangError::new_parser_end_of_file()),
                     }
                     

@@ -55,12 +55,12 @@ impl Resolver {
         if self.chars.contains('.') {
             match self.chars.parse::<f32>() {
                 Ok(value) => Ok(Token::Literal(LangValue::Float(value))),
-                Err(error) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
+                Err(_) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
             }
         } else {
             match self.chars.parse::<i32>() {
                 Ok(value) => Ok(Token::Literal(LangValue::Int(value))),
-                Err(error) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
+                Err(_) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
             }
         }
     }

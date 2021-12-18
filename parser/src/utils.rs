@@ -56,7 +56,7 @@ pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<Vec<Strin
                     next_is_argument = true;
                 }
             },
-            Some(token) => return Err(LangError::new_parser_unexpected_token()),
+            Some(_) => return Err(LangError::new_parser_unexpected_token()),
             None => return Err(LangError::new_parser_end_of_file()),
         };
     }

@@ -35,7 +35,7 @@ impl From<&LangValue> for LangValueDiscriminant {
             LangValue::Bool(_) => LangValueDiscriminant::Bool,
             LangValue::Function(_) => LangValueDiscriminant::Function,
             LangValue::ExtFunction(_) => LangValueDiscriminant::ExtFunction,
-            LangValue::Vector(vec ) => LangValueDiscriminant::Vector,
+            LangValue::Vector(_) => LangValueDiscriminant::Vector,
         }
     }
 }
@@ -319,7 +319,7 @@ impl ToString for LangValue {
             LangValue::Function(_) => "[Function]".to_string(),
             LangValue::Nothing => "Nothing".to_string(),
             LangValue::ExtFunction(_) => "[External Function]".to_string(),
-            LangValue::Vector(vec) => "[Vector]".to_string(),
+            LangValue::Vector(_) => "[Vector]".to_string(),
         }
     }
 }

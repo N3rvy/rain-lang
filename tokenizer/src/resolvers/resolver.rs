@@ -3,6 +3,7 @@ use common::{errors::LangError, messages::UNEXPECTED_ERROR};
 use crate::tokens::Token;
 
 
+#[allow(dead_code)]
 pub(crate) enum ResolverKind {
     None,
     Symbol,
