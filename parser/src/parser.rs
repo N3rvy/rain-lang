@@ -252,8 +252,12 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
             tokens.pop();
 
             let parameters = parse_parameter_values(tokens, ParenthesisKind::Round)?;
-
-            Ok((ASTNode::new_function_invok(node, parameters), true))
+            
+            if let ASTNode::FieldAccess { variable: obj, field_name } = *node {
+                Ok((ASTNode::new_method_invok(obj, field_name , parameters), true))
+            } else {
+                Ok((ASTNode::new_function_invok(node, parameters), true))
+            }
         },
         Token::Operator(OperatorKind::Dot) => {
             tokens.pop();

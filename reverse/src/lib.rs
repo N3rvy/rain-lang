@@ -1,11 +1,12 @@
 pub use common::lang_value::LangValue;
 pub use common::errors::LangError;
 pub use common::external_functions::IntoExternalFunctionRunner;
-use parser::parser::parse;
-use tokenizer::tokenizer::tokenize;
+pub use common::external_functions::AsMethod;
 pub use vm::scope::Scope;
 pub use vm::Vm;
 
+use parser::parser::parse;
+use tokenizer::tokenizer::tokenize;
 use common::script::Script;
 
 

@@ -4,7 +4,6 @@ use crate::{lang_value::{LangValue, Function}, errors::LangError, messages::{INC
 
 
 pub struct ExternalFunctionRunner {
-    pub is_method: bool,
     args_count: usize,
     func: Box<dyn Fn(Vec<LangValue>) -> Option<LangValue>>,
 }
@@ -27,18 +26,6 @@ pub trait AsMethod {
     fn as_method(self) -> Self;
 }
 
-impl AsMethod for Arc<ExternalFunctionRunner> {
-    #[inline]
-    /// ATTENTION: This method uses unsafe code to assign the internal flag
-    fn as_method(self) -> Self {
-        unsafe {
-            let self_ref = self.as_ref() as *const ExternalFunctionRunner as *mut ExternalFunctionRunner;
-            (*self_ref).is_method = true;
-        }
-        self
-    }
-}
-
 
 pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
     fn external(self) -> Arc<ExternalFunctionRunner>;
@@ -54,7 +41,6 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
-            is_method: false,
             args_count: 0,
             func: Box::new(move |_| {
                 let res = self();
@@ -73,7 +59,6 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
-            is_method: false,
             args_count: 1,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -95,7 +80,6 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
-            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -119,7 +103,6 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
-            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -145,7 +128,6 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
-            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;

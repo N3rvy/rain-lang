@@ -1,5 +1,5 @@
 use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::ASTNode, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
 
@@ -70,6 +70,22 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
             
             EvalResult::Ok(LangValue::Nothing)
         },
+        ASTNode::MethodInvok { object, name, parameters } => {
+            let object = evaluate(object, scope)?;
+            let func = match object.get_field(&scope.registry, name) {
+                Some(func) => func,
+                None => return EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
+            };
+            
+            let mut param_values = Vec::new();
+            param_values.push(object);
+            for param in parameters {
+                let value = evaluate(param, scope)?;
+                param_values.push(value);
+            }
+            
+            invoke_function(scope, func, parameters, param_values)
+        },
         ASTNode::FunctionInvok { variable, parameters } => {
             let func = evaluate(variable, scope)?;
                     
@@ -79,39 +95,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
                 param_values.push(value);
             }
 
-            match &func {
-                LangValue::Function(func) => {
-                    // Parameters
-                    if parameters.len() != func.parameters.len() {
-                        return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
-                    }
-            
-                    let mut func_scope = Scope::new_child(scope);
-                    for i in 0..parameters.len() {
-                        // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
-                        func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
-                    }
-
-                    for child in &func.body {
-                        // Matching to make the return statement stop
-                        match evaluate(child, &mut func_scope) {
-                            EvalResult::Ok(_) => (),
-                            EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
-                            EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
-                            EvalResult::Err(err) => return EvalResult::Err(err),
-                        }
-                    }
-                    
-                    EvalResult::Ok(LangValue::Nothing)
-                },
-                LangValue::ExtFunction(func) => {
-                    match (func.borrow() as &ExternalFunctionRunner).run(param_values) {
-                        Ok(value ) => EvalResult::Ok(value),
-                        Err(err) => EvalResult::Err(err),
-                    }
-                },
-                _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
-            }
+            invoke_function(scope, &func, parameters, param_values)
         },
         ASTNode::Literal { value } => {
             EvalResult::Ok(value.clone())
@@ -228,5 +212,41 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
                 None => EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
             }
         },
+    }
+}
+
+fn invoke_function(scope: &Scope, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
+    match func {
+        LangValue::Function(func) => {
+            // Parameters
+            if parameters.len() != func.parameters.len() {
+                return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
+            }
+    
+            let mut func_scope = Scope::new_child(scope);
+            for i in 0..parameters.len() {
+                // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
+                func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
+            }
+
+            for child in &func.body {
+                // Matching to make the return statement stop
+                match evaluate(child, &mut func_scope) {
+                    EvalResult::Ok(_) => (),
+                    EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
+                    EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
+                    EvalResult::Err(err) => return EvalResult::Err(err),
+                }
+            }
+            
+            EvalResult::Ok(LangValue::Nothing)
+        },
+        LangValue::ExtFunction(func) => {
+            match (func.borrow() as &ExternalFunctionRunner).run(param_values) {
+                Ok(value ) => EvalResult::Ok(value),
+                Err(err) => EvalResult::Err(err),
+            }
+        },
+        _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
     }
 }

@@ -95,6 +95,21 @@ mod tests {
         assert_matches!(result, LangValue::Int(13));
     }
     
+    #[test]
+    fn methods() {
+        let script = r#"
+        var i = 1
+        return i.add(2)
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script).unwrap();
+        
+        assert_matches!(result, LangValue::Int(3));
+
+    }
+    
     fn ext_add2(i: i32) -> i32 {
         i + 2
     }

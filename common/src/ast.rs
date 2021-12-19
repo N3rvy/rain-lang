@@ -22,6 +22,11 @@ pub enum ASTNode {
         variable: ASTChild,
         parameters: ASTBody,
     },
+    MethodInvok {
+        object: ASTChild,
+        name: String,
+        parameters: ASTBody,
+    },
     Literal {
         value: LangValue,
     },
@@ -85,6 +90,10 @@ impl ASTNode {
     
     pub fn new_function_invok(variable: ASTChild, parameters: ASTBody) -> ASTChild {
         Box::new(ASTNode::FunctionInvok { variable, parameters })
+    }
+    
+    pub fn new_method_invok(object: ASTChild, name: String, parameters: ASTBody) -> ASTChild {
+        Box::new(ASTNode::MethodInvok { object, name, parameters })
     }
     
     pub fn new_literal(value: LangValue) -> ASTChild {
