@@ -82,6 +82,19 @@ mod tests {
         assert_matches!(result, LangValue::Int(2));
     }
     
+    #[test]
+    fn multi_infix() {
+        let script = r#"
+        return 10 + 2 + 1
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script).unwrap();
+        
+        assert_matches!(result, LangValue::Int(13));
+    }
+    
     fn ext_add2(i: i32) -> i32 {
         i + 2
     }

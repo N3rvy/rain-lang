@@ -197,10 +197,25 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
         },
     };
     
+
+    let mut node = result;
     
+    Ok(loop {
+        let res = parse_infix(node, tokens)?; 
+        if res.1 {
+            node = res.0;
+        } else {
+            break res.0;
+        }
+    })
+}
+
+/// The bool in the tuple is a bool representing whether the infix was valid or not
+fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, bool), LangError> {
+
     // Getting the infix and returning if it's None
     let infix = tokens.last().cloned();
-    if matches!(infix, None) { return Ok(result) }
+    if matches!(infix, None) { return Ok((node, false)) }
     
     let infix = infix.unwrap();
 
@@ -210,7 +225,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             let right = parse_statement(tokens);
             
             match right {
-                Ok(right) => Ok(ASTNode::new_math_operation(operator.clone(), result, right)),
+                Ok(right) => Ok((ASTNode::new_math_operation(operator.clone(), node, right), true)),
                 Err(err) => Err(err),
             }
         },
@@ -219,7 +234,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             let right = parse_statement(tokens);
             
             match right {
-                Ok(right) => Ok(ASTNode::new_bool_operation(operator.clone(), result, right)),
+                Ok(right) => Ok((ASTNode::new_bool_operation(operator.clone(), node, right), true)),
                 Err(err) => Err(err),
             }
 
@@ -231,14 +246,14 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             
             expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
             
-            Ok(ASTNode::new_value_field_access(result, value))
+            Ok((ASTNode::new_value_field_access(node, value), true)) 
         },
         Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
             tokens.pop();
 
             let parameters = parse_parameter_values(tokens, ParenthesisKind::Round)?;
 
-            Ok(ASTNode::new_function_invok(result, parameters))
+            Ok((ASTNode::new_function_invok(node, parameters), true))
         },
         Token::Operator(OperatorKind::Dot) => {
             tokens.pop();
@@ -249,21 +264,21 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 None => return Err(LangError::new_parser_end_of_file()),
             };
             
-            Ok(ASTNode::new_field_access(result, field_name))
+            Ok((ASTNode::new_field_access(node, field_name), true))
         },
         Token::Operator(OperatorKind::Assign) => {
-            let name = match result.as_ref()  {
+            let name = match node.as_ref()  {
                 ASTNode::VaraibleRef { name } => name.to_string(),
-                _ => return Ok(result),
+                _ => return Ok((node, false)),
             };
 
             tokens.pop();
 
             let value = parse_statement(tokens)?;
 
-            Ok(ASTNode::new_variable_asgn(name, value))
+            Ok((ASTNode::new_variable_asgn(name, value), true))
         },
         
-        _ => Ok(result),
+        _ => Ok((node, false)),
     }
 }
