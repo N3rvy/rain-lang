@@ -4,7 +4,8 @@ use crate::{lang_value::{LangValue, Function}, errors::LangError, messages::{INC
 
 
 pub struct ExternalFunctionRunner {
-    args_count: usize, 
+    pub is_method: bool,
+    args_count: usize,
     func: Box<dyn Fn(Vec<LangValue>) -> Option<LangValue>>,
 }
 
@@ -18,6 +19,23 @@ impl ExternalFunctionRunner {
             Some(val) => Ok(val),
             None => Err(LangError::new_runtime(EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE.to_string())),
         }
+    }
+}
+
+
+pub trait AsMethod {
+    fn as_method(self) -> Self;
+}
+
+impl AsMethod for Arc<ExternalFunctionRunner> {
+    #[inline]
+    /// ATTENTION: This method uses unsafe code to assign the internal flag
+    fn as_method(self) -> Self {
+        unsafe {
+            let self_ref = self.as_ref() as *const ExternalFunctionRunner as *mut ExternalFunctionRunner;
+            (*self_ref).is_method = true;
+        }
+        self
     }
 }
 
@@ -36,6 +54,7 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
+            is_method: false,
             args_count: 0,
             func: Box::new(move |_| {
                 let res = self();
@@ -54,6 +73,7 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
+            is_method: false,
             args_count: 1,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -75,6 +95,7 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
+            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -98,6 +119,7 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
+            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -123,6 +145,7 @@ where
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
+            is_method: false,
             args_count: 2,
             func: Box::new(move |args| {
                 let arg0 = A0::into(&args[0])?;
@@ -143,9 +166,30 @@ pub trait ConvertLangValue
     where Self: Sized + 'static
 {
     fn from(val: Self) -> LangValue;
+    // TODO: Make this passed by ownership and not by reference
     fn into(val: &LangValue) -> Option<Self>;
 }
 
+
+impl ConvertLangValue for LangValue {
+    fn from(val: Self) -> LangValue {
+        val
+    }
+
+    fn into(val: &LangValue) -> Option<Self> {
+        Some(val.clone())
+    }
+}
+
+impl ConvertLangValue for () {
+    fn from(_: Self) -> LangValue {
+        LangValue::Nothing
+    }
+
+    fn into(val: &LangValue) -> Option<Self> {
+        val.as_unit()
+    }
+}
 
 impl ConvertLangValue for i32 {
     fn from(val: Self) -> LangValue {
@@ -204,5 +248,15 @@ impl ConvertLangValue for Arc<ExternalFunctionRunner> {
 
     fn into(val: &LangValue) -> Option<Self> {
         val.as_ext_function()
+    }
+}
+
+impl ConvertLangValue for Arc<Vec<LangValue>> {
+    fn from(val: Self) -> LangValue {
+        LangValue::Vector(val)
+    }
+
+    fn into(val: &LangValue) -> Option<Self> {
+        val.as_vec()
     }
 }

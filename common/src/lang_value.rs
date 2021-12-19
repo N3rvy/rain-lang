@@ -82,6 +82,13 @@ impl LangValue {
         }
     }
     
+    pub fn as_unit(&self) -> Option<()> {
+        match self {
+            LangValue::Nothing => Some(()),
+            _ => None,
+        }
+    }
+    
     pub fn as_i32(&self) -> Option<i32> {
         match self {
             LangValue::Int(int) => Some(*int),
