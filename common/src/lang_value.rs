@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
+use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction}};
 
 pub enum LangValue {
     Nothing,
@@ -8,9 +8,9 @@ pub enum LangValue {
     Int(i32),
     Float(f32),
     Bool(bool),
-    Function(Arc<Function>),
-    ExtFunction(Arc<ExternalFunctionRunner>),
-    Vector(Arc<Vec<LangValue>>),
+    Function(LangFunction),
+    ExtFunction(LangExternalFunction),
+    Vector(LangVector),
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -46,7 +46,7 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(body: ASTBody, parameters: Vec<String>) -> Arc<Self> {
+    pub fn new(body: ASTBody, parameters: Vec<String>) -> LangFunction {
         Arc::new(Self { body, parameters })
     }
 }
@@ -119,21 +119,21 @@ impl LangValue {
         }
     }
 
-    pub fn as_function(&self) -> Option<Arc<Function>> {
+    pub fn as_function(&self) -> Option<LangFunction> {
         match self {
             LangValue::Function(function) => Some(function.clone()),
             _ => None,
         }
     }
     
-    pub fn as_ext_function(&self) -> Option<Arc<ExternalFunctionRunner>> {
+    pub fn as_ext_function(&self) -> Option<LangExternalFunction> {
         match self {
             LangValue::ExtFunction(ext_func) => Some(ext_func.clone()),
             _ => None,
         }
     }
     
-    pub fn as_vec(&self) -> Option<Arc<Vec<LangValue>>> {
+    pub fn as_vec(&self) -> Option<LangVector> {
         match self {
             LangValue::Vector(vec) => Some(vec.clone()),
             _ => None,

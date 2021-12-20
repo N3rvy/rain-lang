@@ -1,3 +1,11 @@
+use std::sync::Arc;
+
+use crate::{lang_value::{LangValue, Function}, external_functions::ExternalFunctionRunner};
+
+
+pub type LangVector = Arc<Vec<LangValue>>;
+pub type LangExternalFunction = Arc<ExternalFunctionRunner>;
+pub type LangFunction = Arc<Function>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParenthesisKind {
