@@ -110,6 +110,20 @@ mod tests {
 
     }
     
+    #[test]
+    fn objects() {
+        let script = r#"
+        var person = { name: "VeryGenericName", age: 10 }
+        return person.age
+        "#.to_string().script().unwrap();
+        
+        let vm = Vm::new();
+        
+        let result = vm.evaluate(script).unwrap();
+        
+        assert_matches!(result, LangValue::Int(10));
+    }
+    
     fn ext_add2(i: i32) -> i32 {
         i + 2
     }

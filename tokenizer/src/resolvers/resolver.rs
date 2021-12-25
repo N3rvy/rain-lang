@@ -35,7 +35,7 @@ impl Resolver {
         match char {
             c if c.is_whitespace() => Resolver::new_empty(),
             '0'..='9' => Resolver::new_number(),
-            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' => Resolver::new_operator(),
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => Resolver::new_operator(),
             '(' | ')' | '[' | ']' | '{' | '}' => Resolver::new_parenthesis(),
             '"' => Resolver::new_string_literal(),
             _ => Resolver::new_symbol(),

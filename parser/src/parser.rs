@@ -1,6 +1,8 @@
 use common::{ast::{ASTNode, ASTChild}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind}, lang_value::{LangValue, Function}, messages::UNEXPECTED_TOKEN};
 use tokenizer::tokens::Token;
 
+use crate::utils::parse_object_values;
+
 use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
 
 macro_rules! expect_token {
@@ -125,6 +127,11 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     let values = parse_parameter_values(tokens, ParenthesisKind::Square)?;
                     
                     ASTNode::new_vector_literal(values)
+                },
+                (ParenthesisKind::Curly, ParenthesisState::Open) => {
+                    let values = parse_object_values(tokens)?;
+                    
+                    ASTNode::new_object_literal(values)
                 },
                 _ => return Err(LangError::new_parser_unexpected_token())
             }

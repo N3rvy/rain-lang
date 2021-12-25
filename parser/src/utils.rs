@@ -1,7 +1,56 @@
-use common::{ast::ASTBody, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
+use common::{ast::{ASTBody, ASTChild}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
 use tokenizer::tokens::Token;
 
 use super::parser::parse_statement;
+
+pub(super) fn parse_object_values(tokens: &mut Vec<Token>) -> Result<Vec<(String, ASTChild)>, LangError> {
+    let mut res = Vec::new();
+    let mut next_is_argument = true;
+    
+    loop {
+        let token = tokens.pop();
+            
+        match token {
+            Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => break,
+            Some(Token::Operator(OperatorKind::Comma)) => {
+                if next_is_argument {
+                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                } else {
+                    next_is_argument = true;
+                    continue;
+                }
+            }
+            Some(token) => {
+                if next_is_argument {
+                    next_is_argument = false;
+
+                    // name
+                    let name = match token {
+                        Token::Symbol(name) => name,
+                        _ => return Err(LangError::new_parser_unexpected_token())
+                    };
+                    
+                    // :
+                    match tokens.pop() {
+                        Some(Token::Operator(OperatorKind::Colon)) => (),
+                        Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                        None => return Err(LangError::new_parser_end_of_file()),
+                    }
+
+                    // value
+                    let value = parse_statement(tokens)?;
+                    
+                    res.push((name, value));
+                } else {
+                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                }
+            },
+            None => return Err(LangError::new_parser_end_of_file()),
+        };
+    }
+    
+    Ok(res)
+}
 
 /** Parses a block of tokens (something like "{ var x = 10; var y = false }").
  * It consumes only the last parenthesis and expectes the first token to be the first statement,

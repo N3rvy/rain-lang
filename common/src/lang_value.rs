@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction}};
+use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction, LangObject}};
 
 pub enum LangValue {
     Nothing,
@@ -11,6 +11,7 @@ pub enum LangValue {
     Function(LangFunction),
     ExtFunction(LangExternalFunction),
     Vector(LangVector),
+    Object(LangObject),
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -23,6 +24,7 @@ pub enum LangValueDiscriminant {
     Function,
     ExtFunction,
     Vector,
+    Object,
 }
 
 impl From<&LangValue> for LangValueDiscriminant {
@@ -36,6 +38,7 @@ impl From<&LangValue> for LangValueDiscriminant {
             LangValue::Function(_) => LangValueDiscriminant::Function,
             LangValue::ExtFunction(_) => LangValueDiscriminant::ExtFunction,
             LangValue::Vector(_) => LangValueDiscriminant::Vector,
+            LangValue::Object(_) => LangValueDiscriminant::Object,
         }
     }
 }
@@ -63,11 +66,17 @@ impl LangValue {
             LangValue::Function(_) => true,
             LangValue::ExtFunction(_) => true,
             LangValue::Vector(vec) => vec.len() != 0,
+            LangValue::Object(obj) => obj.len() != 0,
         }
     }
 
-    pub fn get_field<'a>(&self, registry: &'a HelperRegistry, name: &String) -> Option<&'a LangValue> {
-        registry.get_helper(self)?.get(name)
+    pub fn get_field<'a>(&'a self, registry: &'a HelperRegistry, name: &String) -> Option<&'a LangValue> {
+        match self {
+            LangValue::Object(obj) => {
+                obj.get(name)
+            },
+            _ => registry.get_helper(self)?.get(name),
+        }
     }
     
     pub fn get_value_field(&self, value: LangValue) -> Option<&LangValue> {
@@ -77,6 +86,9 @@ impl LangValue {
                     Some(i) => vec.get(i as usize),
                     None => None,
                 }
+            },
+            LangValue::Object(obj) => {
+                obj.get(&value.as_string()?)
             },
             _ => None,
         }
@@ -327,6 +339,7 @@ impl ToString for LangValue {
             LangValue::Nothing => "Nothing".to_string(),
             LangValue::ExtFunction(_) => "[External Function]".to_string(),
             LangValue::Vector(_) => "[Vector]".to_string(),
+            LangValue::Object(_) => "[Object]".to_string(),
         }
     }
 }
@@ -342,6 +355,7 @@ impl Clone for LangValue {
             Self::Nothing => Self::Nothing,
             Self::ExtFunction(func) => Self::ExtFunction(func.clone()),
             Self::Vector(vec) => Self::Vector(vec.clone()),
+            Self::Object(obj) => Self::Object(obj.clone()),
         }
     }
 }

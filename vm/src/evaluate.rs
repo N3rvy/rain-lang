@@ -1,4 +1,4 @@
-use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc};
+use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
 use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
@@ -73,7 +73,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
         ASTNode::MethodInvok { object, name, parameters } => {
             let object = evaluate(object, scope)?;
             let func = match object.get_field(&scope.registry, name) {
-                Some(func) => func,
+                Some(func) => func.clone(),
                 None => return EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
             };
             
@@ -84,7 +84,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
                 param_values.push(value);
             }
             
-            invoke_function(scope, func, parameters, param_values)
+            invoke_function(scope, &func, parameters, param_values)
         },
         ASTNode::FunctionInvok { variable, parameters } => {
             let func = evaluate(variable, scope)?;
@@ -211,6 +211,15 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
                 Some(value) => EvalResult::Ok(value.clone()),
                 None => EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
             }
+        },
+        ASTNode::ObjectLiteral { values } => {
+            let mut map = HashMap::new();
+            
+            for value in values {
+                map.insert(value.0.clone(), evaluate(&value.1, scope)?);
+            }
+            
+            EvalResult::Ok(LangValue::Object(Arc::new(map)))
         },
     }
 }

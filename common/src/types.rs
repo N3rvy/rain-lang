@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
 use crate::{lang_value::{LangValue, Function}, external_functions::ExternalFunctionRunner};
 
 
+pub type LangObject = Arc<HashMap<String, LangValue>>;
 pub type LangVector = Arc<Vec<LangValue>>;
 pub type LangExternalFunction = Arc<ExternalFunctionRunner>;
 pub type LangFunction = Arc<Function>;
@@ -27,6 +28,7 @@ pub enum OperatorKind {
     Range,
     Comma,
     Dot,
+    Colon,
 }
 
 #[derive(Clone, Debug)]
