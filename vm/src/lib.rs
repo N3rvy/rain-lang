@@ -28,6 +28,10 @@ impl<'a> Vm<'a> {
     pub fn register(&self, name: &str, val: impl ConvertLangValue) {
         self.scope.declare_var(name.to_string(), ConvertLangValue::from(val))
     }
+    
+    pub fn get_var<T: ConvertLangValue>(&self, name: &str) -> Option<T> {
+        T::into(&self.scope.get_var(&name.to_string())?)
+    }
 
     #[inline]
     pub fn evaluate(&self, script: Script) -> Result<LangValue, LangError> {
