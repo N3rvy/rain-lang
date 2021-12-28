@@ -1,10 +1,10 @@
-use std::{collections::HashMap, cell::RefCell, sync::Arc};
+use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
 
 use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    variables: RefCell<HashMap<String, LangValue>>,
+    variables: Mutex<RefCell<HashMap<String, LangValue>>>,
     pub registry: Arc<HelperRegistry>,
 }
 
@@ -12,7 +12,7 @@ impl<'a> Scope<'a> {
     pub fn new(registry: Arc<HelperRegistry>) -> Self {
         Self {
             parent: None,
-            variables: RefCell::new(HashMap::new()),
+            variables: Mutex::new(RefCell::new(HashMap::new())),
             registry,
         }
     }
@@ -20,21 +20,21 @@ impl<'a> Scope<'a> {
     pub fn new_child(parent: &'a Scope<'a>) -> Self {
         Self {
             parent: Some(parent),
-            variables: RefCell::new(HashMap::new()),
+            variables: Mutex::new(RefCell::new(HashMap::new())),
             registry: parent.registry.clone(),
         }
     }
     
     pub fn declare_var(&self, name: String, value: LangValue) {
-        self.variables.borrow_mut().insert(name, value); 
+        self.variables.lock().unwrap().borrow_mut().insert(name, value); 
     }
     
     pub fn declare_ext_func(&self, name: &str, runner: ExternalFunctionRunner)  {
-        self.variables.borrow_mut().insert(name.to_string(), LangValue::ExtFunction(Arc::new(runner)));
+        self.variables.lock().unwrap().borrow_mut().insert(name.to_string(), LangValue::ExtFunction(Arc::new(runner)));
     }
     
     pub(super) fn get_var(&'a self, name: &String) -> Option<LangValue> {
-        match self.variables.borrow().get(name) {
+        match self.variables.lock().unwrap().borrow().get(name) {
             Some(value) => Some(value.clone()),
             None => {
                 match self.parent {
@@ -46,7 +46,7 @@ impl<'a> Scope<'a> {
     }
     
     pub(super) fn set_var(&self, name: &String, value: LangValue) -> bool {
-        match self.variables.borrow_mut().get_mut(name) {
+        match self.variables.lock().unwrap().borrow_mut().get_mut(name) {
             Some(val) => {
                 *val = value;
                 true
