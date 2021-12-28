@@ -5,7 +5,7 @@ use crate::{lang_value::{LangValue, Function}, errors::LangError, messages::{INC
 
 pub struct ExternalFunctionRunner {
     args_count: usize,
-    func: Box<dyn Fn(Vec<LangValue>) -> Option<LangValue> + Send>,
+    func: Box<dyn Fn(Vec<LangValue>) -> Option<LangValue> + Send + Sync + 'static>,
 }
 
 impl ExternalFunctionRunner {
@@ -37,7 +37,7 @@ pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
 impl<R, F> IntoExternalFunctionRunner<(), R> for F
 where
     R: ConvertLangValue,
-    F: Fn<(), Output = R> + Send + 'static
+    F: Fn<(), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
@@ -55,7 +55,7 @@ impl<A0, R, F> IntoExternalFunctionRunner<(A0,), R> for F
 where
     A0: ConvertLangValue,
     R: ConvertLangValue,
-    F: Fn<(A0,), Output = R> + Send + 'static
+    F: Fn<(A0,), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
@@ -76,7 +76,7 @@ where
     A0: ConvertLangValue,
     A1: ConvertLangValue,
     R: ConvertLangValue,
-    F: Fn<(A0,A1), Output = R> + Send + 'static
+    F: Fn<(A0,A1), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
@@ -99,7 +99,7 @@ where
     A1: ConvertLangValue,
     A2: ConvertLangValue,
     R: ConvertLangValue,
-    F: Fn<(A0,A1,A2), Output = R> + Send + 'static
+    F: Fn<(A0,A1,A2), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
@@ -124,7 +124,7 @@ where
     A2: ConvertLangValue,
     A3: ConvertLangValue,
     R: ConvertLangValue,
-    F: Fn<(A0,A1,A2,A3), Output = R> + Send + 'static
+    F: Fn<(A0,A1,A2,A3), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> Arc<ExternalFunctionRunner> {
         Arc::new(ExternalFunctionRunner {
