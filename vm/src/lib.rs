@@ -26,7 +26,7 @@ impl Vm {
     }
     
     pub fn new_scope(&self) -> Arc<Scope> {
-        Scope::new(self.registry.clone())
+        Scope::new_child(self.scope.clone())
     }
     
     pub fn register(&self, name: &str, val: impl ConvertLangValue) {
