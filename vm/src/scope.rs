@@ -1,28 +1,28 @@
-use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
+use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}, rc::Rc};
 
 use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
-pub struct Scope<'a> {
-    parent: Option<&'a Scope<'a>>,
+pub struct Scope {
+    parent: Option<Rc<Scope>>,
     variables: Mutex<RefCell<HashMap<String, LangValue>>>,
     pub registry: Arc<HelperRegistry>,
 }
 
-impl<'a> Scope<'a> {
-    pub fn new(registry: Arc<HelperRegistry>) -> Self {
-        Self {
+impl Scope {
+    pub fn new(registry: Arc<HelperRegistry>) -> Rc<Self> {
+        Rc::new(Self {
             parent: None,
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry,
-        }
+        })
     }
 
-    pub fn new_child(parent: &'a Scope<'a>) -> Self {
-        Self {
-            parent: Some(parent),
+    pub fn new_child(parent: Rc<Scope>) -> Rc<Self> {
+        Rc::new(Self {
+            parent: Some(parent.clone()),
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry: parent.registry.clone(),
-        }
+        })
     }
     
     pub fn declare_var(&self, name: String, value: LangValue) {
@@ -33,11 +33,11 @@ impl<'a> Scope<'a> {
         self.variables.lock().unwrap().borrow_mut().insert(name.to_string(), LangValue::ExtFunction(Arc::new(runner)));
     }
     
-    pub(super) fn get_var(&'a self, name: &String) -> Option<LangValue> {
-        match self.variables.lock().unwrap().borrow().get(name) {
+    pub(super) fn get_var(&self, name: &String) -> Option<LangValue> {
+        match (*self.variables.lock().unwrap()).borrow().get(name) {
             Some(value) => Some(value.clone()),
             None => {
-                match self.parent {
+                match &self.parent {
                     Some(scope) => scope.get_var(name),
                     None => None,
                 }
@@ -52,7 +52,7 @@ impl<'a> Scope<'a> {
                 true
             },
             None => {
-                match self.parent {
+                match &self.parent {
                     Some(scope) => {
                         scope.set_var(name, value);  
                         true

@@ -1,6 +1,6 @@
 #![feature(try_trait_v2)]
 
-use std::sync::Arc;
+use std::{sync::Arc, rc::Rc};
 
 use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry};
 use helpers::DefaultHelperRegistry;
@@ -11,18 +11,22 @@ pub mod evaluate;
 pub mod helpers;
 
 
-pub struct Vm<'a> {
+pub struct Vm {
     registry: Arc<HelperRegistry>,
-    scope: Scope<'a>,
+    scope: Rc<Scope>,
 }
 
-impl<'a> Vm<'a> {
+impl Vm {
     pub fn new() -> Self {
         let registry = Arc::new(HelperRegistry::default());
         Self {
             scope: Scope::new(registry.clone()),
             registry,
         }
+    }
+    
+    pub fn new_scope(&self) -> Rc<Scope> {
+        Scope::new(self.registry.clone())
     }
     
     pub fn register(&self, name: &str, val: impl ConvertLangValue) {
@@ -35,23 +39,23 @@ impl<'a> Vm<'a> {
 
     #[inline]
     pub fn evaluate(&self, script: Script) -> Result<LangValue, LangError> {
-        self.evaluate_in_scope(script, &self.scope)
+        self.evaluate_in_scope(script, self.scope.clone())
     }
     
     #[inline]
     pub fn evaluate_in_separate_scope(&self, script: Script) -> Result<LangValue, LangError> {
         let scope = Scope::new(self.registry.clone());
-        self.evaluate_in_scope(script, &scope)
+        self.evaluate_in_scope(script, scope)
     }
     
     #[inline]
     pub fn evaluate_in_upper_scope(&self, script: Script) -> Result<LangValue, LangError> {
-        let scope = Scope::new_child(&self.scope);
-        self.evaluate_in_scope(script, &scope)
+        let scope = Scope::new_child(self.scope.clone());
+        self.evaluate_in_scope(script, scope)
     }
     
-    pub fn evaluate_in_scope(&self, script: Script, scope: &Scope) -> Result<LangValue, LangError> {
-        match evaluate::evaluate(&script.ast, &scope) {
+    pub fn evaluate_in_scope(&self, script: Script, scope: Rc<Scope>) -> Result<LangValue, LangError> {
+        match evaluate::evaluate(&script.ast, scope) {
             evaluate::EvalResult::Ok(val) => Ok(val),
             evaluate::EvalResult::Ret(val, _) => Ok(val),
             evaluate::EvalResult::Err(err) => Err(err),
