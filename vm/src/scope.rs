@@ -1,24 +1,24 @@
-use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}, rc::Rc};
+use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
 
 use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
 pub struct Scope {
-    parent: Option<Rc<Scope>>,
+    parent: Option<Arc<Scope>>,
     variables: Mutex<RefCell<HashMap<String, LangValue>>>,
     pub registry: Arc<HelperRegistry>,
 }
 
 impl Scope {
-    pub fn new(registry: Arc<HelperRegistry>) -> Rc<Self> {
-        Rc::new(Self {
+    pub fn new(registry: Arc<HelperRegistry>) -> Arc<Self> {
+        Arc::new(Self {
             parent: None,
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry,
         })
     }
 
-    pub fn new_child(parent: Rc<Scope>) -> Rc<Self> {
-        Rc::new(Self {
+    pub fn new_child(parent: Arc<Scope>) -> Arc<Self> {
+        Arc::new(Self {
             parent: Some(parent.clone()),
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry: parent.registry.clone(),

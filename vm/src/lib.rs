@@ -1,6 +1,6 @@
 #![feature(try_trait_v2)]
 
-use std::{sync::Arc, rc::Rc};
+use std::sync::Arc;
 
 use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry};
 use helpers::DefaultHelperRegistry;
@@ -13,7 +13,7 @@ pub mod helpers;
 
 pub struct Vm {
     registry: Arc<HelperRegistry>,
-    scope: Rc<Scope>,
+    scope: Arc<Scope>,
 }
 
 impl Vm {
@@ -25,7 +25,7 @@ impl Vm {
         }
     }
     
-    pub fn new_scope(&self) -> Rc<Scope> {
+    pub fn new_scope(&self) -> Arc<Scope> {
         Scope::new(self.registry.clone())
     }
     
@@ -54,7 +54,7 @@ impl Vm {
         self.evaluate_in_scope(script, scope)
     }
     
-    pub fn evaluate_in_scope(&self, script: Script, scope: Rc<Scope>) -> Result<LangValue, LangError> {
+    pub fn evaluate_in_scope(&self, script: Script, scope: Arc<Scope>) -> Result<LangValue, LangError> {
         match evaluate::evaluate(&script.ast, scope) {
             evaluate::EvalResult::Ok(val) => Ok(val),
             evaluate::EvalResult::Ret(val, _) => Ok(val),

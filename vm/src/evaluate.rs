@@ -1,4 +1,4 @@
-use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap, rc::Rc};
+use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
 use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
 
 use super::scope::Scope;
@@ -43,7 +43,7 @@ macro_rules! expect_some {
 }
 
 
-pub fn evaluate(ast: &Box<ASTNode>, scope: Rc<Scope>) -> EvalResult {
+pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
     match ast.as_ref() {
         ASTNode::Root { body } => {
             for child in body {
@@ -224,7 +224,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: Rc<Scope>) -> EvalResult {
     }
 }
 
-fn invoke_function(scope: Rc<Scope>, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
+fn invoke_function(scope: Arc<Scope>, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
     match func {
         LangValue::Function(func) => {
             // Parameters
