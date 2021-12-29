@@ -33,8 +33,13 @@ impl Vm {
         self.scope.declare_var(name.to_string(), ConvertLangValue::from(val))
     }
     
+    #[inline]
     pub fn get_var<T: ConvertLangValue>(&self, name: &str) -> Option<T> {
-        T::into(&self.scope.get_var(&name.to_string())?)
+        Self::get_var_in_scope(name, self.scope.clone())
+    }
+    
+    pub fn get_var_in_scope<T: ConvertLangValue>(name: &str, scope: Arc<Scope>) -> Option<T> {
+        T::into(&scope.get_var(&name.to_string())?)
     }
 
     #[inline]
