@@ -3,6 +3,7 @@ pub use common::errors::LangError;
 pub use common::external_functions::IntoExternalFunctionRunner;
 pub use common::external_functions::ExternalFunctionRunner;
 pub use common::external_functions::AsMethod;
+pub use common::lang_value::Function;
 pub use common::script::Script;
 pub use vm::scope::Scope;
 pub use vm::Vm;
