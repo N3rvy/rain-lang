@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry};
+use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry, ast::ASTNode};
 use helpers::DefaultHelperRegistry;
 use scope::Scope;
 
@@ -31,6 +31,25 @@ impl Vm {
     
     pub fn register(&self, name: &str, val: impl ConvertLangValue) {
         self.scope.declare_var(name.to_string(), ConvertLangValue::from(val))
+    }
+    
+    #[inline]
+    pub fn invoke(&self, name: &str) -> Result<LangValue, LangError> {
+        Self::invoke_in_scope(name, self.scope.clone())
+    }
+    
+    // TODO: Arguments, and abstract return value
+    pub fn invoke_in_scope(name: &str, scope: Arc<Scope>) -> Result<LangValue, LangError> {
+        let runner = ASTNode::new_function_invok(
+            ASTNode::new_variable_ref(name.to_string()),
+            Vec::with_capacity(0),
+        );
+
+        match evaluate::evaluate(&runner, scope) {
+            evaluate::EvalResult::Ok(val) => Ok(val),
+            evaluate::EvalResult::Ret(val, _) => Ok(val),
+            evaluate::EvalResult::Err(err) => Err(err),
+        }
     }
     
     #[inline]
