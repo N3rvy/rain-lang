@@ -17,7 +17,7 @@ mod tests {
         "#.to_string().script().unwrap();
         
         let vm = Vm::new();
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(30))
     }
@@ -32,7 +32,7 @@ mod tests {
         vm.register("add2", ext_add2.external());
         vm.register("sum", ext_sum.external());
         
-        let result = vm.evaluate(script);
+        let result = vm.evaluate(&script);
         
         assert_matches!(result, Ok(LangValue::Int(4)))
     }
@@ -47,7 +47,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script);
+        let result = vm.evaluate(&script);
         
         assert_matches!(result, Ok(LangValue::Int(i32::MAX)));
     }
@@ -60,7 +60,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert!(match result {
             LangValue::Vector(vec)
@@ -77,7 +77,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(2));
     }
@@ -90,7 +90,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(13));
     }
@@ -104,7 +104,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(3));
 
@@ -119,7 +119,7 @@ mod tests {
         
         let vm = Vm::new();
         
-        let result = vm.evaluate(script).unwrap();
+        let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(10));
     }

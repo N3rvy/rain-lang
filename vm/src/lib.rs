@@ -38,23 +38,23 @@ impl Vm {
     }
 
     #[inline]
-    pub fn evaluate(&self, script: Script) -> Result<LangValue, LangError> {
+    pub fn evaluate(&self, script: &Script) -> Result<LangValue, LangError> {
         self.evaluate_in_scope(script, self.scope.clone())
     }
     
     #[inline]
-    pub fn evaluate_in_separate_scope(&self, script: Script) -> Result<LangValue, LangError> {
+    pub fn evaluate_in_separate_scope(&self, script: &Script) -> Result<LangValue, LangError> {
         let scope = Scope::new(self.registry.clone());
         self.evaluate_in_scope(script, scope)
     }
     
     #[inline]
-    pub fn evaluate_in_upper_scope(&self, script: Script) -> Result<LangValue, LangError> {
+    pub fn evaluate_in_upper_scope(&self, script: &Script) -> Result<LangValue, LangError> {
         let scope = Scope::new_child(self.scope.clone());
         self.evaluate_in_scope(script, scope)
     }
     
-    pub fn evaluate_in_scope(&self, script: Script, scope: Arc<Scope>) -> Result<LangValue, LangError> {
+    pub fn evaluate_in_scope(&self, script: &Script, scope: Arc<Scope>) -> Result<LangValue, LangError> {
         match evaluate::evaluate(&script.ast, scope) {
             evaluate::EvalResult::Ok(val) => Ok(val),
             evaluate::EvalResult::Ret(val, _) => Ok(val),
