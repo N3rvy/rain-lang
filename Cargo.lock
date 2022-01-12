@@ -15,6 +15,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "repl"
+version = "0.1.0"
+dependencies = [
+ "reverse",
+]
+
+[[package]]
 name = "reverse"
 version = "0.1.0"
 dependencies = [
