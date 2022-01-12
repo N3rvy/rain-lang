@@ -41,7 +41,6 @@ fn handle_result(result: AddResult, tokens: &mut Vec<Token>, resolver: &mut Reso
             Ok(())
         },
         AddResult::ChangeChars(token, chars) => {
-            println!("token: {:?}, chars: {:?}", token, chars);
             tokens.push(token);
             
             *resolver = Resolver::from_char(chars[0]);
