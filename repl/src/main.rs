@@ -8,7 +8,10 @@ fn main() {
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
             match script.script() {
-                Ok(script) => println!("{:?}", vm.evaluate(&script)),
+                Ok(script) => match vm.evaluate(&script) {
+                    Ok(result) => println!("{:?}", result),
+                    Err(err) => println!("{}", err),
+                },
                 Err(err) => println!("{}", err),
             }
         }
