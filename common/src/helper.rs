@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use super::{lang_value::{LangValue, LangValueDiscriminant}, external_functions::ConvertLangValue};
+use crate::convert_values::ConvertLangValue;
+
+use super::lang_value::{LangValue, LangValueDiscriminant};
 
 
 pub struct Helper {
