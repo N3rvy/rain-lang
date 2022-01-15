@@ -1,5 +1,5 @@
-pub mod float_helper;
-pub mod int_helper;
+mod float_helper;
+mod int_helper;
 
 use common::{helper::HelperRegistry, lang_value::LangValueDiscriminant};
 
