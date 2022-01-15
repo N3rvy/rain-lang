@@ -4,7 +4,7 @@ use crate::{lang_value::{LangValue, Function}, external_functions::ExternalFunct
 
 
 pub type LangObject = Arc<HashMap<String, LangValue>>;
-pub type LangVector = Arc<Vec<LangValue>>;
+pub type LangVector<Values = LangValue> = Arc<Vec<Values>>;
 pub type LangExternalFunction = Arc<ExternalFunctionRunner>;
 pub type LangFunction = Arc<Function>;
 

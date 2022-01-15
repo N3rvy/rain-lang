@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{lang_value::{LangValue, Function}, errors::LangError, messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE}};
+use crate::{lang_value::LangValue, errors::LangError, messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE}, types::{LangVector, LangExternalFunction, LangFunction}};
 
 
 pub struct ExternalFunctionRunner {
@@ -28,7 +28,7 @@ pub trait AsMethod {
 
 
 pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
-    fn external(self) -> Arc<ExternalFunctionRunner>;
+    fn external(self) -> LangExternalFunction;
 }
 
 
@@ -39,7 +39,7 @@ where
     R: ConvertLangValue,
     F: Fn<(), Output = R> + Send + Sync + 'static
 {
-    fn external(self) -> Arc<ExternalFunctionRunner> {
+    fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 0,
             func: Box::new(move |_| {
@@ -57,7 +57,7 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,), Output = R> + Send + Sync + 'static
 {
-    fn external(self) -> Arc<ExternalFunctionRunner> {
+    fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 1,
             func: Box::new(move |args| {
@@ -78,7 +78,7 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1), Output = R> + Send + Sync + 'static
 {
-    fn external(self) -> Arc<ExternalFunctionRunner> {
+    fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
@@ -101,7 +101,7 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1,A2), Output = R> + Send + Sync + 'static
 {
-    fn external(self) -> Arc<ExternalFunctionRunner> {
+    fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
@@ -126,7 +126,7 @@ where
     R: ConvertLangValue,
     F: Fn<(A0,A1,A2,A3), Output = R> + Send + Sync + 'static
 {
-    fn external(self) -> Arc<ExternalFunctionRunner> {
+    fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
@@ -213,7 +213,7 @@ impl ConvertLangValue for String {
     }
 }
 
-impl ConvertLangValue for Arc<Function> {
+impl ConvertLangValue for LangFunction {
     fn from(val: Self) -> LangValue {
         LangValue::Function(val)
     }
@@ -223,7 +223,7 @@ impl ConvertLangValue for Arc<Function> {
     }
 }
 
-impl ConvertLangValue for Arc<ExternalFunctionRunner> {
+impl ConvertLangValue for LangExternalFunction {
     fn from(val: Self) -> LangValue {
         LangValue::ExtFunction(val)
     }
@@ -233,7 +233,7 @@ impl ConvertLangValue for Arc<ExternalFunctionRunner> {
     }
 }
 
-impl ConvertLangValue for Arc<Vec<LangValue>> {
+impl ConvertLangValue for LangVector {
     fn from(val: Self) -> LangValue {
         LangValue::Vector(val)
     }
