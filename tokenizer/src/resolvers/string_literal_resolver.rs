@@ -18,7 +18,10 @@ impl Resolver {
             return if self.chars.len() == 0 {
                 AddResult::Ok
             } else {
-                AddResult::End(Token::Literal(LangValue::String(self.chars.clone())))
+                match parse_string(&self.chars) {
+                    Ok(value) => AddResult::End(Token::Literal(LangValue::String(value))),
+                    Err(err) => AddResult::Err(err),
+                }
             }
         }
         
@@ -34,14 +37,14 @@ fn parse_string(string: &String) -> Result<String, LangError> {
     
     let mut next_is_special = false;
     
-    for (i, c) in string.char_indices() {
+    for c in string.chars() {
         if next_is_special {
-            res[i] = match c {
+            res.push(match c {
                 'n' => '\n',
                 'r' => 'r',
                 't' => '\t',
                 c => c,
-            } as u8;
+            } as u8);
             next_is_special = false;
             continue;
         }
@@ -51,7 +54,7 @@ fn parse_string(string: &String) -> Result<String, LangError> {
             continue;
         }
 
-        res[i] = c as u8
+        res.push(c as u8);
     }
     
     match String::from_utf8(res) {
