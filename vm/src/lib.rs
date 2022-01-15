@@ -13,29 +13,29 @@ pub mod helpers;
 
 pub struct Vm {
     registry: Arc<HelperRegistry>,
-    scope: Arc<Scope>,
+    global_scope: Arc<Scope>,
 }
 
 impl Vm {
     pub fn new() -> Self {
         let registry = Arc::new(HelperRegistry::default());
         Self {
-            scope: Scope::new(registry.clone()),
+            global_scope: Scope::new(registry.clone()),
             registry,
         }
     }
     
     pub fn new_scope(&self) -> Arc<Scope> {
-        Scope::new_child(self.scope.clone())
+        Scope::new_child(self.global_scope.clone())
     }
     
     pub fn register(&self, name: &str, val: impl ConvertLangValue) {
-        self.scope.declare_var(name.to_string(), ConvertLangValue::from(val))
+        self.global_scope.declare_var(name.to_string(), ConvertLangValue::from(val))
     }
     
     #[inline]
     pub fn invoke(&self, name: &str) -> Result<LangValue, LangError> {
-        Self::invoke_in_scope(name, self.scope.clone())
+        Self::invoke_in_scope(name, self.global_scope.clone())
     }
     
     // TODO: Arguments, and abstract return value
@@ -54,7 +54,7 @@ impl Vm {
     
     #[inline]
     pub fn get_var<T: ConvertLangValue>(&self, name: &str) -> Option<T> {
-        Self::get_var_in_scope(name, self.scope.clone())
+        Self::get_var_in_scope(name, self.global_scope.clone())
     }
     
     pub fn get_var_in_scope<T: ConvertLangValue>(name: &str, scope: Arc<Scope>) -> Option<T> {
@@ -63,7 +63,7 @@ impl Vm {
 
     #[inline]
     pub fn evaluate(&self, script: &Script) -> Result<LangValue, LangError> {
-        self.evaluate_in_scope(script, self.scope.clone())
+        self.evaluate_in_scope(script, self.global_scope.clone())
     }
     
     #[inline]
@@ -74,7 +74,7 @@ impl Vm {
     
     #[inline]
     pub fn evaluate_in_upper_scope(&self, script: &Script) -> Result<LangValue, LangError> {
-        let scope = Scope::new_child(self.scope.clone());
+        let scope = Scope::new_child(self.global_scope.clone());
         self.evaluate_in_scope(script, scope)
     }
     
