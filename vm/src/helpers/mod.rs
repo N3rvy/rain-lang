@@ -1,8 +1,9 @@
+pub mod float_helper;
 pub mod int_helper;
 
 use common::{helper::HelperRegistry, lang_value::LangValueDiscriminant};
 
-use self::int_helper::default_int_helper;
+use self::{int_helper::default_int_helper, float_helper::default_float_helper};
 
 
 pub trait DefaultHelperRegistry {
@@ -14,6 +15,7 @@ impl DefaultHelperRegistry for HelperRegistry {
         let mut registry = HelperRegistry::new();
         
         registry.register_helper(LangValueDiscriminant::Int, default_int_helper());
+        registry.register_helper(LangValueDiscriminant::Float, default_float_helper());
             
         registry
     }
