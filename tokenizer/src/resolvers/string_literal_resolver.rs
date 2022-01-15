@@ -1,4 +1,4 @@
-use common::lang_value::LangValue;
+use common::{lang_value::LangValue, errors::LangError, messages::INVALID_STRING_LITERAL};
 
 use crate::tokens::Token;
 
@@ -26,4 +26,54 @@ impl Resolver {
 
         AddResult::Ok
     }
+}
+
+fn parse_string(string: &String) -> Result<String, LangError> {
+    let backslashes = count_special_caracters(string);
+    let mut res = Vec::<u8>::with_capacity(string.len() - backslashes);
+    
+    let mut next_is_special = false;
+    
+    for (i, c) in string.char_indices() {
+        if next_is_special {
+            res[i] = match c {
+                'n' => '\n',
+                'r' => 'r',
+                't' => '\t',
+                c => c,
+            } as u8;
+            next_is_special = false;
+            continue;
+        }
+
+        if c == '\\' {
+            next_is_special = true;
+            continue;
+        }
+
+        res[i] = c as u8
+    }
+    
+    match String::from_utf8(res) {
+        Ok(val) => Ok(val),
+        Err(_) => Err(LangError::new_tokenizer(INVALID_STRING_LITERAL.to_string())),
+    }
+}
+
+/** Counts the special characters such as '\n' that occur inside a string */
+fn count_special_caracters(string: &String) -> usize {
+    let mut res = 0;
+    // This is used for skipping double backslashes '\\' from counting
+    let mut last_was_backslash = false;
+    
+    for c in string.chars() {
+        if c == '\\' && !last_was_backslash {
+            res += 1;
+            last_was_backslash = true;
+        } else {
+            last_was_backslash = false;
+        }
+    }
+    
+    res
 }
