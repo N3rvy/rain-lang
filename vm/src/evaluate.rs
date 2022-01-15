@@ -43,7 +43,7 @@ macro_rules! expect_some {
 }
 
 
-pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
+pub fn evaluate(ast: &Box<ASTNode>, scope: &Scope) -> EvalResult {
     match ast.as_ref() {
         ASTNode::Root { body } => {
             for child in body {
@@ -139,7 +139,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
                 let if_scope = Scope::new_child(scope);
 
                 for child in body {
-                    evaluate(child, if_scope.clone())?;
+                    evaluate(child, &if_scope)?;
                 }
             }
             
@@ -157,7 +157,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
                 for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
                 
                 for child in body {
-                    match evaluate(child, for_scope.clone()) {
+                    match evaluate(child, &for_scope) {
                         EvalResult::Ok(_) => (),
                         EvalResult::Ret(value, ReturnKind::Break) => return EvalResult::Ok(value),
                         EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
@@ -173,7 +173,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
                 let while_scope = Scope::new_child(scope.clone());
                 
                 for child in body {
-                    match evaluate(child, while_scope.clone()) {
+                    match evaluate(child, &while_scope) {
                         EvalResult::Ok(_) => (),
                         EvalResult::Ret(value, ReturnKind::Break) => return EvalResult::Ok(value),
                         EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),
@@ -224,7 +224,7 @@ pub fn evaluate(ast: &Box<ASTNode>, scope: Arc<Scope>) -> EvalResult {
     }
 }
 
-fn invoke_function(scope: Arc<Scope>, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
+fn invoke_function(scope: &Scope, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
     match func {
         LangValue::Function(func) => {
             // Parameters
@@ -240,7 +240,7 @@ fn invoke_function(scope: Arc<Scope>, func: &LangValue, parameters: &ASTBody, pa
 
             for child in &func.body {
                 // Matching to make the return statement stop
-                match evaluate(child, func_scope.clone()) {
+                match evaluate(child, &func_scope) {
                     EvalResult::Ok(_) => (),
                     EvalResult::Ret(value, ReturnKind::Return) => return EvalResult::Ok(value),
                     EvalResult::Ret(value, kind) => return EvalResult::Ret(value, kind),

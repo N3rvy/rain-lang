@@ -2,27 +2,27 @@ use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
 
 use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
 
-pub struct Scope {
-    parent: Option<Arc<Scope>>,
+pub struct Scope<'a> {
+    parent: Option<&'a Scope<'a>>,
     variables: Mutex<RefCell<HashMap<String, LangValue>>>,
     pub registry: Arc<HelperRegistry>,
 }
 
-impl Scope {
-    pub fn new(registry: Arc<HelperRegistry>) -> Arc<Self> {
-        Arc::new(Self {
+impl<'a> Scope<'a> {
+    pub fn new(registry: Arc<HelperRegistry>) -> Self {
+        Self {
             parent: None,
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry,
-        })
+        }
     }
 
-    pub fn new_child(parent: Arc<Scope>) -> Arc<Self> {
-        Arc::new(Self {
-            parent: Some(parent.clone()),
+    pub fn new_child(parent: &'a Scope) -> Self {
+        Self {
+            parent: Some(&parent),
             variables: Mutex::new(RefCell::new(HashMap::new())),
             registry: parent.registry.clone(),
-        })
+        }
     }
     
     pub fn declare_var(&self, name: String, value: LangValue) {
