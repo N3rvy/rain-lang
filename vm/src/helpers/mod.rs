@@ -1,4 +1,3 @@
-pub mod vec_helper;
 mod float_helper;
 mod int_helper;
 
