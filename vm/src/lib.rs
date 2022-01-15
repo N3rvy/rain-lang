@@ -1,8 +1,8 @@
 #![feature(try_trait_v2)]
 
-use std::sync::Arc;
+use std::{sync::Arc, borrow::{Borrow, BorrowMut}, ops::Add};
 
-use common::{script::Script, lang_value::LangValue, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry, ast::ASTNode};
+use common::{script::Script, lang_value::{LangValue, LangValueDiscriminant}, errors::LangError, external_functions::ConvertLangValue, helper::HelperRegistry, ast::ASTNode};
 use helpers::DefaultHelperRegistry;
 use scope::Scope;
 
