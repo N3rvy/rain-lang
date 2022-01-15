@@ -1,19 +1,17 @@
 use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
 
-use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner, helper::HelperRegistry};
+use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     variables: Mutex<RefCell<HashMap<String, LangValue>>>,
-    pub registry: Arc<HelperRegistry>,
 }
 
 impl<'a> Scope<'a> {
-    pub fn new(registry: Arc<HelperRegistry>) -> Self {
+    pub fn new() -> Self {
         Self {
             parent: None,
             variables: Mutex::new(RefCell::new(HashMap::new())),
-            registry,
         }
     }
 
@@ -21,7 +19,6 @@ impl<'a> Scope<'a> {
         Self {
             parent: Some(&parent),
             variables: Mutex::new(RefCell::new(HashMap::new())),
-            registry: parent.registry.clone(),
         }
     }
     

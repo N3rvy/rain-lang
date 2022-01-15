@@ -12,16 +12,15 @@ pub mod helpers;
 
 
 pub struct Vm<'a> {
-    registry: Arc<HelperRegistry>,
+    registry: HelperRegistry,
     global_scope: Scope<'a>,
 }
 
 impl<'a> Vm<'a> {
     pub fn new() -> Self {
-        let registry = Arc::new(HelperRegistry::default());
         Self {
-            global_scope: Scope::new(registry.clone()),
-            registry,
+            global_scope: Scope::new(),
+            registry: HelperRegistry::default(),
         }
     }
     
@@ -35,17 +34,17 @@ impl<'a> Vm<'a> {
     
     #[inline]
     pub fn invoke(&self, name: &str) -> Result<LangValue, LangError> {
-        Self::invoke_in_scope(name, &self.global_scope)
+        self.invoke_in_scope(name, &self.global_scope)
     }
     
     // TODO: Arguments, and abstract return value
-    pub fn invoke_in_scope(name: &str, scope: &Scope) -> Result<LangValue, LangError> {
+    pub fn invoke_in_scope(&self, name: &str, scope: &Scope) -> Result<LangValue, LangError> {
         let runner = ASTNode::new_function_invok(
             ASTNode::new_variable_ref(name.to_string()),
             Vec::with_capacity(0),
         );
 
-        match evaluate::evaluate(&runner, scope) {
+        match self.evaluate_ast(scope, &runner) {
             evaluate::EvalResult::Ok(val) => Ok(val),
             evaluate::EvalResult::Ret(val, _) => Ok(val),
             evaluate::EvalResult::Err(err) => Err(err),
@@ -68,7 +67,7 @@ impl<'a> Vm<'a> {
     
     #[inline]
     pub fn evaluate_in_separate_scope(&self, script: &Script) -> Result<LangValue, LangError> {
-        let scope = Scope::new(self.registry.clone());
+        let scope = Scope::new();
         self.evaluate_in_scope(script, &scope)
     }
     
@@ -79,7 +78,7 @@ impl<'a> Vm<'a> {
     }
     
     pub fn evaluate_in_scope(&self, script: &Script, scope: &Scope) -> Result<LangValue, LangError> {
-        match evaluate::evaluate(&script.ast, scope) {
+        match self.evaluate_ast(scope, &script.ast) {
             evaluate::EvalResult::Ok(val) => Ok(val),
             evaluate::EvalResult::Ret(val, _) => Ok(val),
             evaluate::EvalResult::Err(err) => Err(err),
