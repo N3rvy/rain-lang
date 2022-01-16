@@ -9,6 +9,7 @@ pub enum Token {
     If,
     For,
     While,
+    Import,
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),

@@ -1,7 +1,7 @@
 use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS}, external_functions::ExternalFunctionRunner};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS, INVALID_IMPORT}, external_functions::ExternalFunctionRunner};
 
-use crate::Vm;
+use crate::{Vm, import::{Importer, ImportResult}};
 
 use super::scope::Scope;
 
@@ -45,7 +45,7 @@ macro_rules! expect_some {
 }
 
 
-impl<'a> Vm<'a> {
+impl<'a, Imp: Importer> Vm<'a, Imp> {
     pub fn evaluate_ast(&self, scope: &Scope, ast: &Box<ASTNode>) -> EvalResult {
         match ast.as_ref() {
             ASTNode::Root { body } => {
@@ -223,6 +223,18 @@ impl<'a> Vm<'a> {
                 }
                 
                 EvalResult::Ok(LangValue::Object(Arc::new(map)))
+            },
+            ASTNode::Import { identifier } => {
+                match self.importer.import(&identifier) {
+                    ImportResult::Imported(script) => {
+                        match self.evaluate(&script) {
+                            Ok(_) => EvalResult::Ok(LangValue::Nothing),
+                            Err(err) => EvalResult::Err(err),
+                        }
+                    },
+                    ImportResult::AlreadyImported => EvalResult::Ok(LangValue::Nothing),
+                    ImportResult::NotFound => EvalResult::Err(LangError::new_runtime(INVALID_IMPORT.to_string())),
+                }
             },
         }
     }

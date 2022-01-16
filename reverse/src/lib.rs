@@ -7,6 +7,8 @@ pub use common::lang_value::Function;
 pub use common::script::Script;
 pub use vm::scope::Scope;
 pub use vm::Vm;
+pub use vm::import::Importer;
+pub use vm::import::ImportResult;
 
 use parser::parser::parse;
 use tokenizer::tokenizer::tokenize;

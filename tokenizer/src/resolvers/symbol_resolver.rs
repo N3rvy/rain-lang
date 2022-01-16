@@ -37,6 +37,7 @@ impl Resolver {
             "if" => Token::If,
             "for" => Token::For,
             "while" => Token::While,
+            "import" => Token::Import,
 
             _ => Token::Symbol(self.chars.clone()),
         }

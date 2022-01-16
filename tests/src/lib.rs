@@ -1,10 +1,24 @@
 #![feature(assert_matches)]
 
+use reverse::{Importer, ImportResult};
+
+
+#[derive(Default)]
+struct TestImporter;
+
+impl Importer for TestImporter {
+    fn import(&self, _identifier: &String) -> ImportResult {
+        ImportResult::NotFound
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use reverse::{IntoExternalFunctionRunner, IntoScript};
     use std::assert_matches::assert_matches;
     use reverse::{LangValue, Vm};
+
+    use crate::TestImporter;
 
     #[test]
     fn basic() {
@@ -16,7 +30,7 @@ mod tests {
         return sum(20, 10)
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         let result = vm.evaluate(&script).unwrap();
         
         assert_matches!(result, LangValue::Int(30))
@@ -28,7 +42,7 @@ mod tests {
         return add2(2)
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         vm.register("add2", ext_add2.external());
         vm.register("sum", ext_sum.external());
         
@@ -45,7 +59,7 @@ mod tests {
         return i
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script);
         
@@ -58,7 +72,7 @@ mod tests {
         return [10, 0, 10]
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script).unwrap();
         
@@ -75,7 +89,7 @@ mod tests {
         return [1, 2, 3][1]
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script).unwrap();
         
@@ -88,7 +102,7 @@ mod tests {
         return 10 + 2 + 1
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script).unwrap();
         
@@ -102,7 +116,7 @@ mod tests {
         return i.add(2)
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script).unwrap();
         
@@ -117,7 +131,7 @@ mod tests {
         return person.age
         "#.to_string().script().unwrap();
         
-        let vm = Vm::new();
+        let vm = Vm::<TestImporter>::new();
         
         let result = vm.evaluate(&script).unwrap();
         

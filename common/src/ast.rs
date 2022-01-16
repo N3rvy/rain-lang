@@ -72,6 +72,9 @@ pub enum ASTNode {
         variable: ASTChild,
         value: ASTChild,
     },
+    Import {
+        identifier: String,
+    }
 }
 
 impl ASTNode {
@@ -141,5 +144,9 @@ impl ASTNode {
  
     pub fn new_value_field_access(variable: ASTChild, value: ASTChild) -> ASTChild {
         Box::new(ASTNode::ValueFieldAccess { variable, value })
+    }
+
+    pub fn new_import(identifier: String) -> ASTChild {
+        Box::new(ASTNode::Import { identifier })
     }
 }

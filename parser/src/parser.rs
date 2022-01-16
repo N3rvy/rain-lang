@@ -202,6 +202,16 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             
             ASTNode::new_while_statement(condition, body)
         },
+        Token::Import => {
+            // identifier
+            let identifier = match tokens.pop() {
+                Some(Token::Literal(LangValue::String(ident))) => ident,
+                Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
+            
+            ASTNode::new_import(identifier)
+        },
     };
     
 

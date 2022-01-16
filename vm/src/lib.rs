@@ -1,29 +1,33 @@
 #![feature(try_trait_v2)]
 
-use std::sync::Arc;
-
 use common::{script::Script, lang_value::{LangValue}, errors::LangError, convert_values::ConvertLangValue, helper::HelperRegistry, ast::ASTNode};
 use helpers::DefaultHelperRegistry;
+use import::Importer;
 use scope::Scope;
 
 pub mod scope;
 pub mod evaluate;
 pub mod helpers;
+pub mod import;
 
 
-pub struct Vm<'a> {
+pub struct Vm<'a, Imp: Importer> {
     registry: HelperRegistry,
     global_scope: Scope<'a>,
+    importer: Imp,
 }
 
-impl<'a> Vm<'a> {
+impl<'a, Imp: Importer + Default> Vm<'a, Imp> {
     pub fn new() -> Self {
         Self {
             global_scope: Scope::new(),
             registry: HelperRegistry::default(),
+            importer: Default::default(),
         }
     }
-    
+}
+
+impl<'a, Imp: Importer> Vm<'a, Imp> {
     pub fn new_scope(&self) -> Scope {
         Scope::new_child(&self.global_scope)
     }
