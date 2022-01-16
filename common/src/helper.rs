@@ -21,8 +21,11 @@ impl Helper {
     }
     
     #[inline]
-    pub fn get(&self, name: &String) -> Option<&LangValue> {
-        self.fields.get(name)
+    pub fn get(&self, name: &String) -> LangValue {
+        match self.fields.get(name) {
+            Some(value ) => value.clone(),
+            None => LangValue::Nothing,
+        }
     }
 }
 

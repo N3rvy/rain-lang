@@ -1,5 +1,5 @@
 use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS, INVALID_IMPORT}, external_functions::ExternalFunctionRunner};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_VALUE_FIELD_ACCESS, INVALID_IMPORT}, external_functions::ExternalFunctionRunner, object::LangObject};
 
 use crate::{Vm, import::{Importer, ImportResult}};
 
@@ -75,10 +75,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
             },
             ASTNode::MethodInvok { object, name, parameters } => {
                 let object = self.evaluate_ast(scope, object)?;
-                let func = match object.get_field(&self.registry, name) {
-                    Some(func) => func.clone(),
-                    None => return EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
-                };
+                let func = object.get_field(&self.registry, name);
                 
                 let mut param_values = Vec::new();
                 param_values.push(object);
@@ -189,11 +186,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
             },
             ASTNode::FieldAccess { variable, field_name } => {
                 let value = self.evaluate_ast(scope, variable)?;
-                
-                let result = match value.get_field(&self.registry, field_name) {
-                    Some(value) => value.clone(),
-                    None => LangValue::Nothing,
-                };
+                let result = value.get_field(&self.registry, field_name);
                 
                 EvalResult::Ok(result)
             },
@@ -210,10 +203,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 let variable = self.evaluate_ast(scope, variable)?;
                 let value = self.evaluate_ast(scope, value)?;
 
-                match variable.get_value_field(value) {
-                    Some(value) => EvalResult::Ok(value.clone()),
-                    None => EvalResult::Err(LangError::new_runtime(INVALID_VALUE_FIELD_ACCESS.to_string())),
-                }
+                EvalResult::Ok(variable.get_value_field(value))
             },
             ASTNode::ObjectLiteral { values } => {
                 let mut map = HashMap::new();
@@ -222,7 +212,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                     map.insert(value.0.clone(), self.evaluate_ast(scope, &value.1)?);
                 }
                 
-                EvalResult::Ok(LangValue::Object(Arc::new(map)))
+                EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
             ASTNode::Import { identifier } => {
                 match self.importer.import(&identifier) {

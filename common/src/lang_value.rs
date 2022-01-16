@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction, LangObject}};
+use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction}, object::LangObject};
 
 pub enum LangValue {
     Nothing,
@@ -70,27 +70,36 @@ impl LangValue {
         }
     }
 
-    pub fn get_field<'a>(&'a self, registry: &'a HelperRegistry, name: &String) -> Option<&'a LangValue> {
+    pub fn get_field<'a>(&'a self, registry: &'a HelperRegistry, name: &String) -> LangValue {
         match self {
             LangValue::Object(obj) => {
                 obj.get(name)
             },
-            _ => registry.get_helper(self)?.get(name),
+            _ => match registry.get_helper(self) {
+                Some(helper) => helper.get(name),
+                None => LangValue::Nothing,
+            },
         }
     }
     
-    pub fn get_value_field(&self, value: LangValue) -> Option<&LangValue> {
+    pub fn get_value_field(&self, value: LangValue) -> LangValue {
         match self {
             LangValue::Vector(vec) => {
                 match value.as_i32() {
-                    Some(i) => vec.get(i as usize),
-                    None => None,
+                    Some(i) => match vec.get(i as usize) {
+                        Some(value) => value.clone(),
+                        None => LangValue::Nothing,
+                    },
+                    None => LangValue::Nothing,
                 }
             },
             LangValue::Object(obj) => {
-                obj.get(&value.as_string()?)
+                match value.as_string() {
+                    Some(name) => obj.get(&name),
+                    None => LangValue::Nothing,
+                }
             },
-            _ => None,
+            _ => LangValue::Nothing,
         }
     }
     

@@ -1,9 +1,8 @@
-use std::{sync::Arc, collections::HashMap};
+use std::sync::Arc;
 
 use crate::{lang_value::{LangValue, Function}, external_functions::ExternalFunctionRunner};
 
 
-pub type LangObject = Arc<HashMap<String, LangValue>>;
 pub type LangVector<Values = LangValue> = Arc<Vec<Values>>;
 pub type LangExternalFunction = Arc<ExternalFunctionRunner>;
 pub type LangFunction = Arc<Function>;
