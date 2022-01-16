@@ -1,4 +1,4 @@
-use crate::{lang_value::LangValue, types::{LangFunction, LangExternalFunction, LangVector}};
+use crate::{lang_value::LangValue, types::{LangFunction, LangExternalFunction, LangVector}, object::LangObject};
 
 
 pub trait ConvertLangValue
@@ -97,5 +97,18 @@ impl ConvertLangValue for LangVector {
 
     fn into(val: &LangValue) -> Option<Self> {
         val.as_vec()
+    }
+}
+
+impl ConvertLangValue for LangObject {
+    fn from(val: Self) -> LangValue {
+        LangValue::Object(val)
+    }
+
+    fn into(val: &LangValue) -> Option<Self> {
+        match val {
+            LangValue::Object(obj) => Some(obj.clone()),
+            _ => None,
+        }
     }
 }

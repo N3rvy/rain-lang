@@ -9,6 +9,7 @@ pub use vm::scope::Scope;
 pub use vm::Vm;
 pub use vm::import::Importer;
 pub use vm::import::ImportResult;
+pub use common::object::LangObject;
 
 use parser::parser::parse;
 use tokenizer::tokenizer::tokenize;

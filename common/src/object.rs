@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use crate::lang_value::LangValue;
+use crate::{lang_value::LangValue, convert_values::ConvertLangValue};
 
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ impl LangObject {
         }
     }
 
-    pub fn get(&self, name: &String) -> LangValue  {
+    pub(crate) fn get(&self, name: &String) -> LangValue  {
         match self.fields.lock() {
             Ok(map) => 
                 match map.get(name) {
@@ -33,11 +33,21 @@ impl LangObject {
         }
     }
     
-    pub fn set(&mut self, name: String, value: LangValue) {
+    pub(crate) fn set(&mut self, name: String, value: LangValue) {
         match self.fields.lock() {
             Ok(mut map) => { map.insert(name, value); () },
             Err(_) => {},
         };
+    }
+    
+    pub fn get_field<R: ConvertLangValue>(&self, name: &str) -> Option<R> {
+        let value = self.get(&name.to_string());
+        
+        R::into(&value)
+    }
+    
+    pub fn set_field<V: ConvertLangValue>(&mut self, name: &str, value: V) {
+        self.set(name.to_string(), V::from(value));
     }
     
     pub fn len(&self) -> usize {
