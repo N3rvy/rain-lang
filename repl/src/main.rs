@@ -1,4 +1,4 @@
-use std::io::{BufRead, stdin};
+use std::{io::{BufRead, stdin}, fs};
 use reverse::{Vm, IntoScript, Importer, ImportResult, LangValue, IntoExternalFunctionRunner};
 
 
@@ -28,7 +28,13 @@ fn print(value: LangValue) {
 struct ReplImporter;
 
 impl Importer for ReplImporter {
-    fn import(&self, _identifier: &String) -> ImportResult {
-        ImportResult::NotFound
+    fn import(&self, identifier: &String) -> ImportResult {
+        match fs::read_to_string(identifier) {
+            Ok(script) => match script.script() {
+                Ok(script) => ImportResult::Imported(script),
+                Err(err) => ImportResult::ImportError(err),
+            },
+            Err(_) => ImportResult::NotFound,
+        }
     }
 }
