@@ -234,6 +234,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                     },
                     ImportResult::AlreadyImported => EvalResult::Ok(LangValue::Nothing),
                     ImportResult::NotFound => EvalResult::Err(LangError::new_runtime(INVALID_IMPORT.to_string())),
+                    ImportResult::ImportError(err) => EvalResult::Err(err),
                 }
             },
         }
