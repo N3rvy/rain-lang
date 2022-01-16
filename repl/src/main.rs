@@ -1,9 +1,11 @@
 use std::io::{BufRead, stdin};
-use reverse::{Vm, IntoScript, Importer, ImportResult};
+use reverse::{Vm, IntoScript, Importer, ImportResult, LangValue, IntoExternalFunctionRunner};
 
 
 fn main() {
     let vm = Vm::<ReplImporter>::new();
+    
+    vm.register("print", print.external());
     
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
@@ -16,6 +18,10 @@ fn main() {
             }
         }
     }
+}
+
+fn print(value: LangValue) {
+    println!("{}", value.to_string());
 }
 
 #[derive(Default)]
