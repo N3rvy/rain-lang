@@ -1,21 +1,9 @@
 use common::{ast::{ASTNode, NodeKind, TypeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind}, lang_value::{LangValue, Function}, messages::UNEXPECTED_TOKEN};
 use tokenizer::tokens::Token;
 
-use crate::utils::parse_object_values;
+use crate::{utils::parse_object_values, expect_token};
 
 use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
-
-macro_rules! expect_token {
-    ($token: expr, $pattern: pat_param) => {
-        let tok = $token;
-
-        match tok {
-            Some($pattern) => (),
-            Some(_) => return Err(LangError::new_parser_unexpected_token()),
-            None => return Err(LangError::new_parser_end_of_file()),
-        }
-    };
-}
 
 pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
     // Reversing the vector for using it as a stack

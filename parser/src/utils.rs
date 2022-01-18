@@ -3,6 +3,19 @@ use tokenizer::tokens::Token;
 
 use super::parser::parse_statement;
 
+#[macro_export]
+macro_rules! expect_token {
+    ($token: expr, $pattern: pat_param) => {
+        let tok = $token;
+
+        match tok {
+            Some($pattern) => (),
+            Some(_) => return Err(LangError::new_parser_unexpected_token()),
+            None => return Err(LangError::new_parser_end_of_file()),
+        }
+    };
+}
+
 pub(super) fn parse_object_values(tokens: &mut Vec<Token>) -> Result<Vec<(String, ASTNode)>, LangError> {
     let mut res = Vec::new();
     let mut next_is_argument = true;
