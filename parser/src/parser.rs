@@ -42,10 +42,11 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                     expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
                     
                     // ...)
-                    let (param_names, param_types) = parse_parameter_names(tokens)?;
+                    let (param_names, mut param_types) = parse_parameter_names(tokens)?;
 
                     // return type?
                     let ret_type = parse_type(tokens)?;
+                    param_types.push(ret_type);
                     
                     // {
                     expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
@@ -70,12 +71,12 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                 },
                 Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
                     // ...)
-                    let (param_names, param_types) = parse_parameter_names(tokens)?;
+                    let (param_names, mut param_types) = parse_parameter_names(tokens)?;
 
                     // return type?
                     let ret_type = parse_type(tokens)?;
+                    param_types.push(ret_type);
                     
-
                     // {
                     expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
 
