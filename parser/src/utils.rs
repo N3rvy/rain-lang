@@ -1,4 +1,4 @@
-use common::{ast::{ASTBody, ASTNode}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
+use common::{ast::{ASTBody, ASTNode, TypeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
 use tokenizer::tokens::Token;
 
 use super::parser::parse_statement;
@@ -162,4 +162,17 @@ pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>, parenthesis_kind: 
     tokens.pop();
     
     Ok(body)
+}
+
+pub(super) fn parse_type(tokens: &mut Vec<Token>) -> Result<TypeKind, LangError> {
+    // :
+    match tokens.last() {
+        Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
+        _ => return Ok(TypeKind::Unknown)
+    }
+
+    match tokens.pop() {
+        Some(Token::Type(tk)) => Ok(tk),
+        _ => Err(LangError::new_parser_unexpected_token())
+    }
 }
