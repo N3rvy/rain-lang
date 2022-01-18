@@ -17,6 +17,7 @@ impl ASTNode {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum TypeKind {
     Unknown,
     Int,

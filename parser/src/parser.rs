@@ -214,6 +214,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
             
             ASTNode::new(NodeKind::new_import(identifier), TypeKind::Unknown)
         },
+        Token::Type(_) => return Err(LangError::new_parser_unexpected_token()),
     };
     
 

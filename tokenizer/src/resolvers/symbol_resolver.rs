@@ -1,4 +1,4 @@
-use common::types::OperatorKind;
+use common::{types::OperatorKind, ast::TypeKind};
 
 use crate::tokens::Token;
 
@@ -38,6 +38,11 @@ impl Resolver {
             "for" => Token::For,
             "while" => Token::While,
             "import" => Token::Import,
+
+            "int" => Token::Type(TypeKind::Int),
+            "float" => Token::Type(TypeKind::Float),
+            "str" => Token::Type(TypeKind::String),
+            "any" => Token::Type(TypeKind::Unknown),
 
             _ => Token::Symbol(self.chars.clone()),
         }

@@ -1,4 +1,4 @@
-use common::{types::{OperatorKind, BoolOperatorKind, MathOperatorKind, ParenthesisKind, ParenthesisState}, lang_value::LangValue};
+use common::{types::{OperatorKind, BoolOperatorKind, MathOperatorKind, ParenthesisKind, ParenthesisState}, lang_value::LangValue, ast::TypeKind};
 
 #[derive(Clone, Debug)]
 pub enum Token {
@@ -13,6 +13,7 @@ pub enum Token {
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),
+    Type(TypeKind),
     Symbol(String),
     Literal(LangValue),
     Parenthesis(ParenthesisKind, ParenthesisState)
