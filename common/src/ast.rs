@@ -23,7 +23,25 @@ pub enum TypeKind {
     Int,
     Float,
     String,
+    Bool,
+    Function(Vec<TypeKind>),
     Nothing,
+}
+
+impl From<&LangValue> for TypeKind {
+    fn from(value: &LangValue) -> Self {
+        match value {
+            LangValue::Nothing => Self::Unknown,
+            LangValue::String(_) => Self::String,
+            LangValue::Int(_) => Self::Int,
+            LangValue::Float(_) => Self::Float,
+            LangValue::Bool(_) => Self::Bool,
+            LangValue::Function(_) => Self::Unknown,
+            LangValue::ExtFunction(_) => Self::Unknown,
+            LangValue::Vector(_) => Self::Unknown,
+            LangValue::Object(_) => Self::Unknown,
+        }
+    }
 }
 
 pub enum NodeKind {

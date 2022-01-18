@@ -94,8 +94,9 @@ pub(super) fn parse_body(tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> 
  * It consumes only the last parenthesis and expectes the first token to be the first argument,
    in this case it will be "arg0"
  */ 
-pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<Vec<String>, LangError> {
+pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
     let mut names = Vec::new();
+    let mut types = Vec::new();
     let mut next_is_argument = true;
     
     loop {
@@ -106,7 +107,11 @@ pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<Vec<Strin
             Some(Token::Symbol(name)) => {
                 if next_is_argument {
                     next_is_argument = false;
+
+                    let t = parse_type(tokens)?;
+
                     names.push(name.clone());
+                    types.push(t);
                 } else {
                     return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                 }
@@ -123,7 +128,7 @@ pub(super) fn parse_parameter_names(tokens: &mut Vec<Token>) -> Result<Vec<Strin
         };
     }
 
-    Ok(names)
+    Ok((names, types))
 }
 
 pub(super) fn parse_parameter_values(tokens: &mut Vec<Token>, parenthesis_kind: ParenthesisKind) -> Result<ASTBody, LangError> {
