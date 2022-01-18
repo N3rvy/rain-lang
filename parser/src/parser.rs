@@ -1,4 +1,4 @@
-use common::{ast::{ASTNode, ASTChild}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind}, lang_value::{LangValue, Function}, messages::UNEXPECTED_TOKEN};
+use common::{ast::{ASTNode, NodeKind, TypeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind}, lang_value::{LangValue, Function}, messages::UNEXPECTED_TOKEN};
 use tokenizer::tokens::Token;
 
 use crate::utils::parse_object_values;
@@ -17,7 +17,7 @@ macro_rules! expect_token {
     };
 }
 
-pub fn parse(mut tokens: Vec<Token>) -> Result<Box<ASTNode>, LangError> {
+pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
     // Reversing the vector for using it as a stack
     tokens.reverse();
     
@@ -32,10 +32,10 @@ pub fn parse(mut tokens: Vec<Token>) -> Result<Box<ASTNode>, LangError> {
         }
     }
     
-    Ok(ASTNode::new_root(body))
+    Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Nothing))
 }
 
-pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangError> {
+pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
     let token = tokens.pop();
     if let None = token {
         return Err(LangError::new_parser_end_of_file());
@@ -62,10 +62,20 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     // ...}
                     let body = parse_body(tokens)?;
 
-                    ASTNode::new_variable_decl(
-                        name,
-                        ASTNode::new_literal(
-                            LangValue::Function(Function::new(body, parameters))))
+                    ASTNode::new(
+                        NodeKind::new_variable_decl(
+                            name,
+                            ASTNode::new(
+                                NodeKind::new_literal(
+                                    LangValue::Function(
+                                        Function::new(body, parameters)
+                                    )
+                                ),
+                                TypeKind::Unknown
+                            )
+                        ),
+                        TypeKind::Unknown
+                    )
                 },
                 Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
                     // ...)
@@ -77,8 +87,12 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                     // ...}
                     let body = parse_body(tokens)?;
                     
-                    ASTNode::new_literal(
-                        LangValue::Function(Function::new(body, parameters)))
+                    ASTNode::new(
+                        NodeKind::new_literal(
+                            LangValue::Function(Function::new(body, parameters))
+                        ),
+                        TypeKind::Unknown
+                    )
                 },
                 Some(_) => return Err(LangError::new_parser_unexpected_token()),
                 None => return Err(LangError::new_parser_end_of_file()),
@@ -103,13 +117,13 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             let value = parse_statement(tokens);
 
             match value {
-                Ok(node) => ASTNode::new_variable_decl(name, node),
+                Ok(node) => ASTNode::new(NodeKind::new_variable_decl(name, node), TypeKind::Unknown),
                 Err(err) => return Err(err),
             }
         },
         Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => return Err(LangError::new_parser_unexpected_token()),
-        Token::Symbol(name) => ASTNode::new_variable_ref(name.clone()),
-        Token::Literal(value) => ASTNode::new_literal(value.clone()),
+        Token::Symbol(name) => ASTNode::new(NodeKind::new_variable_ref(name.clone()), TypeKind::Unknown),
+        Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), TypeKind::Unknown),
         Token::Parenthesis(kind, state) => {
             match (kind, state) {
                 (ParenthesisKind::Round, ParenthesisState::Open) => {
@@ -126,12 +140,12 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 (ParenthesisKind::Square, ParenthesisState::Open) => {
                     let values = parse_parameter_values(tokens, ParenthesisKind::Square)?;
                     
-                    ASTNode::new_vector_literal(values)
+                    ASTNode::new(NodeKind::new_vector_literal(values), TypeKind::Unknown)
                 },
                 (ParenthesisKind::Curly, ParenthesisState::Open) => {
                     let values = parse_object_values(tokens)?;
                     
-                    ASTNode::new_object_literal(values)
+                    ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Unknown)
                 },
                 _ => return Err(LangError::new_parser_unexpected_token())
             }
@@ -153,7 +167,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 _ => panic!("Like WTF"),
             };
 
-            ASTNode::new_return_statement(value, kind)
+            ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Unknown)
         },
         Token::If => {
             // condition
@@ -163,7 +177,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             // ...}
             let body = parse_body(tokens)?;
             
-            ASTNode::new_if_statement(condition, body)
+            ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Unknown)
         },
         Token::For => {
             // iter name
@@ -190,7 +204,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             // ...}
             let body = parse_body(tokens)?;
             
-            ASTNode::new_for_statement(min, max, body, iter_name)
+            ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Unknown)
         },
         Token::While => {
             // condition 
@@ -200,7 +214,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
             // ...}
             let body = parse_body(tokens)?;
             
-            ASTNode::new_while_statement(condition, body)
+            ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Unknown)
         },
         Token::Import => {
             // identifier
@@ -210,7 +224,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
                 None => return Err(LangError::new_parser_end_of_file()),
             };
             
-            ASTNode::new_import(identifier)
+            ASTNode::new(NodeKind::new_import(identifier), TypeKind::Unknown)
         },
     };
     
@@ -228,7 +242,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTChild, LangE
 }
 
 /// The bool in the tuple is a bool representing whether the infix was valid or not
-fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, bool), LangError> {
+fn parse_infix(node: ASTNode, tokens: &mut Vec<Token>) -> Result<(ASTNode, bool), LangError> {
 
     // Getting the infix and returning if it's None
     let infix = tokens.last().cloned();
@@ -242,7 +256,11 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
             let right = parse_statement(tokens);
             
             match right {
-                Ok(right) => Ok((ASTNode::new_math_operation(operator.clone(), node, right), true)),
+                Ok(right) => Ok((
+                        ASTNode::new(
+                            NodeKind::new_math_operation(operator.clone(), node, right),
+                            TypeKind::Unknown),
+                        true)),
                 Err(err) => Err(err),
             }
         },
@@ -251,7 +269,11 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
             let right = parse_statement(tokens);
             
             match right {
-                Ok(right) => Ok((ASTNode::new_bool_operation(operator.clone(), node, right), true)),
+                Ok(right) => Ok((
+                    ASTNode::new(
+                        NodeKind::new_bool_operation(operator.clone(), node, right),
+                        TypeKind::Unknown),
+                    true)),
                 Err(err) => Err(err),
             }
 
@@ -263,17 +285,29 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
             
             expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
             
-            Ok((ASTNode::new_value_field_access(node, value), true)) 
+            Ok((
+                ASTNode::new(
+                    NodeKind::new_value_field_access(node, value),
+                    TypeKind::Unknown),
+                true)) 
         },
         Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
             tokens.pop();
 
             let parameters = parse_parameter_values(tokens, ParenthesisKind::Round)?;
             
-            if let ASTNode::FieldAccess { variable: obj, field_name } = *node {
-                Ok((ASTNode::new_method_invok(obj, field_name , parameters), true))
+            if let NodeKind::FieldAccess { variable: obj, field_name } = *node.kind {
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_method_invok(obj, field_name , parameters),
+                        TypeKind::Unknown),
+                    true))
             } else {
-                Ok((ASTNode::new_function_invok(node, parameters), true))
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_function_invok(node, parameters),
+                        TypeKind::Unknown),
+                    true))
             }
         },
         Token::Operator(OperatorKind::Dot) => {
@@ -285,11 +319,15 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
                 None => return Err(LangError::new_parser_end_of_file()),
             };
             
-            Ok((ASTNode::new_field_access(node, field_name), true))
+            Ok((
+                ASTNode::new(
+                    NodeKind::new_field_access(node, field_name),
+                    TypeKind::Unknown),
+                true))
         },
         Token::Operator(OperatorKind::Assign) => {
-            let name = match node.as_ref()  {
-                ASTNode::VaraibleRef { name } => name.to_string(),
+            let name = match node.kind.as_ref() {
+                NodeKind::VaraibleRef { name } => name.to_string(),
                 _ => return Ok((node, false)),
             };
 
@@ -297,7 +335,11 @@ fn parse_infix(node: ASTChild, tokens: &mut Vec<Token>) -> Result<(ASTChild, boo
 
             let value = parse_statement(tokens)?;
 
-            Ok((ASTNode::new_variable_asgn(name, value), true))
+            Ok((
+                ASTNode::new(
+                    NodeKind::new_variable_asgn(name, value),
+                    TypeKind::Unknown),
+                true))
         },
         
         _ => Ok((node, false)),

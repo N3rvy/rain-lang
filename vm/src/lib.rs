@@ -1,6 +1,6 @@
 #![feature(try_trait_v2)]
 
-use common::{script::Script, lang_value::{LangValue}, errors::LangError, convert_values::ConvertLangValue, helper::HelperRegistry, ast::ASTNode};
+use common::{script::Script, lang_value::{LangValue}, errors::LangError, convert_values::ConvertLangValue, helper::HelperRegistry, ast::{ASTNode, NodeKind, TypeKind}};
 use helpers::DefaultHelperRegistry;
 use import::Importer;
 use scope::Scope;
@@ -43,9 +43,15 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
     
     // TODO: Arguments, and abstract return value
     pub fn invoke_in_scope(&self, name: &str, scope: &Scope) -> Result<LangValue, LangError> {
-        let runner = ASTNode::new_function_invok(
-            ASTNode::new_variable_ref(name.to_string()),
-            Vec::with_capacity(0),
+        let runner = ASTNode::new(
+            NodeKind::new_function_invok(
+                ASTNode::new(
+                    NodeKind::new_variable_ref(name.to_string()),
+                    TypeKind::Unknown
+                ),
+                Vec::with_capacity(0)
+            ),
+            TypeKind::Unknown,
         );
 
         match self.evaluate_ast(scope, &runner) {

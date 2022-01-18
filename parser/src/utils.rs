@@ -1,9 +1,9 @@
-use common::{ast::{ASTBody, ASTChild}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
+use common::{ast::{ASTBody, ASTNode}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
 use tokenizer::tokens::Token;
 
 use super::parser::parse_statement;
 
-pub(super) fn parse_object_values(tokens: &mut Vec<Token>) -> Result<Vec<(String, ASTChild)>, LangError> {
+pub(super) fn parse_object_values(tokens: &mut Vec<Token>) -> Result<Vec<(String, ASTNode)>, LangError> {
     let mut res = Vec::new();
     let mut next_is_argument = true;
     

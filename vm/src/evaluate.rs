@@ -1,5 +1,5 @@
 use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_IMPORT}, external_functions::ExternalFunctionRunner, object::LangObject};
+use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_IMPORT}, external_functions::ExternalFunctionRunner, object::LangObject};
 
 use crate::{Vm, import::{Importer, ImportResult}};
 
@@ -46,34 +46,34 @@ macro_rules! expect_some {
 
 
 impl<'a, Imp: Importer> Vm<'a, Imp> {
-    pub fn evaluate_ast(&self, scope: &Scope, ast: &Box<ASTNode>) -> EvalResult {
-        match ast.as_ref() {
-            ASTNode::Root { body } => {
+    pub fn evaluate_ast(&self, scope: &Scope, ast: &ASTNode) -> EvalResult {
+        match ast.kind.as_ref() {
+            NodeKind::Root { body } => {
                 for child in body {
                     self.evaluate_ast(scope, child)?;
                 }
                 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::VariableDecl { name, value } => {
+            NodeKind::VariableDecl { name, value } => {
                 let value = self.evaluate_ast(scope, value)?;
                 scope.declare_var(name.clone(), value.clone());
 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::VaraibleRef { name } => {
+            NodeKind::VaraibleRef { name } => {
                 match scope.get_var(name) {
                     Some(value) => EvalResult::Ok(value.clone()),
                     None => EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
                 }
             },
-            ASTNode::VariableAsgn { name, value } => {
+            NodeKind::VariableAsgn { name, value } => {
                 let value = self.evaluate_ast(scope, value)?;
                 scope.set_var(name, value);
                 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::MethodInvok { object, name, parameters } => {
+            NodeKind::MethodInvok { object, name, parameters } => {
                 let object = self.evaluate_ast(scope, object)?;
                 let func = object.get_field(&self.registry, name);
                 
@@ -86,7 +86,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 self.invoke_function(scope, &func, parameters, param_values)
             },
-            ASTNode::FunctionInvok { variable, parameters } => {
+            NodeKind::FunctionInvok { variable, parameters } => {
                 let func = self.evaluate_ast (scope, variable)?;
                         
                 let mut param_values = Vec::new();
@@ -97,10 +97,10 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
 
                 self.invoke_function(scope, &func, parameters, param_values)
             },
-            ASTNode::Literal { value } => {
+            NodeKind::Literal { value } => {
                 EvalResult::Ok(value.clone())
             },
-            ASTNode::MathOperation { operation, left, right } => {
+            NodeKind::MathOperation { operation, left, right } => {
                 let left = self.evaluate_ast(scope, left)?;
                 let right = self.evaluate_ast(scope, right)?;
                 
@@ -115,7 +115,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(value)
             },
-            ASTNode::BoolOperation { operation, left, right } => {
+            NodeKind::BoolOperation { operation, left, right } => {
                 let left = self.evaluate_ast(scope, left)?;
                 let right = self.evaluate_ast(scope, right)?;
                 
@@ -130,9 +130,9 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(LangValue::Bool(value))
             },
-            ASTNode::ReturnStatement { value: Some(value ), kind } => EvalResult::Ret(self.evaluate_ast(scope, value)?, kind.clone()),
-            ASTNode::ReturnStatement { value: None, kind } => EvalResult::Ret(LangValue::Nothing, kind.clone()),
-            ASTNode::IfStatement { condition, body } => {
+            NodeKind::ReturnStatement { value: Some(value ), kind } => EvalResult::Ret(self.evaluate_ast(scope, value)?, kind.clone()),
+            NodeKind::ReturnStatement { value: None, kind } => EvalResult::Ret(LangValue::Nothing, kind.clone()),
+            NodeKind::IfStatement { condition, body } => {
                 let condition = self.evaluate_ast(scope, condition)?;
                 
                 if condition.truthy() {
@@ -145,7 +145,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::ForStatement { left, right, body, iter_name } => {
+            NodeKind::ForStatement { left, right, body, iter_name } => {
                 let left = self.evaluate_ast(scope, left)?.as_i32();
                 let right = self.evaluate_ast(scope, right)?.as_i32();
                 
@@ -168,7 +168,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::WhileStatement { condition, body } => {
+            NodeKind::WhileStatement { condition, body } => {
                 while self.evaluate_ast(scope, condition)?.truthy() {
                     let while_scope = Scope::new_child(scope.clone());
                     
@@ -184,13 +184,13 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            ASTNode::FieldAccess { variable, field_name } => {
+            NodeKind::FieldAccess { variable, field_name } => {
                 let value = self.evaluate_ast(scope, variable)?;
                 let result = value.get_field(&self.registry, field_name);
                 
                 EvalResult::Ok(result)
             },
-            ASTNode::VectorLiteral { values } => {
+            NodeKind::VectorLiteral { values } => {
                 let mut eval_values = Vec::new();
                 
                 for val in values {
@@ -199,13 +199,13 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(LangValue::Vector(Arc::new(eval_values)))
             },
-            ASTNode::ValueFieldAccess { variable, value } => {
+            NodeKind::ValueFieldAccess { variable, value } => {
                 let variable = self.evaluate_ast(scope, variable)?;
                 let value = self.evaluate_ast(scope, value)?;
 
                 EvalResult::Ok(variable.get_value_field(value))
             },
-            ASTNode::ObjectLiteral { values } => {
+            NodeKind::ObjectLiteral { values } => {
                 let mut map = HashMap::new();
                 
                 for value in values {
@@ -214,7 +214,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
-            ASTNode::Import { identifier } => {
+            NodeKind::Import { identifier } => {
                 match self.importer.import(&identifier) {
                     ImportResult::Imported(script) => {
                         match self.evaluate(&script) {
