@@ -5,6 +5,7 @@ pub use common::external_functions::ExternalFunctionRunner;
 pub use common::external_functions::AsMethod;
 pub use common::lang_value::Function;
 pub use common::script::Script;
+use parser::type_check::check_types;
 pub use vm::scope::Scope;
 pub use vm::Vm;
 pub use vm::import::Importer;
@@ -23,6 +24,8 @@ impl IntoScript for String {
     fn script(self) -> Result<Script, LangError> {
         let tokens = tokenize(self)?;
         let ast = parse(tokens)?;
+        
+        check_types(&ast)?;
 
         Ok(Script { ast })
     }

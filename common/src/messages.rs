@@ -21,3 +21,5 @@ pub const VARIABLE_IS_NOT_A_NUMBER: &str = "Variable is not a number";
 pub const EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE: &str = "A parameter passed to an external function has a wrong type"; 
 pub const INVALID_VALUE_FIELD_ACCESS: &str = "Invalid value field access";
 pub const INVALID_IMPORT: &str = "Tried importing something that does not exist";
+pub const WRONG_TYPE: &str = "Wrong typing";
+pub const INCORRECT_FUNCTION_PARAMETER_TYPE: &str = "A parameter type passed to a function is incorrect";

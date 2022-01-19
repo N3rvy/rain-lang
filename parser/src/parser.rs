@@ -20,7 +20,7 @@ pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
         }
     }
     
-    Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Nothing))
+    Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Unknown))
 }
 
 pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
@@ -66,7 +66,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                                 TypeKind::Function(param_types)
                             )
                         ),
-                        TypeKind::Nothing
+                        TypeKind::Unknown
                     )
                 },
                 Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
@@ -96,7 +96,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
         },
         Token::Variable => {
             let name = tokens.pop();
-            let _type_kind = parse_type(tokens)?;
+            let type_kind = parse_type(tokens)?;
             let assign = tokens.pop();
             
             let name = match name {
@@ -114,7 +114,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
             let value = parse_statement(tokens);
 
             match value {
-                Ok(node) => ASTNode::new(NodeKind::new_variable_decl(name, node), TypeKind::Nothing),
+                Ok(node) => ASTNode::new(NodeKind::new_variable_decl(name, node), type_kind),
                 Err(err) => return Err(err),
             }
         },
@@ -164,7 +164,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                 _ => panic!("Like WTF"),
             };
 
-            ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Nothing)
+            ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Unknown)
         },
         Token::If => {
             // condition
@@ -174,7 +174,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
             // ...}
             let body = parse_body(tokens)?;
             
-            ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Nothing)
+            ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Unknown)
         },
         Token::For => {
             // iter name
@@ -221,7 +221,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                 None => return Err(LangError::new_parser_end_of_file()),
             };
             
-            ASTNode::new(NodeKind::new_import(identifier), TypeKind::Nothing)
+            ASTNode::new(NodeKind::new_import(identifier), TypeKind::Unknown)
         },
         Token::Type(_) => return Err(LangError::new_parser_unexpected_token()),
     };

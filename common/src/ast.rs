@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{lang_value::LangValue, types::{MathOperatorKind, BoolOperatorKind, ReturnKind}};
 
 
@@ -17,15 +19,29 @@ impl ASTNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TypeKind {
     Unknown,
     Int,
     Float,
     String,
     Bool,
-    Function(Vec<TypeKind>),
     Nothing,
+    Vector,
+    Function(Vec<TypeKind>),
+    Object(HashMap<String, TypeKind>)
+}
+
+impl TypeKind {
+    pub fn is_compatible(&self, other: &TypeKind) -> bool {
+
+        match (self, other) {
+            (a, b) if a == b => true,
+            (TypeKind::Unknown, _) => true,
+            (_, TypeKind::Unknown) => true,
+            _ => false
+        }
+    }
 }
 
 impl From<&LangValue> for TypeKind {
