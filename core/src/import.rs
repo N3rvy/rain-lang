@@ -1,8 +1,8 @@
-use common::{script::Script, errors::LangError};
+use common::errors::LangError;
 
 
 pub enum ImportResult {
-    Imported(Script),
+    Imported(String),
     ImportError(LangError),
     AlreadyImported,
     NotFound,

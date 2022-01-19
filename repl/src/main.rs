@@ -1,9 +1,8 @@
+use core::Engine;
 use std::{io::{BufRead, stdin}, fs};
-use reverse::{Vm, IntoScript, Importer, ImportResult, LangValue, IntoExternalFunctionRunner};
-
 
 fn main() {
-    let vm = Vm::<ReplImporter>::new();
+    let vm = Engine::<ReplImporter>::default();
     
     vm.register("print", print.external());
     

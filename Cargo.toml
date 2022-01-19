@@ -3,9 +3,7 @@
 members = [
     "common",
     "parser",
-    "vm",
     "tokenizer",
-    "reverse",
-    "tests",
+    "core",
     "repl",
 ]
