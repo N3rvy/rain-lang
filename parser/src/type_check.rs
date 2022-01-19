@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell};
 
-use common::{ast::{ASTNode, TypeKind, NodeKind}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}, lang_value::LangValue, types::ReturnKind};
+use common::{ast::{ASTNode, TypeKind, NodeKind}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}, lang_value::LangValue, types::{ReturnKind, MathOperatorKind}};
 
 
 macro_rules! assert_compatible_type {
@@ -123,8 +123,55 @@ fn check_node(node: &ASTNode, scope: &TypeScope) -> Result<TypeKind, LangError> 
 
             Ok(node.eval_type.clone())
         },
-        NodeKind::MathOperation { operation: _, left: _, right: _ } => todo!(),
-        NodeKind::BoolOperation { operation: _, left: _, right: _ } => todo!(),
+        NodeKind::MathOperation { operation, left, right } => {
+            let left_type = check_node(left, scope)?;
+            let right_type = check_node(right, scope)?;
+
+            Ok(match operation {
+                MathOperatorKind::Plus => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                        (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::String,
+                    }
+                },
+                MathOperatorKind::Minus => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                        (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::Nothing,
+                    }
+                },
+                MathOperatorKind::Multiply => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                        (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::String,
+                    }
+                },
+                MathOperatorKind::Divide => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) => TypeKind::Float,
+                        (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::Nothing,
+                    }
+                },
+                MathOperatorKind::Modulus => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                        (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::Nothing,
+                    }
+                },
+                MathOperatorKind::Power => {
+                    match (left_type, right_type) {
+                        (TypeKind::Int, TypeKind::Int) | (TypeKind::Float, TypeKind::Int) | (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                        _ => TypeKind::Nothing,
+                    }
+                },
+            })
+        },
+        NodeKind::BoolOperation { operation: _, left: _, right: _ } => Ok(TypeKind::Bool),
         NodeKind::ReturnStatement { value, kind } => {
             match kind {
                 ReturnKind::Return => {
