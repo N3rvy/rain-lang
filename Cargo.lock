@@ -16,6 +16,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "interpreter"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "core",
+]
+
+[[package]]
 name = "parser"
 version = "0.1.0"
 dependencies = [

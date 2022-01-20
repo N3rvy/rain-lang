@@ -6,4 +6,5 @@ members = [
     "tokenizer",
     "core",
     "repl",
+    "interpreter",
 ]

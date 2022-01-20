@@ -1,7 +1,9 @@
-use std::{ops::{Try, FromResidual, ControlFlow}, borrow::Borrow, sync::Arc, collections::HashMap};
-use common::{lang_value::LangValue, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, errors::LangError, ast::{ASTNode, ASTBody, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_FUNCTION, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_NUMBER, INVALID_IMPORT}, external_functions::ExternalFunctionRunner, object::LangObject};
+use core::{LangValue, LangError, ImportResult, LangObject};
+use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
 
-use crate::{Vm, import::{Importer, ImportResult}};
+use common::{types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, ast::{ASTNode, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, INVALID_IMPORT, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
+
+use crate::Interpreter;
 
 use super::scope::Scope;
 
@@ -45,7 +47,7 @@ macro_rules! expect_some {
 }
 
 
-impl<'a, Imp: Importer> Vm<'a, Imp> {
+impl<'a> Interpreter<'a> {
     pub fn evaluate_ast(&self, scope: &Scope, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
             NodeKind::Root { body } => {
@@ -230,7 +232,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
         }
     }
 
-    fn invoke_function(&self, scope: &Scope, func: &LangValue, parameters: &ASTBody, param_values: Vec<LangValue>) -> EvalResult {
+    fn invoke_function(&self, scope: &Scope, func: &LangValue, parameters: &Vec<ASTNode>, param_values: Vec<LangValue>) -> EvalResult {
         match func {
             LangValue::Function(func) => {
                 // Parameters
@@ -257,7 +259,7 @@ impl<'a, Imp: Importer> Vm<'a, Imp> {
                 EvalResult::Ok(LangValue::Nothing)
             },
             LangValue::ExtFunction(func) => {
-                match (func.borrow() as &ExternalFunctionRunner).run(param_values) {
+                match func.run(param_values) {
                     Ok(value ) => EvalResult::Ok(value),
                     Err(err) => EvalResult::Err(err),
                 }
