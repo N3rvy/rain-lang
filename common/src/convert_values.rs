@@ -5,7 +5,6 @@ pub trait ConvertLangValue
     where Self: Sized + 'static
 {
     fn from(val: Self) -> LangValue;
-    // TODO: Make this passed by ownership and not by reference
     fn into(val: &LangValue) -> Option<Self>;
 }
 
