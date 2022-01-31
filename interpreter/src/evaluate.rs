@@ -86,7 +86,7 @@ impl<'a> Interpreter<'a> {
                     param_values.push(value);
                 }
                 
-                self.invoke_function(scope, &func, parameters, param_values)
+                self.invoke_function(scope, &func, param_values)
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 let func = self.evaluate_ast (scope, variable)?;
@@ -97,7 +97,7 @@ impl<'a> Interpreter<'a> {
                     param_values.push(value);
                 }
 
-                self.invoke_function(scope, &func, parameters, param_values)
+                self.invoke_function(scope, &func, param_values)
             },
             NodeKind::Literal { value } => {
                 EvalResult::Ok(value.clone())
@@ -222,17 +222,16 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn invoke_function(&self, scope: &Scope, func: &LangValue, parameters: &Vec<ASTNode>, param_values: Vec<LangValue>) -> EvalResult {
+    fn invoke_function(&self, scope: &Scope, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
         match func {
             LangValue::Function(func) => {
                 // Parameters
-                if parameters.len() != func.parameters.len() {
+                if func.parameters.len() != func.parameters.len() {
                     return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
                 }
         
                 let func_scope = Scope::new_child(scope);
-                for i in 0..parameters.len() {
-                    // TODO: PLS BETTER PERFORMANCE! THANKS ME OF THE FUTURE
+                for i in 0..func.parameters.len() {
                     func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
                 }
 
