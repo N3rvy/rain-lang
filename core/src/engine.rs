@@ -10,15 +10,6 @@ pub struct Engine<Imp: Importer, Exec: ExecutionEngine> {
     execution_engine: Exec,
 }
 
-impl<Imp: Importer + Default, Exec: ExecutionEngine + Default> Default for Engine<Imp, Exec> {
-    fn default() -> Self {
-        Self {
-            importer: Default::default(),
-            execution_engine: Default::default()
-        }
-    }
-}
-
 impl<Imp: Importer, Exec: ExecutionEngine> Engine<Imp, Exec> {
     pub fn new(importer: Imp, execution_engine: Exec) -> Self {
         Self {
@@ -34,6 +25,20 @@ impl<Imp: Importer, Exec: ExecutionEngine> Engine<Imp, Exec> {
         check_types(&ast)?;
 
         self.execution_engine.execute(ast)
+    }
+
+    pub fn execute_import(&self, identifier: &String) -> Result<Option<()>, LangError> {
+        let script = match self.importer.import(identifier) {
+            crate::ImportResult::Imported(script) => script,
+            crate::ImportResult::ImportError(err) => return Err(err),
+            crate::ImportResult::AlreadyImported => return Ok(Some(())),
+            crate::ImportResult::NotFound => return Ok(None),
+        };
+
+        match self.execute(script) {
+            Ok(_) => Ok(Some(())),
+            Err(err) => Err(err),
+        }
     }
 
     pub fn get_function<Args, Ret, F: Fn<Args, Output = Ret>>(&self, name: &str) -> Option<F> {

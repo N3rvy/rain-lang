@@ -1,7 +1,7 @@
-use core::{LangValue, LangError, ImportResult, LangObject};
+use core::{LangValue, LangError, LangObject};
 use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
 
-use common::{types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, ast::{ASTNode, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, INVALID_IMPORT, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
+use common::{types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, ast::{ASTNode, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION, NOT_YET_IMPLEMENTED}};
 
 use crate::Interpreter;
 
@@ -77,7 +77,7 @@ impl<'a> Interpreter<'a> {
             },
             NodeKind::MethodInvok { object, name, parameters } => {
                 let object = self.evaluate_ast(scope, object)?;
-                let func = object.get_field(&self.registry, name);
+                let func = object.get_field(name);
                 
                 let mut param_values = Vec::new();
                 param_values.push(object);
@@ -188,7 +188,7 @@ impl<'a> Interpreter<'a> {
             },
             NodeKind::FieldAccess { variable, field_name } => {
                 let value = self.evaluate_ast(scope, variable)?;
-                let result = value.get_field(&self.registry, field_name);
+                let result = value.get_field(field_name);
                 
                 EvalResult::Ok(result)
             },
@@ -216,18 +216,8 @@ impl<'a> Interpreter<'a> {
                 
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
-            NodeKind::Import { identifier } => {
-                match self.importer.import(&identifier) {
-                    ImportResult::Imported(script) => {
-                        match self.evaluate(&script) {
-                            Ok(_) => EvalResult::Ok(LangValue::Nothing),
-                            Err(err) => EvalResult::Err(err),
-                        }
-                    },
-                    ImportResult::AlreadyImported => EvalResult::Ok(LangValue::Nothing),
-                    ImportResult::NotFound => EvalResult::Err(LangError::new_runtime(INVALID_IMPORT.to_string())),
-                    ImportResult::ImportError(err) => EvalResult::Err(err),
-                }
+            NodeKind::Import { identifier: _ } => {
+                EvalResult::Err(LangError::new_runtime(NOT_YET_IMPLEMENTED.to_string()))
             },
         }
     }

@@ -13,6 +13,14 @@ pub struct Interpreter<'a> {
     global_scope: Scope<'a>,
 }
 
+impl<'a> Interpreter<'a> {
+    pub fn new() -> Self {
+        Self {
+            global_scope: Scope::new(),
+        }
+    }
+}
+
 impl<'a> ExecutionEngine for Interpreter<'a> {
     fn execute(&self, ast: ASTNode) -> Result<(), core::LangError> {
         match self.evaluate_ast(&self.global_scope, &ast) {
@@ -21,7 +29,7 @@ impl<'a> ExecutionEngine for Interpreter<'a> {
         }
     }
 
-    fn get_function<Args, Ret, F: Fn<Args, Output = Ret>>(&self, name: &str) -> Option<F> {
+    fn get_function<Args, Ret, F: Fn<Args, Output = Ret>>(&self, _name: &str) -> Option<F> {
         todo!()
     }
 }

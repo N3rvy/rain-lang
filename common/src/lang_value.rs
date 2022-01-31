@@ -1,6 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, helper::HelperRegistry, types::{LangVector, LangExternalFunction, LangFunction}, object::LangObject};
+use crate::{ast::ASTBody, types::{LangVector, LangExternalFunction, LangFunction}, object::LangObject};
 
 pub enum LangValue {
     Nothing,
@@ -70,15 +70,12 @@ impl LangValue {
         }
     }
 
-    pub fn get_field<'a>(&'a self, registry: &'a HelperRegistry, name: &String) -> LangValue {
+    pub fn get_field<'a>(&'a self, name: &String) -> LangValue {
         match self {
             LangValue::Object(obj) => {
                 obj.get(name)
             },
-            _ => match registry.get_helper(self) {
-                Some(helper) => helper.get(name),
-                None => LangValue::Nothing,
-            },
+            _ => LangValue::Nothing,
         }
     }
     

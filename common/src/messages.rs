@@ -23,3 +23,4 @@ pub const INVALID_VALUE_FIELD_ACCESS: &str = "Invalid value field access";
 pub const INVALID_IMPORT: &str = "Tried importing something that does not exist";
 pub const WRONG_TYPE: &str = "Wrong typing";
 pub const INCORRECT_FUNCTION_PARAMETER_TYPE: &str = "A parameter type passed to a function is incorrect";
+pub const NOT_YET_IMPLEMENTED: &str = "Not yet implemented";
