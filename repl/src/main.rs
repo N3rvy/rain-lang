@@ -1,4 +1,4 @@
-use core::{Engine, Importer, ImportResult, LangError, LangValue};
+use core::{Engine, Importer, ImportResult, LangValue};
 use std::{io::{BufRead, stdin}, fs};
 
 use interpreter::Interpreter;
@@ -11,7 +11,7 @@ fn main() {
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
             match engine.execute(script) {
-                Ok(result) => (),
+                Ok(_) => (),
                 Err(err) => println!("{}", err),
             }
 
