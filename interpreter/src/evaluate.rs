@@ -90,7 +90,7 @@ impl<'a> Interpreter<'a> {
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 let func = self.evaluate_ast (scope, variable)?;
-                        
+
                 let mut param_values = Vec::new();
                 for param in parameters {
                     let value = self.evaluate_ast(scope, param)?;
@@ -222,7 +222,7 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn invoke_function(&self, scope: &Scope, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
+    pub(super) fn invoke_function(&self, scope: &Scope, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
         match func {
             LangValue::Function(func) => {
                 // Parameters

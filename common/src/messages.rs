@@ -24,3 +24,4 @@ pub const INVALID_IMPORT: &str = "Tried importing something that does not exist"
 pub const WRONG_TYPE: &str = "Wrong typing";
 pub const INCORRECT_FUNCTION_PARAMETER_TYPE: &str = "A parameter type passed to a function is incorrect";
 pub const NOT_YET_IMPLEMENTED: &str = "Not yet implemented";
+pub const CANT_CONVERT_VALUE: &str = "Could not convert external value";

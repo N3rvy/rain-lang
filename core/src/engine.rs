@@ -1,3 +1,4 @@
+use common::convert_values::ConvertLangValue;
 use common::errors::LangError;
 use parser::{parser::parse, type_check::check_types};
 use tokenizer::tokenizer::tokenize;
@@ -7,7 +8,7 @@ use crate::{import::Importer, execution_engine::ExecutionEngine};
 
 pub struct Engine<Imp: Importer, Exec: ExecutionEngine> {
     importer: Imp,
-    execution_engine: Exec,
+    pub execution_engine: Exec,
 }
 
 impl<Imp: Importer, Exec: ExecutionEngine> Engine<Imp, Exec> {
@@ -41,7 +42,8 @@ impl<Imp: Importer, Exec: ExecutionEngine> Engine<Imp, Exec> {
         }
     }
 
-    pub fn get_function<Args, Ret, F: Fn<Args, Output = Ret>>(&self, name: &str) -> Option<F> {
+    pub fn get_function<Ret: ConvertLangValue>(&self, name: &str) -> Option<Box<dyn Fn(&Exec) -> Result<Ret, LangError>>>
+    {
         self.execution_engine.get_function(name)
     }
 }
