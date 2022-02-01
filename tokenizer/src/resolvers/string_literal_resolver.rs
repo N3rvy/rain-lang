@@ -1,4 +1,4 @@
-use common::{lang_value::LangValue, errors::LangError, messages::INVALID_STRING_LITERAL};
+use common::{errors::LangError, messages::INVALID_STRING_LITERAL, types::LiteralKind};
 
 use crate::tokens::Token;
 
@@ -19,7 +19,7 @@ impl Resolver {
                 AddResult::Ok
             } else {
                 match parse_string(&self.chars) {
-                    Ok(value) => AddResult::End(Token::Literal(LangValue::String(value))),
+                    Ok(value) => AddResult::End(Token::Literal(LiteralKind::String(value))),
                     Err(err) => AddResult::Err(err),
                 }
             }

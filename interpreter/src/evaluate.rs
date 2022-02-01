@@ -1,9 +1,9 @@
-use core::{LangValue, LangError, LangObject};
+use core::LangError;
 use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
 
 use common::{types::{ReturnKind, MathOperatorKind, BoolOperatorKind}, ast::{ASTNode, NodeKind}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION, NOT_YET_IMPLEMENTED}};
 
-use crate::Interpreter;
+use crate::{Interpreter, lang_value::LangValue, object::LangObject};
 
 use super::scope::Scope;
 
@@ -100,7 +100,7 @@ impl<'a> Interpreter<'a> {
                 self.invoke_function(scope, &func, param_values)
             },
             NodeKind::Literal { value } => {
-                EvalResult::Ok(value.clone())
+                EvalResult::Ok(value.clone().into())
             },
             NodeKind::MathOperation { operation, left, right } => {
                 let left = self.evaluate_ast(scope, left)?;

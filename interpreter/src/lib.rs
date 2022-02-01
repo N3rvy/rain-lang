@@ -1,16 +1,20 @@
+#![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use core::ExecutionEngine;
+use core::{ExecutionEngine, ExternalType};
 use common::ast::ASTNode;
-use common::convert_values::ConvertLangValue;
 use common::errors::LangError;
-use common::lang_value::LangValue;
 use common::messages::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
+use lang_value::LangValue;
 use scope::Scope;
 
 mod scope;
 mod evaluate;
+mod lang_value;
+mod convert_values;
+mod external_functions;
+mod object;
 
 pub struct Interpreter<'a> {
     global_scope: Scope<'a>,
@@ -32,7 +36,7 @@ impl<'a> ExecutionEngine for Interpreter<'a> {
         }
     }
 
-    fn get_function<Ret: ConvertLangValue>(&self, name: &str) -> Option<Box<dyn Fn(&Self) -> Result<Ret, LangError>>>
+    fn get_function<Ret: ExternalType>(&self, name: &str) -> Option<Box<dyn Fn(&Self) -> Result<Ret, LangError>>>
     {
         let value = self.global_scope.get_var(&name.to_string());
         let func = match value {
@@ -57,9 +61,12 @@ impl<'a> ExecutionEngine for Interpreter<'a> {
                 EvalResult::Err(err) => return Err(err),
             };
 
-            match Ret::into(&value) {
+            match value.into() {
                 None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
-                Some(value) => Ok(value),
+                Some(value) => match Ret::concretize(value) {
+                    None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
+                    Some(value) => Ok(value),
+                },
             }
         }))
     }

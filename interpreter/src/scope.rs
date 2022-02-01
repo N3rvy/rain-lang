@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
 
-use common::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
+use crate::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,

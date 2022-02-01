@@ -1,4 +1,4 @@
-use common::{ast::{ASTBody, ASTNode, TypeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
+use common::{ast::{ASTBody, ASTNode}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind}, messages::{PARAMETERS_EXPECTING_COMMA, PARAMETERS_EXPECTING_PARAMETER}};
 use tokenizer::tokens::Token;
 
 use super::parser::parse_statement;

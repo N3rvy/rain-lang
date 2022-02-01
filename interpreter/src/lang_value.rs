@@ -1,6 +1,14 @@
+use core::AnyValue;
 use std::{sync::Arc, fmt::Debug};
 
-use crate::{ast::ASTBody, types::{LangVector, LangExternalFunction, LangFunction}, object::LangObject};
+use common::types::{Function, LiteralKind};
+
+use crate::{external_functions::ExternalFunctionRunner, object::LangObject};
+
+
+pub type LangFunction = Arc<Function>;
+pub type LangExternalFunction = Arc<ExternalFunctionRunner>;
+pub type LangVector = Arc<Vec<LangValue>>;
 
 pub enum LangValue {
     Nothing,
@@ -43,16 +51,6 @@ impl From<&LangValue> for LangValueDiscriminant {
     }
 }
 
-pub struct Function {
-    pub body: ASTBody,
-    pub parameters: Vec<String>,
-}
-
-impl Function {
-    pub fn new(body: ASTBody, parameters: Vec<String>) -> LangFunction {
-        Arc::new(Self { body, parameters })
-    }
-}
 
 impl LangValue {
     
@@ -362,6 +360,44 @@ impl Clone for LangValue {
             Self::ExtFunction(func) => Self::ExtFunction(func.clone()),
             Self::Vector(vec) => Self::Vector(vec.clone()),
             Self::Object(obj) => Self::Object(obj.clone()),
+        }
+    }
+}
+
+
+impl Into<Option<AnyValue>> for LangValue {
+    fn into(self) -> Option<AnyValue> {
+        match self {
+            LangValue::Nothing => Some(AnyValue::Nothing),
+            LangValue::String(str) => Some(AnyValue::String(str)),
+            LangValue::Int(i) => Some(AnyValue::Int(i)),
+            LangValue::Float(f) => Some(AnyValue::Float(f)),
+            LangValue::Bool(b) => Some(AnyValue::Bool(b)),
+            _ => None,
+        }
+    }
+}
+
+impl From<AnyValue> for LangValue {
+    fn from(val: AnyValue) -> Self {
+        match val {
+            AnyValue::Nothing => LangValue::Nothing,
+            AnyValue::Int(i) => LangValue::Int(i),
+            AnyValue::Float(f) => LangValue::Float(f),
+            AnyValue::Bool(b) => LangValue::Bool(b),
+            AnyValue::String(s) => LangValue::String(s),
+        }
+    }
+}
+
+impl From<LiteralKind> for LangValue {
+    fn from(val: LiteralKind) -> Self {
+        match val {
+            LiteralKind::Nothing => LangValue::Nothing,
+            LiteralKind::Int(i) => LangValue::Int(i),
+            LiteralKind::Float(f) => LangValue::Float(f),
+            LiteralKind::String(s) => LangValue::String(s),
+            LiteralKind::Function(f) => LangValue::Function(f),
         }
     }
 }

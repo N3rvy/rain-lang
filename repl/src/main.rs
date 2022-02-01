@@ -1,4 +1,4 @@
-use core::{Engine, Importer, ImportResult, LangValue};
+use core::{Engine, Importer, ImportResult, AnyValue};
 use std::{io::{BufRead, stdin}, fs};
 
 use interpreter::Interpreter;
@@ -15,7 +15,7 @@ fn main() {
                 Err(err) => println!("{}", err),
             }
 
-            let func = match engine.get_function::<LangValue>("main") {
+            let func = match engine.get_function::<AnyValue>("main") {
                 Some(func) => func,
                 None => continue,
             };

@@ -1,6 +1,9 @@
+use core::{LangError, ExternalType};
 use std::sync::Arc;
 
-use crate::{convert_values::ConvertLangValue, lang_value::LangValue, errors::LangError, messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE}, types::LangExternalFunction};
+use common::messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE};
+
+use crate::{lang_value::{LangValue, LangExternalFunction}, convert_values::ConvertLangValue};
 
 
 pub struct ExternalFunctionRunner {
@@ -22,12 +25,7 @@ impl ExternalFunctionRunner {
 }
 
 
-pub trait AsMethod {
-    fn as_method(self) -> Self;
-}
-
-
-pub trait IntoExternalFunctionRunner<A, R: ConvertLangValue> {
+pub trait IntoExternalFunctionRunner<A, R: ExternalType> {
     fn external(self) -> LangExternalFunction;
 }
 

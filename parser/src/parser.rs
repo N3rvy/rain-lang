@@ -1,4 +1,4 @@
-use common::{ast::{ASTNode, NodeKind, TypeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind}, lang_value::{LangValue, Function}, messages::UNEXPECTED_TOKEN};
+use common::{ast::{ASTNode, NodeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind, TypeKind, LiteralKind, Function}, messages::UNEXPECTED_TOKEN};
 use tokenizer::tokens::Token;
 
 use crate::{utils::{parse_object_values, parse_type}, expect_token};
@@ -59,7 +59,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                             name,
                             ASTNode::new(
                                 NodeKind::new_literal(
-                                    LangValue::Function(
+                                    LiteralKind::Function(
                                         Function::new(body, param_names)
                                     )
                                 ),
@@ -85,7 +85,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                     
                     ASTNode::new(
                         NodeKind::new_literal(
-                            LangValue::Function(Function::new(body, param_names))
+                            LiteralKind::Function(Function::new(body, param_names))
                         ),
                         TypeKind::Function(param_types)
                     )
@@ -120,7 +120,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
         },
         Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => return Err(LangError::new_parser_unexpected_token()),
         Token::Symbol(name) => ASTNode::new(NodeKind::new_variable_ref(name.clone()), TypeKind::Unknown),
-        Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.into()),
+        Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
         Token::Parenthesis(kind, state) => {
             match (kind, state) {
                 (ParenthesisKind::Round, ParenthesisState::Open) => {
@@ -216,7 +216,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
         Token::Import => {
             // identifier
             let identifier = match tokens.pop() {
-                Some(Token::Literal(LangValue::String(ident))) => ident,
+                Some(Token::Literal(LiteralKind::String(ident))) => ident,
                 Some(_) => return Err(LangError::new_parser_unexpected_token()),
                 None => return Err(LangError::new_parser_end_of_file()),
             };

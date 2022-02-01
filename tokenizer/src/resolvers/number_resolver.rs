@@ -1,4 +1,4 @@
-use common::{errors::LangError, lang_value::LangValue, messages::{FLOAT_PARSE_ERROR, INT_PARSE_ERROR}};
+use common::{errors::LangError, messages::{FLOAT_PARSE_ERROR, INT_PARSE_ERROR}, types::LiteralKind};
 
 use crate::tokens::Token;
 
@@ -54,12 +54,12 @@ impl Resolver {
     fn end_number(&self) -> Result<Token, LangError>  {
         if self.chars.contains('.') {
             match self.chars.parse::<f32>() {
-                Ok(value) => Ok(Token::Literal(LangValue::Float(value))),
+                Ok(value) => Ok(Token::Literal(LiteralKind::Float(value))),
                 Err(_) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
             }
         } else {
             match self.chars.parse::<i32>() {
-                Ok(value) => Ok(Token::Literal(LangValue::Int(value))),
+                Ok(value) => Ok(Token::Literal(LiteralKind::Int(value))),
                 Err(_) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
             }
         }

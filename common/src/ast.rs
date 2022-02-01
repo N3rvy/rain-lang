@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::{lang_value::LangValue, types::{MathOperatorKind, BoolOperatorKind, ReturnKind}};
+use crate::types::{MathOperatorKind, BoolOperatorKind, ReturnKind, TypeKind, LiteralKind};
 
 
 pub type ASTBody = Vec<ASTNode>;
@@ -15,47 +13,6 @@ impl ASTNode {
         Self {
             kind: Box::new(kind),
             eval_type,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum TypeKind {
-    Unknown,
-    Int,
-    Float,
-    String,
-    Bool,
-    Nothing,
-    Vector,
-    Function(Vec<TypeKind>),
-    Object(HashMap<String, TypeKind>)
-}
-
-impl TypeKind {
-    pub fn is_compatible(&self, other: &TypeKind) -> bool {
-
-        match (self, other) {
-            (a, b) if a == b => true,
-            (TypeKind::Unknown, _) => true,
-            (_, TypeKind::Unknown) => true,
-            _ => false
-        }
-    }
-}
-
-impl From<&LangValue> for TypeKind {
-    fn from(value: &LangValue) -> Self {
-        match value {
-            LangValue::Nothing => Self::Unknown,
-            LangValue::String(_) => Self::String,
-            LangValue::Int(_) => Self::Int,
-            LangValue::Float(_) => Self::Float,
-            LangValue::Bool(_) => Self::Bool,
-            LangValue::Function(_) => Self::Unknown,
-            LangValue::ExtFunction(_) => Self::Unknown,
-            LangValue::Vector(_) => Self::Unknown,
-            LangValue::Object(_) => Self::Unknown,
         }
     }
 }
@@ -85,7 +42,7 @@ pub enum NodeKind {
         parameters: ASTBody,
     },
     Literal {
-        value: LangValue,
+        value: LiteralKind,
     },
     MathOperation {
         operation: MathOperatorKind,
@@ -159,7 +116,7 @@ impl NodeKind {
         NodeKind::MethodInvok { object, name, parameters }
     }
     
-    pub fn new_literal(value: LangValue) -> NodeKind {
+    pub fn new_literal(value: LiteralKind) -> NodeKind {
         NodeKind::Literal { value }
     }
     

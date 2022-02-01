@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell};
 
-use common::{ast::{ASTNode, TypeKind, NodeKind}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}, lang_value::LangValue, types::{ReturnKind, MathOperatorKind}};
+use common::{ast::{ASTNode, NodeKind}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}, types::{ReturnKind, MathOperatorKind, TypeKind, LiteralKind}};
 
 
 macro_rules! assert_compatible_type {
@@ -106,7 +106,7 @@ fn check_node(node: &ASTNode, scope: &TypeScope) -> Result<TypeKind, LangError> 
         },
         NodeKind::Literal { value } => {
             match (value, &node.eval_type) {
-                (LangValue::Function(func), TypeKind::Function(func_types)) => {
+                (LiteralKind::Function(func), TypeKind::Function(func_types)) => {
                     let ret_type = match func_types.last() {
                         Some(t) => t,
                         None => return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string())),
