@@ -4,22 +4,25 @@ use std::{io::{BufRead, stdin}, fs};
 use interpreter::Interpreter;
 
 fn main() {
-    let engine = Engine::new(ReplImporter::default(), Interpreter::new());
+    let engine = Engine::new(ReplImporter::default(), Interpreter::default());
     
     // TODO: Reimplement engine.register("print", print.external());
     
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
-            match engine.execute(script) {
-                Ok(_) => (),
-                Err(err) => println!("{}", err),
-            }
+            let module = match engine.create_module(script) {
+                Ok(module) => module,
+                Err(err) => {
+                    println!("{}", err);
+                    continue
+                },
+            };
 
-            let func = match engine.get_function::<AnyValue>("main") {
+            let func = match engine.get_function::<AnyValue>(&module, "main") {
                 Some(func) => func,
                 None => continue,
             };
-            println!("{:?}", func(&engine.execution_engine));
+            println!("{:?}", func(&engine.execution_engine, &module));
         }
     }
 }

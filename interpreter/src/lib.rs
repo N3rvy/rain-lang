@@ -17,29 +17,37 @@ mod external_functions;
 mod object;
 mod errors;
 
-pub struct Interpreter<'a> {
-    global_scope: Scope<'a>,
+#[derive(Default)]
+pub struct Interpreter;
+
+pub struct Module<'a> {
+    scope: Scope<'a>,
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn new() -> Self {
+impl<'a> Module<'a> {
+    fn new(scope: Scope<'a>) -> Self {
         Self {
-            global_scope: Scope::new(),
+            scope
         }
     }
 }
 
-impl<'a> ExecutionEngine for Interpreter<'a> {
-    fn execute(&self, ast: ASTNode) -> Result<(), core::LangError> {
-        match self.evaluate_ast(&self.global_scope, &ast) {
-            EvalResult::Ok(_) | EvalResult::Ret(_, _) => Ok(()),
+
+impl ExecutionEngine for Interpreter {
+    type Module = Module<'static>;
+
+    fn create_module(&self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
+        let scope = Scope::new();
+
+        match self.evaluate_ast(&scope, &ast) {
+            EvalResult::Ok(_) | EvalResult::Ret(_, _) => Ok(Module::new(scope)),
             EvalResult::Err(err) => Err(err),
         }
     }
 
-    fn get_function<Ret: ExternalType>(&self, name: &str) -> Option<Box<dyn Fn(&Self) -> Result<Ret, LangError>>>
+    fn get_function<Ret: ExternalType>(&self, module: &Self::Module, name: &str) -> Option<Box<dyn Fn(&Self, &Self::Module) -> Result<Ret, LangError>>>
     {
-        let value = self.global_scope.get_var(&name.to_string());
+        let value = module.scope.get_var(&name.to_string());
         let func = match value {
             None => return None,
             Some(value) => match value {
@@ -49,9 +57,9 @@ impl<'a> ExecutionEngine for Interpreter<'a> {
         };
 
         // TODO: Missing parameters
-        Some(Box::new(move |exec_engine| {
+        Some(Box::new(move |exec_engine, module| {
             let result = exec_engine.invoke_function(
-                &Scope::new_child(&exec_engine.global_scope),
+                &Scope::new_child(&module.scope),
                 &LangValue::Function(func.clone()),
                 vec![],
             );
