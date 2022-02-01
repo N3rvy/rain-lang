@@ -1,4 +1,5 @@
-use common::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, ParenthesisKind, ParenthesisState, TypeKind, LiteralKind};
+use common::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, TypeKind, LiteralKind, ParenthesisKind, ParenthesisState};
+
 
 #[derive(Clone, Debug)]
 pub enum Token {

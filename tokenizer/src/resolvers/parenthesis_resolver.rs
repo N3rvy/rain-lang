@@ -1,4 +1,4 @@
-use common::{messages::INVALID_OPERATOR_TOKEN_ERROR, errors::LangError, types::{ParenthesisKind, ParenthesisState}};
+use common::{messages::INVALID_OPERATOR_TOKEN_ERROR, errors::LangError, ast::types::{ParenthesisKind, ParenthesisState}};
 
 use crate::tokens::Token;
 

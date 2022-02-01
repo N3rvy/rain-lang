@@ -1,4 +1,4 @@
-use common::{ast::{ASTNode, NodeKind}, errors::LangError, types::{ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind, TypeKind, LiteralKind, Function}, messages::UNEXPECTED_TOKEN};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, messages::UNEXPECTED_TOKEN};
 use tokenizer::tokens::Token;
 
 use crate::{utils::{parse_object_values, parse_type}, expect_token};

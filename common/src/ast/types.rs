@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc, fmt::Debug};
 
-use crate::ast::ASTBody;
-
+use super::ASTBody;
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {

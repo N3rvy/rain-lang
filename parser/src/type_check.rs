@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell};
 
-use common::{ast::{ASTNode, NodeKind}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}, types::{ReturnKind, MathOperatorKind, TypeKind, LiteralKind}};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, LiteralKind, MathOperatorKind, ReturnKind}}, errors::LangError, messages::{UNEXPECTED_ERROR, INCORRECT_NUMBER_OF_PARAMETERS, INCORRECT_FUNCTION_PARAMETER_TYPE}};
 
 
 macro_rules! assert_compatible_type {

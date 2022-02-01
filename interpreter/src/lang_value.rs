@@ -1,7 +1,7 @@
 use core::AnyValue;
 use std::{sync::Arc, fmt::Debug};
 
-use common::types::{Function, LiteralKind};
+use common::ast::types::{Function, LiteralKind};
 
 use crate::{external_functions::ExternalFunctionRunner, object::LangObject};
 

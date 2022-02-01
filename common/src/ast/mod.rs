@@ -1,4 +1,6 @@
-use crate::types::{MathOperatorKind, BoolOperatorKind, ReturnKind, TypeKind, LiteralKind};
+use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind};
+
+pub mod types;
 
 
 pub type ASTBody = Vec<ASTNode>;

@@ -1,4 +1,4 @@
-use common::{errors::LangError, messages::{FLOAT_PARSE_ERROR, INT_PARSE_ERROR}, types::LiteralKind};
+use common::{errors::LangError, messages::{FLOAT_PARSE_ERROR, INT_PARSE_ERROR}, ast::types::LiteralKind};
 
 use crate::tokens::Token;
 

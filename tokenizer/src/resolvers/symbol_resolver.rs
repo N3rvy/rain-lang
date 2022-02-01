@@ -1,4 +1,4 @@
-use common::types::{OperatorKind, TypeKind};
+use common::ast::types::{OperatorKind, TypeKind};
 
 use crate::tokens::Token;
 

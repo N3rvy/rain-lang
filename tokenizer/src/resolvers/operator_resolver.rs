@@ -1,4 +1,4 @@
-use common::{errors::LangError, types::{OperatorKind, MathOperatorKind, BoolOperatorKind}, messages::INVALID_OPERATOR_TOKEN_ERROR};
+use common::{errors::LangError, messages::INVALID_OPERATOR_TOKEN_ERROR, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}};
 
 use crate::tokens::Token;
 

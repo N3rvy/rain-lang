@@ -1,4 +1,4 @@
-use common::{errors::LangError, messages::INVALID_STRING_LITERAL, types::LiteralKind};
+use common::{errors::LangError, messages::INVALID_STRING_LITERAL, ast::types::LiteralKind};
 
 use crate::tokens::Token;
 
