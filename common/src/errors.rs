@@ -42,13 +42,6 @@ impl LangError {
         }
     }
     
-    pub fn new_parser_wo_token(message: String) -> Self {
-        Self {
-            kind: ErrorKind::Parser,
-            message
-        }
-    }
-    
     pub fn new_parser_unexpected_token() -> Self  {
         Self {
             kind: ErrorKind::Parser,
