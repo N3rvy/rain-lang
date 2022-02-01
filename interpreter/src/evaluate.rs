@@ -1,9 +1,9 @@
 use core::LangError;
 use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
 
-use common::{ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}}, messages::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION, NOT_YET_IMPLEMENTED}};
+use common::{ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}}};
 
-use crate::{Interpreter, lang_value::LangValue, object::LangObject};
+use crate::{Interpreter, lang_value::LangValue, object::LangObject, errors::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
 
 use super::scope::Scope;
 
@@ -217,7 +217,7 @@ impl<'a> Interpreter<'a> {
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
             NodeKind::Import { identifier: _ } => {
-                EvalResult::Err(LangError::new_runtime(NOT_YET_IMPLEMENTED.to_string()))
+                todo!()
             },
         }
     }
@@ -227,7 +227,7 @@ impl<'a> Interpreter<'a> {
             LangValue::Function(func) => {
                 // Parameters
                 if func.parameters.len() != func.parameters.len() {
-                    return EvalResult::Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
+                    return EvalResult::Err(LangError::new_runtime(FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
                 }
         
                 let func_scope = Scope::new_child(scope);

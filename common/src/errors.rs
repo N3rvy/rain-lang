@@ -1,6 +1,4 @@
 use std::fmt::{Display, Debug};
-use crate::messages::{UNEXPECTED_TOKEN, UNEXPECTED_END_OF_FILE, UNEXPECTED_ERROR, WRONG_TYPE};
-
 
 pub enum ErrorKind {
     Tokenizer,
@@ -39,34 +37,6 @@ impl LangError {
         Self {
             kind: ErrorKind::Parser,
             message
-        }
-    }
-    
-    pub fn new_parser_unexpected_token() -> Self  {
-        Self {
-            kind: ErrorKind::Parser,
-            message: UNEXPECTED_TOKEN.to_string(),
-        }
-    }
-    
-    pub fn new_parser_end_of_file() -> Self {
-        Self {
-            kind: ErrorKind::Parser,
-            message: UNEXPECTED_END_OF_FILE.to_string(),
-        }
-    }
-    
-    pub fn new_parser_unexpected_error() -> Self {
-        Self {
-            kind: ErrorKind::Parser,
-            message: UNEXPECTED_ERROR.to_string(),
-        }
-    }
-    
-    pub fn new_parser_wrong_type() -> Self {
-        Self {
-            kind: ErrorKind::Parser,
-            message: WRONG_TYPE.to_string(),
         }
     }
 

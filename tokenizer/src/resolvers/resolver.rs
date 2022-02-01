@@ -1,6 +1,6 @@
-use common::{errors::LangError, messages::UNEXPECTED_ERROR};
+use common::errors::LangError;
 
-use crate::tokens::Token;
+use crate::{tokens::Token, errors::UNEXPECTED_ERROR};
 
 
 #[allow(dead_code)]

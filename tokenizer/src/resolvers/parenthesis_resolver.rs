@@ -1,6 +1,6 @@
-use common::{messages::INVALID_OPERATOR_TOKEN_ERROR, errors::LangError, ast::types::{ParenthesisKind, ParenthesisState}};
+use common::{errors::LangError, ast::types::{ParenthesisKind, ParenthesisState}};
 
-use crate::tokens::Token;
+use crate::{tokens::Token, errors::INVALID_OPERATOR_TOKEN_ERROR};
 
 use super::resolver::{Resolver, ResolverKind, AddResult};
 

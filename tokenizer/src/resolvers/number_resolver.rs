@@ -1,6 +1,6 @@
-use common::{errors::LangError, messages::{FLOAT_PARSE_ERROR, INT_PARSE_ERROR}, ast::types::LiteralKind};
+use common::{errors::LangError, ast::types::LiteralKind};
 
-use crate::tokens::Token;
+use crate::{tokens::Token, errors::{INT_PARSE_ERROR, FLOAT_PARSE_ERROR}};
 
 use super::resolver::{Resolver, ResolverKind, AddResult};
 

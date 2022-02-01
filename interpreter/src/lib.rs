@@ -4,7 +4,7 @@
 use core::{ExecutionEngine, ExternalType};
 use common::ast::ASTNode;
 use common::errors::LangError;
-use common::messages::CANT_CONVERT_VALUE;
+use errors::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
 use lang_value::LangValue;
 use scope::Scope;
@@ -15,6 +15,7 @@ mod lang_value;
 mod convert_values;
 mod external_functions;
 mod object;
+mod errors;
 
 pub struct Interpreter<'a> {
     global_scope: Scope<'a>,

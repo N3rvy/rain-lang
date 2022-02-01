@@ -1,9 +1,7 @@
 use core::{LangError, ExternalType};
 use std::sync::Arc;
 
-use common::messages::{INCORRECT_NUMBER_OF_PARAMETERS, EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE};
-
-use crate::{lang_value::{LangValue, LangExternalFunction}, convert_values::ConvertLangValue};
+use crate::{lang_value::{LangValue, LangExternalFunction}, convert_values::ConvertLangValue, errors::{EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE, EXTERNAL_FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS}};
 
 
 pub struct ExternalFunctionRunner {
@@ -14,7 +12,7 @@ pub struct ExternalFunctionRunner {
 impl ExternalFunctionRunner {
     pub fn run(&self, args: Vec<LangValue>) -> Result<LangValue, LangError> {
         if args.len() != self.args_count {
-            return Err(LangError::new_runtime(INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
+            return Err(LangError::new_runtime(EXTERNAL_FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
         }
         
         match (self.func)(args) {

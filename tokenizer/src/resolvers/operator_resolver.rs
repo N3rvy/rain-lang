@@ -1,6 +1,6 @@
-use common::{errors::LangError, messages::INVALID_OPERATOR_TOKEN_ERROR, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}};
+use common::{errors::LangError, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}};
 
-use crate::tokens::Token;
+use crate::{tokens::Token, errors::INVALID_OPERATOR_TOKEN_ERROR};
 
 use super::resolver::{Resolver, ResolverKind, AddResult};
 

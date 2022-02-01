@@ -1,6 +1,6 @@
-use common::{errors::LangError, messages::INVALID_STRING_LITERAL, ast::types::LiteralKind};
+use common::{errors::LangError, ast::types::LiteralKind};
 
-use crate::tokens::Token;
+use crate::{tokens::Token, errors::INVALID_STRING_LITERAL};
 
 use super::resolver::{Resolver, ResolverKind, AddResult};
 

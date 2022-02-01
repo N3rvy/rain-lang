@@ -1,7 +1,7 @@
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, messages::UNEXPECTED_TOKEN};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError};
 use tokenizer::tokens::Token;
 
-use crate::{utils::{parse_object_values, parse_type}, expect_token};
+use crate::{utils::{parse_object_values, parse_type}, expect_token, errors::ParsingErrorHelper};
 
 use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
 
@@ -180,7 +180,7 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
             // iter name
             let iter_name = match tokens.pop() {
                 Some(Token::Symbol(name)) => name,
-                _ => return Err(LangError::new_parser(UNEXPECTED_TOKEN.to_string())),
+                _ => return Err(LangError::new_parser_unexpected_token()),
             };
             
             // in
