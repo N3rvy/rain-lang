@@ -1,33 +1,23 @@
-use common::errors::LangError;
+use common::{errors::LangError, ast::ASTNode};
 use parser::{parser::parse, type_check::check_types};
 use tokenizer::tokenizer::tokenize;
+use crate::externals::ExternalType;
 
-use crate::{import::Importer, execution_engine::ExecutionEngine, externals::ExternalType};
 
+pub trait Engine {
+    type Module;
 
-pub struct Engine<Imp: Importer, Exec: ExecutionEngine> {
-    _importer: Imp,
-    pub execution_engine: Exec,
-}
-
-impl<Imp: Importer, Exec: ExecutionEngine> Engine<Imp, Exec> {
-    pub fn new(importer: Imp, execution_engine: Exec) -> Self {
-        Self {
-            _importer: importer,
-            execution_engine,
-        }
-    }
-
-    pub fn create_module(&self, script: String) -> Result<Exec::Module, LangError> {
+    fn create_module(&self, script: String) -> Result<Self::Module, LangError> {
         let tokens = tokenize(script)?;
         let ast = parse(tokens)?;
         
         check_types(&ast)?;
 
-        self.execution_engine.create_module(ast)
+        self.create_module_from_ast(ast)
     }
 
-    pub fn get_function<Ret: ExternalType>(&self, module: &Exec::Module, name: &str) -> Option<Box<dyn Fn(&Exec, &Exec::Module) -> Result<Ret, LangError>>> {
-        self.execution_engine.get_function(module, name)
-    }
+    fn new() -> Self;
+    
+    fn create_module_from_ast(&self, ast: ASTNode) -> Result<Self::Module, LangError>;
+    fn get_function<Ret: ExternalType>(&self, module: &Self::Module, name: &str) -> Option<Box<dyn Fn(&Self, &Self::Module) -> Result<Ret, LangError>>>;
 }

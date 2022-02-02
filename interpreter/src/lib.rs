@@ -1,7 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use core::{ExecutionEngine, ExternalType};
+use core::{ExternalType, Engine};
 use common::ast::ASTNode;
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
@@ -18,7 +18,7 @@ mod object;
 mod errors;
 
 #[derive(Default)]
-pub struct Interpreter;
+pub struct InterpreterEngine;
 
 pub struct Module<'a> {
     scope: Scope<'a>,
@@ -33,10 +33,14 @@ impl<'a> Module<'a> {
 }
 
 
-impl ExecutionEngine for Interpreter {
+impl Engine for InterpreterEngine {
     type Module = Module<'static>;
 
-    fn create_module(&self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn create_module_from_ast(&self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
         let scope = Scope::new();
 
         match self.evaluate_ast(&scope, &ast) {

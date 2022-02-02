@@ -3,7 +3,7 @@ use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap
 
 use common::{ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}}};
 
-use crate::{Interpreter, lang_value::LangValue, object::LangObject, errors::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
+use crate::{InterpreterEngine, lang_value::LangValue, object::LangObject, errors::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
 
 use super::scope::Scope;
 
@@ -47,7 +47,7 @@ macro_rules! expect_some {
 }
 
 
-impl Interpreter {
+impl InterpreterEngine {
     pub fn evaluate_ast(&self, scope: &Scope, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
             NodeKind::Root { body } => {

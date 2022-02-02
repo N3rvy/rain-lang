@@ -1,10 +1,9 @@
-use core::{Engine, Importer, ImportResult, AnyValue};
-use std::{io::{BufRead, stdin}, fs};
-
-use interpreter::Interpreter;
+use core::{AnyValue, Engine};
+use std::io::{stdin, BufRead};
+use interpreter::InterpreterEngine;
 
 fn main() {
-    let engine = Engine::new(ReplImporter::default(), Interpreter::default());
+    let engine: InterpreterEngine = Engine::new();
     
     // TODO: Reimplement engine.register("print", print.external());
     
@@ -22,7 +21,7 @@ fn main() {
                 Some(func) => func,
                 None => continue,
             };
-            println!("{:?}", func(&engine.execution_engine, &module));
+            println!("{:?}", func(&engine, &module));
         }
     }
 }
@@ -30,15 +29,3 @@ fn main() {
 // fn print(value: LangValue) {
 //     println!("{}", value.to_string());
 // }
-
-#[derive(Default)]
-struct ReplImporter;
-
-impl Importer for ReplImporter {
-    fn import(&self, identifier: &String) -> ImportResult {
-        match fs::read_to_string(identifier) {
-            Ok(script) => ImportResult::Imported(script),
-            Err(_) => ImportResult::NotFound,
-        }
-    }
-}
