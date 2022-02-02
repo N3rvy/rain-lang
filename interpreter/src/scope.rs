@@ -1,6 +1,6 @@
-use std::{collections::HashMap, cell::RefCell, sync::{Arc, Mutex}};
+use std::{collections::HashMap, cell::RefCell, sync::Mutex};
 
-use crate::{lang_value::LangValue, external_functions::ExternalFunctionRunner};
+use crate::lang_value::LangValue;
 
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
@@ -24,10 +24,6 @@ impl<'a> Scope<'a> {
     
     pub fn declare_var(&self, name: String, value: LangValue) {
         self.variables.lock().unwrap().borrow_mut().insert(name, value); 
-    }
-    
-    pub fn declare_ext_func(&self, name: &str, runner: ExternalFunctionRunner)  {
-        self.variables.lock().unwrap().borrow_mut().insert(name.to_string(), LangValue::ExtFunction(Arc::new(runner)));
     }
     
     pub(super) fn get_var(&self, name: &String) -> Option<LangValue> {

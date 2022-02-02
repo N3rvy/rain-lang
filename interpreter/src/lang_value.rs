@@ -378,6 +378,19 @@ impl Into<Option<AnyValue>> for LangValue {
     }
 }
 
+impl Into<AnyValue> for LangValue {
+    fn into(self) -> AnyValue {
+        match self {
+            LangValue::Nothing => AnyValue::Nothing,
+            LangValue::String(str) => AnyValue::String(str),
+            LangValue::Int(i) => AnyValue::Int(i),
+            LangValue::Float(f) => AnyValue::Float(f),
+            LangValue::Bool(b) => AnyValue::Bool(b),
+            _ => AnyValue::Nothing,
+        }
+    }
+}
+
 impl From<AnyValue> for LangValue {
     fn from(val: AnyValue) -> Self {
         match val {

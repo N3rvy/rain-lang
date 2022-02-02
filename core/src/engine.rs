@@ -21,3 +21,8 @@ pub trait Engine {
     fn create_module_from_ast(&self, ast: ASTNode) -> Result<Self::Module, LangError>;
     fn get_function<Ret: ExternalType>(&self, module: &Self::Module, name: &str) -> Option<Box<dyn Fn(&Self, &Self::Module) -> Result<Ret, LangError>>>;
 }
+
+pub trait EngineSetFunction<Args, R: ExternalType> : Engine {
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<Args, Output = R> + Send + Sync + 'static;
+}

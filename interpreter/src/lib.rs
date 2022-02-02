@@ -1,18 +1,18 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use core::{ExternalType, Engine};
+use core::{ExternalType, Engine, EngineSetFunction};
 use common::ast::ASTNode;
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
+use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
 
 mod scope;
 mod evaluate;
 mod lang_value;
-mod convert_values;
 mod external_functions;
 mod object;
 mod errors;
@@ -82,5 +82,80 @@ impl Engine for InterpreterEngine {
                 },
             }
         }))
+    }
+}
+
+impl<R> EngineSetFunction<(), R> for InterpreterEngine
+where
+    R: ExternalType
+{
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<(), Output = R> + Send + Sync + 'static
+    {
+        let ext_func = IntoExternalFunctionRunner::<(), R>::external(func);
+
+        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+    }
+}
+
+impl<R, A0> EngineSetFunction<(A0,), R> for InterpreterEngine
+where
+    A0: ExternalType,
+    R: ExternalType
+{
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<(A0,), Output = R> + Send + Sync + 'static
+    {
+        let ext_func = IntoExternalFunctionRunner::<(A0,), R>::external(func);
+
+        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+    }
+}
+
+impl<R, A0, A1> EngineSetFunction<(A0, A1), R> for InterpreterEngine
+where
+    A0: ExternalType,
+    A1: ExternalType,
+    R: ExternalType
+{
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static
+    {
+        let ext_func = IntoExternalFunctionRunner::<(A0, A1), R>::external(func);
+
+        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+    }
+}
+
+impl<R, A0, A1, A2> EngineSetFunction<(A0, A1, A2), R> for InterpreterEngine
+where
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    R: ExternalType
+{
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static
+    {
+        let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2), R>::external(func);
+
+        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+    }
+}
+
+impl<R, A0, A1, A2, A3> EngineSetFunction<(A0, A1, A2, A3), R> for InterpreterEngine
+where
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    A3: ExternalType,
+    R: ExternalType
+{
+    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static
+    {
+        let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2, A3), R>::external(func);
+
+        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }

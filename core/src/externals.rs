@@ -83,3 +83,81 @@ pub enum AnyValue {
     Bool(bool),
     String(String),
 }
+
+impl ToString for AnyValue {
+    fn to_string(&self) -> String {
+        match self {
+            AnyValue::Nothing => "[Nothing]".to_string(),
+            AnyValue::Int(i) => i.to_string(),
+            AnyValue::Float(f) => f.to_string(),
+            AnyValue::Bool(b) => b.to_string(),
+            AnyValue::String(s) => s.clone(),
+        }
+    }
+}
+
+
+pub trait ExternalFunction<Args> {
+    type Output: ExternalType;
+
+    fn args_count(&self) -> usize;
+}
+
+impl<R, F> ExternalFunction<()> for F
+where
+    R: ExternalType,
+    F: Fn<(), Output = R>,
+{
+    type Output = R;
+
+    fn args_count(&self) -> usize { 0 }
+}
+
+impl<A0, R, F> ExternalFunction<(A0,)> for F
+where
+    A0: ExternalType,
+    R: ExternalType,
+    F: Fn<(A0,), Output = R>,
+{
+    type Output = R;
+
+    fn args_count(&self) -> usize { 1 }
+}
+
+impl<A0, A1, R, F> ExternalFunction<(A0, A1)> for F
+where
+    A0: ExternalType,
+    R: ExternalType,
+    F: Fn<(A0, A1), Output = R>,
+{
+    type Output = R;
+
+    fn args_count(&self) -> usize { 2 }
+}
+
+impl<A0, A1, A2, R, F> ExternalFunction<(A0, A1, A2)> for F
+where
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    R: ExternalType,
+    F: Fn<(A0, A1, A2), Output = R>,
+{
+    type Output = R;
+
+    fn args_count(&self) -> usize { 3 }
+}
+
+impl<A0, A1, A2, A3, R, F> ExternalFunction<(A0, A1, A2, A3)> for F
+where
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    A3: ExternalType,
+    R: ExternalType,
+    F: Fn<(A0, A1, A2, A3), Output = R>,
+{
+    type Output = R;
+
+    fn args_count(&self) -> usize { 4 }
+}

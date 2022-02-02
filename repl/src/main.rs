@@ -1,11 +1,9 @@
-use core::{AnyValue, Engine};
+use core::{AnyValue, Engine, EngineSetFunction};
 use std::io::{stdin, BufRead};
 use interpreter::InterpreterEngine;
 
 fn main() {
-    let engine: InterpreterEngine = Engine::new();
-    
-    // TODO: Reimplement engine.register("print", print.external());
+    let engine = InterpreterEngine::new();
     
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
@@ -17,6 +15,8 @@ fn main() {
                 },
             };
 
+            engine.set_function(&module, "print", print);
+
             let func = match engine.get_function::<AnyValue>(&module, "main") {
                 Some(func) => func,
                 None => continue,
@@ -26,6 +26,6 @@ fn main() {
     }
 }
 
-// fn print(value: LangValue) {
-//     println!("{}", value.to_string());
-// }
+fn print(val: AnyValue) {
+    println!("{}", val.to_string());
+}

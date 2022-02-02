@@ -1,7 +1,7 @@
 use core::{LangError, ExternalType};
 use std::sync::Arc;
 
-use crate::{lang_value::{LangValue, LangExternalFunction}, convert_values::ConvertLangValue, errors::{EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE, EXTERNAL_FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS}};
+use crate::{lang_value::{LangValue, LangExternalFunction}, errors::{EXTERNAL_FUNCTION_PARAMETER_WRONG_TYPE, EXTERNAL_FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS}};
 
 
 pub struct ExternalFunctionRunner {
@@ -28,11 +28,9 @@ pub trait IntoExternalFunctionRunner<A, R: ExternalType> {
 }
 
 
-// TODO: Maybe make a macro for this
-
 impl<R, F> IntoExternalFunctionRunner<(), R> for F
 where
-    R: ConvertLangValue,
+    R: ExternalType,
     F: Fn<(), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> LangExternalFunction {
@@ -41,7 +39,7 @@ where
             func: Box::new(move |_| {
                 let res = self();
                 
-                Some(R::from(res))
+                Some(R::generilize(res).into())
             }),
         })
     }
@@ -49,19 +47,19 @@ where
 
 impl<A0, R, F> IntoExternalFunctionRunner<(A0,), R> for F
 where
-    A0: ConvertLangValue,
-    R: ConvertLangValue,
+    A0: ExternalType,
+    R: ExternalType,
     F: Fn<(A0,), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 1,
             func: Box::new(move |args| {
-                let arg0 = A0::into(&args[0])?;
+                let arg0 = A0::concretize(args[0].clone().into())?;
                 
                 let res = self(arg0);
                 
-                Some(R::from(res))
+                Some(R::generilize(res).into())
             }),
         })
     }
@@ -69,21 +67,21 @@ where
 
 impl<A0, A1, R, F> IntoExternalFunctionRunner<(A0,A1), R> for F
 where
-    A0: ConvertLangValue,
-    A1: ConvertLangValue,
-    R: ConvertLangValue,
+    A0: ExternalType,
+    A1: ExternalType,
+    R: ExternalType,
     F: Fn<(A0,A1), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
-                let arg0 = A0::into(&args[0])?;
-                let arg1 = A1::into(&args[1])?;
+                let arg0 = A0::concretize(args[0].clone().into())?;
+                let arg1 = A1::concretize(args[1].clone().into())?;
                 
                 let res = self(arg0, arg1);
                 
-                Some(R::from(res))
+                Some(R::generilize(res).into())
             }),
         })
     }
@@ -91,23 +89,23 @@ where
 
 impl<A0, A1, A2, R, F> IntoExternalFunctionRunner<(A0,A1,A2), R> for F
 where
-    A0: ConvertLangValue,
-    A1: ConvertLangValue,
-    A2: ConvertLangValue,
-    R: ConvertLangValue,
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    R: ExternalType,
     F: Fn<(A0,A1,A2), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
-                let arg0 = A0::into(&args[0])?;
-                let arg1 = A1::into(&args[1])?;
-                let arg2 = A2::into(&args[2])?;
+                let arg0 = A0::concretize(args[0].clone().into())?;
+                let arg1 = A1::concretize(args[1].clone().into())?;
+                let arg2 = A2::concretize(args[2].clone().into())?;
                 
                 let res = self(arg0, arg1, arg2);
                 
-                Some(R::from(res))
+                Some(R::generilize(res).into())
             }),
         })
     }
@@ -115,25 +113,25 @@ where
 
 impl<A0, A1, A2, A3, R, F> IntoExternalFunctionRunner<(A0,A1,A2,A3), R> for F
 where
-    A0: ConvertLangValue,
-    A1: ConvertLangValue,
-    A2: ConvertLangValue,
-    A3: ConvertLangValue,
-    R: ConvertLangValue,
+    A0: ExternalType,
+    A1: ExternalType,
+    A2: ExternalType,
+    A3: ExternalType,
+    R: ExternalType,
     F: Fn<(A0,A1,A2,A3), Output = R> + Send + Sync + 'static
 {
     fn external(self) -> LangExternalFunction {
         Arc::new(ExternalFunctionRunner {
             args_count: 2,
             func: Box::new(move |args| {
-                let arg0 = A0::into(&args[0])?;
-                let arg1 = A1::into(&args[1])?;
-                let arg2 = A2::into(&args[2])?;
-                let arg3 = A3::into(&args[3])?;
+                let arg0 = A0::concretize(args[0].clone().into())?;
+                let arg1 = A1::concretize(args[1].clone().into())?;
+                let arg2 = A2::concretize(args[2].clone().into())?;
+                let arg3 = A3::concretize(args[3].clone().into())?;
                 
                 let res = self(arg0, arg1, arg2, arg3);
                 
-                Some(R::from(res))
+                Some(R::generilize(res).into())
             }),
         })
     }
