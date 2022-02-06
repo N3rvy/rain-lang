@@ -17,8 +17,18 @@ mod external_functions;
 mod object;
 mod errors;
 
-#[derive(Default)]
-pub struct InterpreterEngine;
+pub struct InterpreterEngine<'a> {
+    global_module: Module<'a>,
+}
+
+impl<'a> Default for InterpreterEngine<'a> {
+    fn default() -> Self {
+        Self {
+            global_module: Module::new(Scope::new())
+        }
+    }
+}
+
 
 pub struct Module<'a> {
     scope: Scope<'a>,
@@ -33,15 +43,17 @@ impl<'a> Module<'a> {
 }
 
 
-impl Engine for InterpreterEngine {
-    type Module = Module<'static>;
+impl<'a> Engine<'a> for InterpreterEngine<'a> {
+    type Module = Module<'a>;
 
     fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
-    fn create_module_from_ast(&self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
-        let scope = Scope::new();
+    fn global_module(&'a self) -> &Self::Module { &self.global_module }
+
+    fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
+        let scope = Scope::new_child(&self.global_module.scope);
 
         match self.evaluate_ast(&scope, &ast) {
             EvalResult::Ok(_) | EvalResult::Ret(_, _) => Ok(Module::new(scope)),
@@ -85,11 +97,11 @@ impl Engine for InterpreterEngine {
     }
 }
 
-impl<R> EngineSetFunction<(), R> for InterpreterEngine
+impl<'a, R> EngineSetFunction<'a, (), R> for InterpreterEngine<'a>
 where
     R: ExternalType
 {
-    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(), Output = R> + Send + Sync + 'static
     {
         let ext_func = IntoExternalFunctionRunner::<(), R>::external(func);
@@ -98,12 +110,12 @@ where
     }
 }
 
-impl<R, A0> EngineSetFunction<(A0,), R> for InterpreterEngine
+impl<'a, R, A0> EngineSetFunction<'a, (A0,), R> for InterpreterEngine<'a>
 where
     A0: ExternalType,
     R: ExternalType
 {
-    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0,), Output = R> + Send + Sync + 'static
     {
         let ext_func = IntoExternalFunctionRunner::<(A0,), R>::external(func);
@@ -112,13 +124,13 @@ where
     }
 }
 
-impl<R, A0, A1> EngineSetFunction<(A0, A1), R> for InterpreterEngine
+impl<'a, R, A0, A1> EngineSetFunction<'a, (A0, A1), R> for InterpreterEngine<'a>
 where
     A0: ExternalType,
     A1: ExternalType,
     R: ExternalType
 {
-    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static
     {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1), R>::external(func);
@@ -127,14 +139,14 @@ where
     }
 }
 
-impl<R, A0, A1, A2> EngineSetFunction<(A0, A1, A2), R> for InterpreterEngine
+impl<'a, R, A0, A1, A2> EngineSetFunction<'a, (A0, A1, A2), R> for InterpreterEngine<'a>
 where
     A0: ExternalType,
     A1: ExternalType,
     A2: ExternalType,
     R: ExternalType
 {
-    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static
     {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2), R>::external(func);
@@ -143,7 +155,7 @@ where
     }
 }
 
-impl<R, A0, A1, A2, A3> EngineSetFunction<(A0, A1, A2, A3), R> for InterpreterEngine
+impl<'a, R, A0, A1, A2, A3> EngineSetFunction<'a, (A0, A1, A2, A3), R> for InterpreterEngine<'a>
 where
     A0: ExternalType,
     A1: ExternalType,
@@ -151,7 +163,7 @@ where
     A3: ExternalType,
     R: ExternalType
 {
-    fn set_function<F>(&self, module: &Self::Module, name: &str, func: F)
+    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static
     {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2, A3), R>::external(func);

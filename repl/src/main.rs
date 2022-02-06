@@ -4,6 +4,8 @@ use interpreter::InterpreterEngine;
 
 fn main() {
     let engine = InterpreterEngine::new();
+
+    engine.set_function("print", print);
     
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
@@ -14,8 +16,6 @@ fn main() {
                     continue
                 },
             };
-
-            engine.set_function(&module, "print", print);
 
             let func = match engine.get_function::<AnyValue>(&module, "main") {
                 Some(func) => func,

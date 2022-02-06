@@ -47,7 +47,7 @@ macro_rules! expect_some {
 }
 
 
-impl InterpreterEngine {
+impl<'a> InterpreterEngine<'a> {
     pub fn evaluate_ast(&self, scope: &Scope, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
             NodeKind::Root { body } => {
