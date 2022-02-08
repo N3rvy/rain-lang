@@ -1,8 +1,10 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction};
+use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
+use std::sync::Arc;
 use common::ast::ASTNode;
+use common::ast::types::Function;
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
@@ -62,9 +64,44 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
     }
 } 
 
-impl<'a, R: ExternalType> EngineGetFunction <'a, (&Self, &<Self as Engine<'a>>::Module), R> for InterpreterEngine<'a> {
-    fn get_function(&self, module: &Self::Module, name: &str)
-        -> Option<Box<dyn Fn((&Self, &<Self as Engine<'a>>::Module)) -> Result<R, LangError>>>
+pub struct InterpreterFunction<'a> {
+    engine: &'a InterpreterEngine<'a>,
+    module: &'a Module<'a>,
+    func: Arc<Function>,
+}
+
+impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
+    for InterpreterFunction<'_>
+{
+    fn call(&self, _args: ()) -> Result<R, LangError> {
+        let result = self.engine.invoke_function(
+            &Scope::new_child(&self.module.scope),
+            &LangValue::Function(self.func.clone()),
+            vec![],
+        );
+
+        let value = match result {
+            EvalResult::Ok(value) => value,
+            EvalResult::Ret(value, _) => value,
+            EvalResult::Err(err) => return Err(err),
+        };
+
+        match value.into() {
+            None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
+            Some(value) => match R::concretize(value) {
+                None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
+                Some(value) => Ok(value),
+            },
+        }
+    }
+}
+
+impl<'a, R: ExternalType> EngineGetFunction
+    <'a, (), Result<R, LangError>, InterpreterFunction<'a>>
+    for InterpreterEngine<'a>
+{
+    fn get_function(&'a self, module: &'a Self::Module, name: &str)
+        -> Option<InterpreterFunction<'a>>
     {
         let value = module.scope.get_var(&name.to_string());
         let func = match value {
@@ -74,29 +111,12 @@ impl<'a, R: ExternalType> EngineGetFunction <'a, (&Self, &<Self as Engine<'a>>::
                 _ => return None
             },
         };
-
-        // TODO: Missing parameters
-        Some(Box::new(move |(exec_engine, module)| {
-            let result = exec_engine.invoke_function(
-                &Scope::new_child(&module.scope),
-                &LangValue::Function(func.clone()),
-                vec![],
-            );
-
-            let value = match result {
-                EvalResult::Ok(value) => value,
-                EvalResult::Ret(value, _) => value,
-                EvalResult::Err(err) => return Err(err),
-            };
-
-            match value.into() {
-                None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
-                Some(value) => match R::concretize(value) {
-                    None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
-                    Some(value) => Ok(value),
-                },
-            }
-        }))
+        
+        Some(InterpreterFunction {
+            engine: self,
+            module,
+            func,
+        })
     }
 }
 

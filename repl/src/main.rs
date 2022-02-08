@@ -1,4 +1,4 @@
-use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction};
+use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction, LangError};
 use std::io::{stdin, BufRead};
 use interpreter::InterpreterEngine;
 
@@ -17,11 +17,11 @@ fn main() {
                 },
             };
 
-            let func = match EngineGetFunction::<_, AnyValue>::get_function(&engine, &module, "main") {
+            let func = match EngineGetFunction::<'_, (), Result<i32, LangError>, _>::get_function(&engine, &module, "main") {
                 Some(func) => func,
                 None => continue,
             };
-            println!("{:?}", func((&engine, &module)));
+            println!("{:?}", InternalFunction::<(), Result<i32, LangError>>::call(&func, ()));
         }
     }
 }

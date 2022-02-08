@@ -22,9 +22,13 @@ pub trait Engine<'a> {
     fn global_module(&'a self) -> &Self::Module;
 }
 
-pub trait EngineGetFunction<'a, Args, R: ExternalType> : Engine<'a> {
-    fn get_function(&self, module: &Self::Module, name: &str)
-        -> Option<Box<dyn Fn(Args) -> Result<R, LangError>>>;
+pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
+    fn get_function(&'a self, module: &'a Self::Module, name: &str)
+        -> Option<Ret>;
+}
+
+pub trait InternalFunction<Args, R> {
+    fn call(&self, args: Args) -> R;
 }
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
