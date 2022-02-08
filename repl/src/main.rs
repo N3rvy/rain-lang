@@ -1,6 +1,6 @@
-use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction, LangError};
+use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::io::{stdin, BufRead};
-use interpreter::InterpreterEngine;
+use interpreter::{InterpreterEngine, InterpreterFunction};
 
 fn main() {
     let engine = InterpreterEngine::new();
@@ -17,11 +17,11 @@ fn main() {
                 },
             };
 
-            let func = match EngineGetFunction::<'_, (), Result<i32, LangError>, _>::get_function(&engine, &module, "main") {
+            let func: InterpreterFunction<(), i32> = match engine.get_function(&module, "main") {
                 Some(func) => func,
                 None => continue,
             };
-            println!("{:?}", InternalFunction::<(), Result<i32, LangError>>::call(&func, ()));
+            println!("{:?}", func.call(()));
         }
     }
 }

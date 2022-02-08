@@ -2,6 +2,7 @@
 #![feature(try_trait_v2)]
 
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
+use std::marker::PhantomData;
 use std::sync::Arc;
 use common::ast::ASTNode;
 use common::ast::types::Function;
@@ -64,14 +65,16 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
     }
 } 
 
-pub struct InterpreterFunction<'a> {
+pub struct InterpreterFunction<'a, Args, R: ExternalType> {
     engine: &'a InterpreterEngine<'a>,
     module: &'a Module<'a>,
     func: Arc<Function>,
+    phantom_args: PhantomData<Args>,
+    phantom_ret: PhantomData<R>,
 }
 
 impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
-    for InterpreterFunction<'_>
+    for InterpreterFunction<'_, (), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
         let result = self.engine.invoke_function(
@@ -97,11 +100,11 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
 }
 
 impl<'a, R: ExternalType> EngineGetFunction
-    <'a, (), Result<R, LangError>, InterpreterFunction<'a>>
+    <'a, (), Result<R, LangError>, InterpreterFunction<'a, (), R>>
     for InterpreterEngine<'a>
 {
     fn get_function(&'a self, module: &'a Self::Module, name: &str)
-        -> Option<InterpreterFunction<'a>>
+        -> Option<InterpreterFunction<'a, (), R>>
     {
         let value = module.scope.get_var(&name.to_string());
         let func = match value {
@@ -116,6 +119,8 @@ impl<'a, R: ExternalType> EngineGetFunction
             engine: self,
             module,
             func,
+            phantom_args: PhantomData::default(),
+            phantom_ret: PhantomData::default(),
         })
     }
 }
