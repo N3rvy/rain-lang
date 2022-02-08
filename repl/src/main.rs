@@ -1,4 +1,4 @@
-use core::{AnyValue, Engine, EngineSetFunction};
+use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction};
 use std::io::{stdin, BufRead};
 use interpreter::InterpreterEngine;
 
@@ -17,11 +17,11 @@ fn main() {
                 },
             };
 
-            let func = match engine.get_function::<AnyValue>(&module, "main") {
+            let func = match EngineGetFunction::<_, AnyValue>::get_function(&engine, &module, "main") {
                 Some(func) => func,
                 None => continue,
             };
-            println!("{:?}", func(&engine, &module));
+            println!("{:?}", func((&engine, &module)));
         }
     }
 }

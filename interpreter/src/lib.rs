@@ -1,7 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use core::{ExternalType, Engine, EngineSetFunction};
+use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction};
 use common::ast::ASTNode;
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
@@ -60,8 +60,11 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
             EvalResult::Err(err) => Err(err),
         }
     }
+} 
 
-    fn get_function<Ret: ExternalType>(&self, module: &Self::Module, name: &str) -> Option<Box<dyn Fn(&Self, &Self::Module) -> Result<Ret, LangError>>>
+impl<'a, R: ExternalType> EngineGetFunction <'a, (&Self, &<Self as Engine<'a>>::Module), R> for InterpreterEngine<'a> {
+    fn get_function(&self, module: &Self::Module, name: &str)
+        -> Option<Box<dyn Fn((&Self, &<Self as Engine<'a>>::Module)) -> Result<R, LangError>>>
     {
         let value = module.scope.get_var(&name.to_string());
         let func = match value {
@@ -73,7 +76,7 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
         };
 
         // TODO: Missing parameters
-        Some(Box::new(move |exec_engine, module| {
+        Some(Box::new(move |(exec_engine, module)| {
             let result = exec_engine.invoke_function(
                 &Scope::new_child(&module.scope),
                 &LangValue::Function(func.clone()),
@@ -88,7 +91,7 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
 
             match value.into() {
                 None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
-                Some(value) => match Ret::concretize(value) {
+                Some(value) => match R::concretize(value) {
                     None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
                     Some(value) => Ok(value),
                 },

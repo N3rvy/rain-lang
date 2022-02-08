@@ -19,8 +19,12 @@ pub trait Engine<'a> {
     fn new() -> Self;
     
     fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, LangError>;
-    fn get_function<Ret: ExternalType>(&self, module: &Self::Module, name: &str) -> Option<Box<dyn Fn(&Self, &Self::Module) -> Result<Ret, LangError>>>;
     fn global_module(&'a self) -> &Self::Module;
+}
+
+pub trait EngineGetFunction<'a, Args, R: ExternalType> : Engine<'a> {
+    fn get_function(&self, module: &Self::Module, name: &str)
+        -> Option<Box<dyn Fn(Args) -> Result<R, LangError>>>;
 }
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
