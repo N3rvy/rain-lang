@@ -53,8 +53,6 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
         Self::default()
     }
 
-    fn global_module(&'a self) -> &Self::Module { &self.global_module }
-
     fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
         let scope = Scope::new_child(&self.global_module.scope);
 
@@ -129,6 +127,11 @@ impl<'a, R> EngineSetFunction<'a, (), R> for InterpreterEngine<'a>
 where
     R: ExternalType
 {
+    fn set_function<F>(&'a self, name: &str, func: F)
+    where F: Fn<(), Output = R> + Send + Sync + 'static {
+        self.set_function_in_module(&self.global_module, name, func)
+    }
+
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(), Output = R> + Send + Sync + 'static
     {
@@ -143,6 +146,11 @@ where
     A0: ExternalType,
     R: ExternalType
 {
+    fn set_function<F>(&'a self, name: &str, func: F)
+    where F: Fn<(A0,), Output = R> + Send + Sync + 'static {
+        self.set_function_in_module(&self.global_module, name, func)
+    }
+
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0,), Output = R> + Send + Sync + 'static
     {
@@ -158,6 +166,11 @@ where
     A1: ExternalType,
     R: ExternalType
 {
+    fn set_function<F>(&'a self, name: &str, func: F)
+    where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static {
+        self.set_function_in_module(&self.global_module, name, func)
+    }
+
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static
     {
@@ -174,6 +187,11 @@ where
     A2: ExternalType,
     R: ExternalType
 {
+    fn set_function<F>(&'a self, name: &str, func: F)
+    where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static {
+        self.set_function_in_module(&self.global_module, name, func)
+    }
+
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static
     {
@@ -191,6 +209,11 @@ where
     A3: ExternalType,
     R: ExternalType
 {
+    fn set_function<F>(&'a self, name: &str, func: F)
+    where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static {
+        self.set_function_in_module(&self.global_module, name, func)
+    }
+
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static
     {

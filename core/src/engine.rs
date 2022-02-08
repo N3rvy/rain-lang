@@ -19,7 +19,6 @@ pub trait Engine<'a> {
     fn new() -> Self;
     
     fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, LangError>;
-    fn global_module(&'a self) -> &Self::Module;
 }
 
 pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
@@ -32,12 +31,8 @@ pub trait InternalFunction<Args, R> {
 }
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
-    #[inline]
     fn set_function<F>(&'a self, name: &str, func: F)
-    where F: Fn<Args, Output = R> + Send + Sync + 'static
-    {
-        self.set_function_in_module(self.global_module(), name, func);
-    }
+    where F: Fn<Args, Output = R> + Send + Sync + 'static;
 
     fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<Args, Output = R> + Send + Sync + 'static;
