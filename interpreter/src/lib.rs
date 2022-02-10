@@ -67,8 +67,7 @@ pub struct InterpreterFunction<'a, Args, R: ExternalType> {
     engine: &'a InterpreterEngine<'a>,
     module: &'a Module<'a>,
     func: Arc<Function>,
-    phantom_args: PhantomData<Args>,
-    phantom_ret: PhantomData<R>,
+    _marker: PhantomData<(Args, R)>,
 }
 
 impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
@@ -117,8 +116,7 @@ impl<'a, R: ExternalType> EngineGetFunction
             engine: self,
             module,
             func,
-            phantom_args: PhantomData::default(),
-            phantom_ret: PhantomData::default(),
+            _marker: PhantomData::default(),
         })
     }
 }
