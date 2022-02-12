@@ -1,4 +1,6 @@
-use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind};
+use std::sync::Arc;
+
+use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
 
 pub mod types;
 
@@ -26,6 +28,10 @@ pub enum NodeKind {
     VariableDecl {
         name: String,
         value: ASTNode,
+    },
+    FunctionDecl {
+        name: String,
+        value: Arc<Function>,
     },
     VaraibleRef {
         name: String,
@@ -100,6 +106,10 @@ impl NodeKind {
     
     pub fn new_variable_decl(name: String, value: ASTNode) -> NodeKind {
         NodeKind::VariableDecl { name, value }
+    }
+    
+    pub fn new_function_decl(name: String, value: Arc<Function>) -> NodeKind {
+        NodeKind::FunctionDecl { name, value }
     }
     
     pub fn new_variable_ref(name: String) -> NodeKind {

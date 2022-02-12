@@ -63,6 +63,10 @@ impl<'a> InterpreterEngine<'a> {
 
                 EvalResult::Ok(LangValue::Nothing)
             },
+            NodeKind::FunctionDecl { name, value } => {
+                scope.declare_var(name.clone(), LangValue::Function(value.clone()));
+                EvalResult::Ok(LangValue::Nothing)
+            },
             NodeKind::VaraibleRef { name } => {
                 match scope.get_var(name) {
                     Some(value) => EvalResult::Ok(value.clone()),

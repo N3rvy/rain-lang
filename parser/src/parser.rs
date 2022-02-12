@@ -55,16 +55,9 @@ pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangEr
                     let body = parse_body(tokens)?;
 
                     ASTNode::new(
-                        NodeKind::new_variable_decl(
+                        NodeKind::new_function_decl(
                             name,
-                            ASTNode::new(
-                                NodeKind::new_literal(
-                                    LiteralKind::Function(
-                                        Function::new(body, param_names)
-                                    )
-                                ),
-                                TypeKind::Function(param_types)
-                            )
+                            Function::new(body, param_names)
                         ),
                         TypeKind::Unknown
                     )

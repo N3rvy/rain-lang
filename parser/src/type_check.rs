@@ -80,6 +80,7 @@ fn check_node(node: &ASTNode, scope: &TypeScope) -> Result<TypeKind, LangError> 
             
             Ok(TypeKind::Nothing)
         },
+        NodeKind::FunctionDecl { name: _, value: _ } => Ok(TypeKind::Unknown),
         NodeKind::VaraibleRef { name } => Ok(scope.get_type(name)),
         NodeKind::VariableAsgn { name, value } => {
             let val_type = check_node(value, scope)?;
