@@ -8,8 +8,8 @@ pub struct LangObject {
     fields: Arc<Mutex<HashMap<String, LangValue>>>,
 }
 
+#[allow(dead_code)]
 impl LangObject {
-    
     pub fn new() -> Self {
         Self {
             fields: Arc::new(Mutex::new(HashMap::new())),

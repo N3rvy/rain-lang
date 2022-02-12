@@ -52,8 +52,8 @@ impl From<&LangValue> for LangValueDiscriminant {
 }
 
 
+#[allow(dead_code)]
 impl LangValue {
-    
     pub fn truthy(&self) -> bool {
         match self {
             LangValue::Nothing => false,
