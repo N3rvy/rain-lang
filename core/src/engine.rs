@@ -1,24 +1,30 @@
-use common::{errors::LangError, ast::ASTNode};
-use parser::{parser::parse, type_check::check_types};
+use common::{ast::ASTNode, errors::LangError};
+use parser::{type_check::check_types, parser::parse};
 use tokenizer::tokenizer::tokenize;
-use crate::externals::ExternalType;
+
+use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}};
 
 
-pub trait Engine<'a> {
+pub trait Engine<'a>
+where
+    Self: Sized
+{
     type Module;
+    type ModuleBuilder: ModuleBuilder<'a, Engine = Self>;
 
-    fn create_module(&'a self, script: String) -> Result<Self::Module, LangError> {
-        let tokens = tokenize(script)?;
+    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self::ModuleBuilder, Self> {
+        EngineModuleBuilder::<'a, Self::ModuleBuilder, Self>::new(&self)
+    }
+    
+    fn source_to_ast(source: &String) -> Result<ASTNode, LangError> {
+        let tokens = tokenize(source.clone())?;
         let ast = parse(tokens)?;
-        
         check_types(&ast)?;
 
-        self.create_module_from_ast(ast)
+        Ok(ast)
     }
 
     fn new() -> Self;
-    
-    fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, LangError>;
 }
 
 pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
@@ -32,8 +38,5 @@ pub trait InternalFunction<Args, R> {
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
     fn set_function<F>(&'a self, name: &str, func: F)
-    where F: Fn<Args, Output = R> + Send + Sync + 'static;
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
     where F: Fn<Args, Output = R> + Send + Sync + 'static;
 }

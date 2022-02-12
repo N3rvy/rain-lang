@@ -1,16 +1,17 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
+use core::module::EngineModule;
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use common::ast::ASTNode;
 use common::ast::types::Function;
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
+use module_builder::InterpreterModuleBuilder;
 use scope::Scope;
 
 mod scope;
@@ -19,25 +20,28 @@ mod lang_value;
 mod external_functions;
 mod object;
 mod errors;
+mod module_builder;
 
 pub struct InterpreterEngine<'a> {
-    global_module: Module<'a>,
+    global_module: InterpreterModule<'a>,
 }
 
 impl<'a> Default for InterpreterEngine<'a> {
     fn default() -> Self {
         Self {
-            global_module: Module::new(Scope::new())
+            global_module: InterpreterModule::new(Scope::new())
         }
     }
 }
 
 
-pub struct Module<'a> {
+pub struct InterpreterModule<'a> {
     scope: Scope<'a>,
 }
 
-impl<'a> Module<'a> {
+impl<'a> EngineModule for InterpreterModule<'a> {}
+
+impl<'a> InterpreterModule<'a> {
     fn new(scope: Scope<'a>) -> Self {
         Self {
             scope
@@ -47,25 +51,16 @@ impl<'a> Module<'a> {
 
 
 impl<'a> Engine<'a> for InterpreterEngine<'a> {
-    type Module = Module<'a>;
+    type Module = InterpreterModule<'a>;
+    type ModuleBuilder = InterpreterModuleBuilder;
 
     fn new() -> Self {
         Self::default()
     }
-
-    fn create_module_from_ast(&'a self, ast: ASTNode) -> Result<Self::Module, core::LangError> {
-        let scope = Scope::new_child(&self.global_module.scope);
-
-        match self.evaluate_ast(&scope, &ast) {
-            EvalResult::Ok(_) | EvalResult::Ret(_, _) => Ok(Module::new(scope)),
-            EvalResult::Err(err) => Err(err),
-        }
-    }
 } 
 
 pub struct InterpreterFunction<'a, Args, R: ExternalType> {
-    engine: &'a InterpreterEngine<'a>,
-    module: &'a Module<'a>,
+    module: &'a InterpreterModule<'a>,
     func: Arc<Function>,
     _marker: PhantomData<(Args, R)>,
 }
@@ -74,8 +69,8 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
     for InterpreterFunction<'_, (), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
-        let result = self.engine.invoke_function(
-            &Scope::new_child(&self.module.scope),
+        let scope = Scope::new_child(&self.module.scope);
+        let result = scope.invoke_function(
             &LangValue::Function(self.func.clone()),
             vec![],
         );
@@ -113,7 +108,6 @@ impl<'a, R: ExternalType> EngineGetFunction
         };
         
         Some(InterpreterFunction {
-            engine: self,
             module,
             func,
             _marker: PhantomData::default(),
@@ -127,15 +121,9 @@ where
 {
     fn set_function<F>(&'a self, name: &str, func: F)
     where F: Fn<(), Output = R> + Send + Sync + 'static {
-        self.set_function_in_module(&self.global_module, name, func)
-    }
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
-    where F: Fn<(), Output = R> + Send + Sync + 'static
-    {
         let ext_func = IntoExternalFunctionRunner::<(), R>::external(func);
 
-        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -146,15 +134,9 @@ where
 {
     fn set_function<F>(&'a self, name: &str, func: F)
     where F: Fn<(A0,), Output = R> + Send + Sync + 'static {
-        self.set_function_in_module(&self.global_module, name, func)
-    }
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
-    where F: Fn<(A0,), Output = R> + Send + Sync + 'static
-    {
         let ext_func = IntoExternalFunctionRunner::<(A0,), R>::external(func);
 
-        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -166,15 +148,9 @@ where
 {
     fn set_function<F>(&'a self, name: &str, func: F)
     where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static {
-        self.set_function_in_module(&self.global_module, name, func)
-    }
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
-    where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static
-    {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1), R>::external(func);
 
-        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -187,15 +163,9 @@ where
 {
     fn set_function<F>(&'a self, name: &str, func: F)
     where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static {
-        self.set_function_in_module(&self.global_module, name, func)
-    }
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
-    where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static
-    {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2), R>::external(func);
 
-        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -209,14 +179,8 @@ where
 {
     fn set_function<F>(&'a self, name: &str, func: F)
     where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static {
-        self.set_function_in_module(&self.global_module, name, func)
-    }
-
-    fn set_function_in_module<F>(&self, module: &Self::Module, name: &str, func: F)
-    where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static
-    {
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2, A3), R>::external(func);
 
-        module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }

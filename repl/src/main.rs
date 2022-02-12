@@ -9,7 +9,11 @@ fn main() {
     
     for script in stdin().lock().lines() {
         if let Ok(script) = script {
-            let module = match engine.create_module(script) {
+            let result = engine.build_module()
+                .with_source(script)
+                .build();
+
+            let module = match result {
                 Ok(module) => module,
                 Err(err) => {
                     println!("{}", err);
