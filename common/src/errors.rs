@@ -51,7 +51,7 @@ impl LangError {
         let message = match &self.kind {
             ErrorKind::Tokenizer => format!("Error while tokenizing the script:\n{}", self.message),
             ErrorKind::Parser => format!("Error while parsing the token\n{}", self.message),
-            ErrorKind::Runtime => format!("Error while parsing the node {}\n{}", /* TODO: Implement node name */"Not-Implemented", self.message),
+            ErrorKind::Runtime => format!("Error while executing the node {}\n{}", /* TODO: Implement node name */"Not-Implemented", self.message),
         };
         let _ = f.write_str(message.as_str());
     }
