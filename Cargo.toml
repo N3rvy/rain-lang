@@ -7,4 +7,5 @@ members = [
     "core",
     "repl",
     "interpreter",
+    "tests"
 ]
