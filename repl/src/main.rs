@@ -21,7 +21,7 @@ fn main() {
                 },
             };
 
-            let func: InterpreterFunction<(), i32> = match engine.get_function(&module, "main") {
+            let func: InterpreterFunction<(), AnyValue> = match engine.get_function(&module, "main") {
                 Some(func) => func,
                 None => continue,
             };
