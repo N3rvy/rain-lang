@@ -108,7 +108,7 @@ impl<'a> ParserScope<'a> {
                     if next_is_argument {
                         next_is_argument = false;
 
-                        let t = self.parse_type(tokens)?;
+                        let t = self.parse_type_error(tokens)?;
 
                         names.push(name.clone());
                         types.push(t);
@@ -169,17 +169,31 @@ impl<'a> ParserScope<'a> {
         Ok(body)
     }
 
-    pub fn parse_type(&self, tokens: &mut Vec<Token>) -> Result<TypeKind, LangError> {
+    pub fn parse_type_option(&self, tokens: &mut Vec<Token>) -> Result<Option<TypeKind>, LangError> {
         // :
         match tokens.last() {
             Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
-            _ => return Ok(TypeKind::Unknown)
+            _ => return Ok(None)
         }
 
+        // type
+        match tokens.pop() {
+            Some(Token::Type(tk)) => Ok(Some(tk)),
+            _ => Err(LangError::new_parser_unexpected_token())
+        }
+    }
+
+    pub fn parse_type_error(&self, tokens: &mut Vec<Token>) -> Result<TypeKind, LangError> {
+        // :
+        match tokens.last() {
+            Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
+            _ => return Err(LangError::new_parser_unexpected_token())
+        }
+
+        // type
         match tokens.pop() {
             Some(Token::Type(tk)) => Ok(tk),
             _ => Err(LangError::new_parser_unexpected_token())
         }
-    
     }
 }

@@ -78,7 +78,7 @@ impl<'a> ParserScope<'a> {
                         let (param_names, param_types) = self.parse_parameter_names(tokens)?;
 
                         // return type?
-                        let ret_type = self.parse_type(tokens)?;
+                        let ret_type = self.parse_type_error(tokens)?;
                         
                         // {
                         expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
@@ -105,7 +105,7 @@ impl<'a> ParserScope<'a> {
                         let (param_names, param_types) = self.parse_parameter_names(tokens)?;
 
                         // return type?
-                        let ret_type = self.parse_type(tokens)?;
+                        let ret_type = self.parse_type_error(tokens)?;
                         
                         // {
                         expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
@@ -141,7 +141,7 @@ impl<'a> ParserScope<'a> {
                 };
 
                 // ?(: type)
-                let assign_type = self.parse_type(tokens)?;
+                let assign_type = self.parse_type_option(tokens)?;
 
                 // =
                 expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
@@ -149,13 +149,14 @@ impl<'a> ParserScope<'a> {
                 // value
                 let value = self.parse_statement(tokens)?;
                 
-                let eval_type = if assign_type.is_unknown() {
-                    value.eval_type.clone()
-                } else {
-                    if !assign_type.is_compatible(&value.eval_type) {
-                        return Err(LangError::new_parser(INVALID_ASSIGN.to_string()))
-                    }
-                    assign_type
+                let eval_type = match assign_type {
+                    Some(type_kind) => {
+                        if !type_kind.is_compatible(&value.eval_type) {
+                            return Err(LangError::new_parser(INVALID_ASSIGN.to_string()))
+                        }
+                        type_kind
+                    },
+                    None => value.eval_type.clone(),
                 };
 
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
