@@ -51,6 +51,10 @@ impl<'a> ParserScope<'a> {
             },
         }
     }
+    
+    pub fn declare(&self, name: String, type_kind: TypeKind) {
+        self.types.borrow_mut().insert(name, type_kind);
+    }
 
     pub fn parse_statement(&self, tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
         let token = tokens.pop();
@@ -79,8 +83,14 @@ impl<'a> ParserScope<'a> {
                         // {
                         expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
 
+                        // creating the child scope
+                        let body_scope = self.new_child();
+                        // declaring the argument types
+                        for i in 0..param_names.len() {
+                            body_scope.declare(param_names[i].clone(), param_types[i].clone());
+                        }
                         // ...}
-                        let body = self.parse_body(tokens)?;
+                        let body = body_scope.parse_body(tokens)?;
 
                         ASTNode::new(
                             NodeKind::new_function_decl(
@@ -100,8 +110,14 @@ impl<'a> ParserScope<'a> {
                         // {
                         expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
 
+                        // creating the child scope
+                        let body_scope = self.new_child();
+                        // declaring the argument types
+                        for i in 0..param_names.len() {
+                            body_scope.declare(param_names[i].clone(), param_types[i].clone());
+                        }
                         // ...}
-                        let body = self.parse_body(tokens)?;
+                        let body = body_scope.parse_body(tokens)?;
                         
                         ASTNode::new(
                             NodeKind::new_literal(
@@ -212,7 +228,7 @@ impl<'a> ParserScope<'a> {
                 // {
                 expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
                 // ...}
-                let body = self.parse_body(tokens)?;
+                let body = self.new_child().parse_body(tokens)?;
                 
                 ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Nothing)
             },
@@ -239,7 +255,7 @@ impl<'a> ParserScope<'a> {
                 expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
                 
                 // ...}
-                let body = self.parse_body(tokens)?;
+                let body = self.new_child().parse_body(tokens)?;
                 
                 ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Nothing)
             },
@@ -249,7 +265,7 @@ impl<'a> ParserScope<'a> {
                 // {
                 expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
                 // ...}
-                let body = self.parse_body(tokens)?;
+                let body = self.new_child().parse_body(tokens)?;
                 
                 ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
             },

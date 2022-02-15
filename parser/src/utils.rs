@@ -180,5 +180,6 @@ impl<'a> ParserScope<'a> {
             Some(Token::Type(tk)) => Ok(tk),
             _ => Err(LangError::new_parser_unexpected_token())
         }
+    
     }
 }
