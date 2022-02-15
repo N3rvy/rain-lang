@@ -70,8 +70,8 @@ pub enum TypeKind {
     Bool,
     Nothing,
     Vector,
-    Function(Vec<TypeKind>),
-    Object(HashMap<String, TypeKind>)
+    Function(Vec<TypeKind>, Box<TypeKind>),
+    Object(HashMap<String, TypeKind>),
 }
 
 impl TypeKind {
@@ -82,6 +82,13 @@ impl TypeKind {
             (TypeKind::Unknown, _) => true,
             (_, TypeKind::Unknown) => true,
             _ => false
+        }
+    }
+    
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            TypeKind::Unknown => true,
+            _ => false,
         }
     }
 }

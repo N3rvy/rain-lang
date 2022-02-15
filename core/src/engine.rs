@@ -1,5 +1,5 @@
 use common::{ast::ASTNode, errors::LangError};
-use parser::{type_check::check_types, parser::parse};
+use parser::parser::parse;
 use tokenizer::tokenizer::tokenize;
 
 use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}};
@@ -19,7 +19,6 @@ where
     fn source_to_ast(source: &String) -> Result<ASTNode, LangError> {
         let tokens = tokenize(source.clone())?;
         let ast = parse(tokens)?;
-        check_types(&ast)?;
 
         Ok(ast)
     }
