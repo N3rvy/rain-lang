@@ -14,10 +14,7 @@ pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
     loop {
         if tokens.is_empty() { break }
 
-        match parse_statement(&mut tokens) {
-            Ok(node) => body.push(node),
-            Err(err) => return Err(err),
-        }
+        body.push(parse_statement(&mut tokens)?); 
     }
     
     Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Unknown))
