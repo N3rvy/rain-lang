@@ -327,30 +327,29 @@ impl<'a> ParserScope<'a> {
         match infix {
             Token::MathOperator(operator) => {
                 tokens.pop();
-                let right = self.parse_statement(tokens);
+                let right = self.parse_statement(tokens)?;
                 
-                match right {
-                    Ok(right) => Ok((
-                            ASTNode::new(
-                                NodeKind::new_math_operation(operator.clone(), node, right),
-                                TypeKind::Int), // TODO: Calculate type from values
-                            true)),
-                    Err(err) => Err(err),
-                }
+                let eval_type = Self::predict_math_result(operator.clone(), &node.eval_type, &right.eval_type);
+                
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_math_operation(operator.clone(), node, right),
+                        eval_type
+                    ),
+                    true
+                ))
             },
             Token::BoolOperator(operator) => {
                 tokens.pop();
-                let right = self.parse_statement(tokens);
+                let right = self.parse_statement(tokens)?;
                 
-                match right {
-                    Ok(right) => Ok((
-                        ASTNode::new(
-                            NodeKind::new_bool_operation(operator.clone(), node, right),
-                            TypeKind::Bool),
-                        true)),
-                    Err(err) => Err(err),
-                }
-
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_bool_operation(operator.clone(), node, right),
+                        TypeKind::Bool
+                    ),
+                    true
+                ))
             },
             Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
                 tokens.pop();

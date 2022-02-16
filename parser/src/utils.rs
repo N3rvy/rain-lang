@@ -1,4 +1,4 @@
-use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind}}, errors::LangError};
+use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::LangError};
 use tokenizer::tokens::Token;
 use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA, WRONG_TYPE}, parser::ParserScope};
 
@@ -239,6 +239,107 @@ impl<'a> ParserScope<'a> {
         match tokens.pop() {
             Some(Token::Type(tk)) => Ok(tk),
             _ => Err(LangError::new_parser_unexpected_token())
+        }
+    }
+    
+    pub fn predict_math_result(kind: MathOperatorKind, type_a: &TypeKind, type_b: &TypeKind) -> TypeKind {
+        match kind {
+            MathOperatorKind::Plus => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::String,
+                }
+            },
+            MathOperatorKind::Minus => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::Unknown,
+                }
+            },
+            MathOperatorKind::Multiply => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::Unknown,
+                }
+            },
+            MathOperatorKind::Divide => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::Unknown,
+                }
+            },
+            MathOperatorKind::Modulus => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Int,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::Unknown,
+                }
+            },
+            MathOperatorKind::Power => {
+                match (type_a, type_b) {
+                    // Int -> Int
+                    (TypeKind::Int, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Int/Float -> Float
+                    (TypeKind::Int, TypeKind::Float) => TypeKind::Float,
+                    (TypeKind::Float, TypeKind::Int) => TypeKind::Float,
+                    
+                    // Float -> Float
+                    (TypeKind::Float, TypeKind::Float) => TypeKind::Float,
+                    
+                    // Others -> String
+                    (_, _) => TypeKind::Unknown,
+                }
+            },
         }
     }
 }
