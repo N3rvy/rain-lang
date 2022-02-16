@@ -1,5 +1,6 @@
 use std::{collections::HashMap, cell::RefCell};
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
+use smallvec::SmallVec;
 use tokenizer::tokens::Token;
 use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS}};
 
@@ -21,39 +22,48 @@ pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
 
 pub struct ParserScope<'a> {
     parent: Option<&'a ParserScope<'a>>,
-    types: RefCell<HashMap<String, TypeKind>>,
     eval_type: RefCell<TypeKind>,
+    
+    names: RefCell<SmallVec<[String; SCOPE_SIZE]>>,
+    types: RefCell<SmallVec<[TypeKind; SCOPE_SIZE]>>,
 }
 
 impl<'a> ParserScope<'a> {
     pub fn new_root() -> Self {
         Self {
             parent: None,
-            types: RefCell::new(HashMap::new()),
             eval_type: RefCell::new(TypeKind::Nothing),
+
+            names: RefCell::new(SmallVec::new()),
+            types: RefCell::new(SmallVec::new()),
         }
     }
     
     pub fn new_child(&'a self) -> Self {
         Self {
             parent: Some(self),
-            types: RefCell::new(HashMap::new()),
             eval_type: RefCell::new(TypeKind::Nothing),
+
+            names: RefCell::new(SmallVec::new()),
+            types: RefCell::new(SmallVec::new()),
         }
     }
     
     pub fn get(&self, name: &String) -> Option<TypeKind> {
-        match self.types.borrow().get(name) {
-            Some(t) => Some(t.clone()),
-            None => match self.parent {
-                Some(parent) => parent.get(name),
-                None => None,
-            },
-        }
+        let types = self.types.borrow();
+        
+        self.names.borrow()
+            .iter()
+            .rev()
+            .enumerate()
+            .find(|(_, value)| (**value).eq(name))
+            .and_then(|(i, _)| Some(types[types.len() - 1 - i].clone()))
+            .or_else(|| self.parent.and_then(|parent| parent.get(name)))
     }
     
     pub fn declare(&self, name: String, type_kind: TypeKind) {
-        self.types.borrow_mut().insert(name, type_kind);
+        self.names.borrow_mut().push(name);
+        self.types.borrow_mut().push(type_kind);
     }
 
     pub fn parse_statement(&self, tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
@@ -91,13 +101,17 @@ impl<'a> ParserScope<'a> {
                         }
                         // ...}
                         let body = body_scope.parse_body(tokens)?;
+                        
+                        let eval_type = TypeKind::Function(param_types, Box::new(ret_type));
+                        
+                        self.declare(name.clone(), eval_type.clone());
 
                         ASTNode::new(
                             NodeKind::new_function_decl(
                                 name,
                                 Function::new(body, param_names)
                             ),
-                            TypeKind::Function(param_types, Box::new(ret_type)),
+                            eval_type,
                         )
                     },
                     Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
@@ -158,6 +172,8 @@ impl<'a> ParserScope<'a> {
                     },
                     None => value.eval_type.clone(),
                 };
+                    
+                self.declare(name.clone(), eval_type.clone());
 
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
             },
