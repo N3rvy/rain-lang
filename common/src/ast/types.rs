@@ -69,7 +69,7 @@ pub enum TypeKind {
     String,
     Bool,
     Nothing,
-    Vector,
+    Vector(Box<TypeKind>),
     Function(Vec<TypeKind>, Box<TypeKind>),
     Object(HashMap<String, TypeKind>),
 }

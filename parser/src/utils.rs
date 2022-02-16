@@ -1,6 +1,6 @@
 use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind}}, errors::LangError};
 use tokenizer::tokens::Token;
-use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA}, parser::ParserScope};
+use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA, WRONG_TYPE}, parser::ParserScope};
 
 #[macro_export]
 macro_rules! expect_token {
@@ -130,8 +130,54 @@ impl<'a> ParserScope<'a> {
 
         Ok((names, types))
     }
+    
+    pub fn parse_vector_values(&self, tokens: &mut Vec<Token>) -> Result<(TypeKind, ASTBody), LangError> {
+        let mut body = Vec::new();
+        let mut next_is_argument = true;
+        let mut vector_type = TypeKind::Unknown;
+        
+        loop {
+            let token = tokens.last();
+                
+            match token {
+                Some(Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close)) => break,
+                Some(Token::Operator(OperatorKind::Comma)) => {
+                    if next_is_argument {
+                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                    } else {
+                        tokens.pop();
 
-    pub fn parse_parameter_values(&self, tokens: &mut Vec<Token>, parenthesis_kind: ParenthesisKind) -> Result<ASTBody, LangError> {
+                        next_is_argument = true;
+                        continue;
+                    }
+                }
+                Some(_) => {
+                    if next_is_argument {
+                        next_is_argument = false;
+                        
+                        let node = self.parse_statement(tokens)?;
+                        if vector_type.is_unknown() {
+                            vector_type = node.eval_type.clone();
+                        } else if vector_type != node.eval_type {
+                            return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                        }
+
+                        body.push(node);
+                    } else {
+                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                    }
+                },
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
+        }
+        
+        // Popping the last )
+        tokens.pop();
+        
+        Ok((vector_type, body))
+    }
+
+    pub fn parse_parameter_values(&self, tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> {
         let mut body = Vec::new();
         let mut next_is_argument = true;
         
@@ -139,8 +185,7 @@ impl<'a> ParserScope<'a> {
             let token = tokens.last();
                 
             match token {
-                Some(Token::Parenthesis(kind, ParenthesisState::Close))
-                    if kind == &parenthesis_kind => break,
+                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
                 Some(Token::Operator(OperatorKind::Comma)) => {
                     if next_is_argument {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));

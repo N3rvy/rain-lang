@@ -10,6 +10,7 @@ pub const INVALID_FIELD_ACCESS: &str = "Invalid field access";
 pub const FIELD_DOESNT_EXIST: &str = "Field does not exist inside of object";
 pub const INVALID_ASSIGN: &str = "Invalid type in assignment";
 pub const NOT_A_FUNCTION: &str = "Tried invoking a value that is not a function";
+pub const NOT_A_VECTOR: &str = "Tried indexing a variable that is not a vector";
 pub const INVALID_ARGS_COUNT: &str = "Tried invoking a function with an incorrect number of parameters";
 pub const INVALID_ARGS: &str = "Tried invoking a function with an incorrect parameter type";
 

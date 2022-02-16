@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use tokenizer::tokens::Token;
-use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS}};
+use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}};
 
 pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
     // Reversing the vector for using it as a stack
@@ -202,9 +202,12 @@ impl<'a> ParserScope<'a> {
                         result?
                     },
                     (ParenthesisKind::Square, ParenthesisState::Open) => {
-                        let values = self.parse_parameter_values(tokens, ParenthesisKind::Square)?;
+                        let (vector_type, values) = self.parse_vector_values(tokens)?;
                         
-                        ASTNode::new(NodeKind::new_vector_literal(values), TypeKind::Vector)
+                        ASTNode::new(
+                            NodeKind::new_vector_literal(values),
+                            TypeKind::Vector(Box::new(vector_type))
+                        )
                     },
                     (ParenthesisKind::Curly, ParenthesisState::Open) => {
                         let values = self.parse_object_values(tokens)?;
@@ -356,16 +359,21 @@ impl<'a> ParserScope<'a> {
                 
                 expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
                 
+                let vec_type = match &node.eval_type {
+                    TypeKind::Vector(vt) => (**vt).clone(),
+                    _ => return Err(LangError::new_parser(NOT_A_VECTOR.to_string())),
+                };
+                
                 Ok((
                     ASTNode::new(
                         NodeKind::new_value_field_access(node, value),
-                        TypeKind::Unknown), // TODO
+                        vec_type),
                     true)) 
             },
             Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
                 tokens.pop();
 
-                let parameters = self.parse_parameter_values(tokens, ParenthesisKind::Round)?;
+                let parameters = self.parse_parameter_values(tokens)?;
                 
                 // check that node is function
                 let (arg_types, ret_type) = match &node.eval_type {
