@@ -100,7 +100,12 @@ impl From<LiteralKind> for TypeKind {
             LiteralKind::Int(_) => Self::Int,
             LiteralKind::Float(_) => Self::Float,
             LiteralKind::String(_) => Self::String,
-            LiteralKind::Function(_) => Self::Unknown, // TODO: Make it into a function with unknown parameters
+            // TODO: To decide weather to remove it or add all the
+            // otehr parsing generated literals.
+            // Because functions as well as vectors and objects are
+            // only generated during the parsing, as opposed to the
+            // others generating during the tokenization
+            LiteralKind::Function(_) => Self::Unknown,
         }
     }
 }
