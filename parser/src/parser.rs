@@ -134,8 +134,8 @@ impl<'a> ParserScope<'a> {
                         let body = body_scope.parse_body(tokens)?;
                         
                         ASTNode::new(
-                            NodeKind::new_literal(
-                                LiteralKind::Function(Function::new(body, param_names))
+                            NodeKind::new_function_literal(
+                                Function::new(body, param_names)
                             ),
                             TypeKind::Function(param_types, Box::new(ret_type))
                         )

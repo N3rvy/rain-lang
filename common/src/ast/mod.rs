@@ -90,6 +90,9 @@ pub enum NodeKind {
     ObjectLiteral {
         values: Vec<(String, ASTNode)>,
     },
+    FunctionLiteral {
+        value: Arc<Function>,
+    },
     ValueFieldAccess {
         variable: ASTNode,
         value: ASTNode,
@@ -166,6 +169,10 @@ impl NodeKind {
     
     pub fn new_object_literal(values: Vec<(String, ASTNode)>) -> NodeKind {
         NodeKind::ObjectLiteral { values }
+    }
+    
+    pub fn new_function_literal(value: Arc<Function>) -> NodeKind {
+        NodeKind::FunctionLiteral { value }
     }
  
     pub fn new_value_field_access(variable: ASTNode, value: ASTNode) -> NodeKind {

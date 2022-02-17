@@ -219,6 +219,9 @@ impl<'a> Scope<'a> {
                 
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
+            NodeKind::FunctionLiteral { value } => {
+                EvalResult::Ok(LangValue::Function(value.clone()))
+            },
             NodeKind::Import { identifier: _ } => {
                 todo!()
             },
