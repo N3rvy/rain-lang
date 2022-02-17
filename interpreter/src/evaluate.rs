@@ -62,10 +62,6 @@ impl<'a> Scope<'a> {
 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            NodeKind::FunctionDecl { name, value } => {
-                self.declare_var(name.clone(), LangValue::Function(value.clone()));
-                EvalResult::Ok(LangValue::Nothing)
-            },
             NodeKind::VaraibleRef { name } => {
                 match self.get_var(name) {
                     Some(value) => EvalResult::Ok(value.clone()),

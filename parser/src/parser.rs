@@ -107,11 +107,15 @@ impl<'a> ParserScope<'a> {
                         self.declare(name.clone(), eval_type.clone());
 
                         ASTNode::new(
-                            NodeKind::new_function_decl(
+                            NodeKind::new_variable_decl(
                                 name,
-                                Function::new(body, param_names)
+                                ASTNode::new(
+                                    NodeKind::new_function_literal(
+                                        Function::new(body, param_names)),
+                                    eval_type,
+                                )
                             ),
-                            eval_type,
+                            TypeKind::Nothing
                         )
                     },
                     Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
