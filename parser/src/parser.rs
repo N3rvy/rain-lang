@@ -1,18 +1,15 @@
 use std::{collections::HashMap, cell::RefCell};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
-use tokenizer::tokens::Token;
+use tokenizer::{tokens::Token, iterator::Tokens};
 use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}};
 
-pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
-    // Reversing the vector for using it as a stack
-    tokens.reverse();
-    
+pub fn parse(mut tokens: Tokens) -> Result<ASTNode, LangError> {
     let mut body = Vec::new(); 
     let scope = ParserScope::new_root();
     
     loop {
-        if tokens.is_empty() { break }
+        if !tokens.has_next() { break }
 
         body.push(scope.parse_statement(&mut tokens)?); 
     }
@@ -66,7 +63,7 @@ impl<'a> ParserScope<'a> {
         self.types.borrow_mut().push(type_kind);
     }
 
-    pub fn parse_statement(&self, tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
+    pub fn parse_statement(&self, tokens: &mut Tokens) -> Result<ASTNode, LangError> {
         let token = tokens.pop();
         if let None = token {
             return Err(LangError::new_parser_end_of_file());
@@ -222,7 +219,7 @@ impl<'a> ParserScope<'a> {
                 }
             },
             Token::Return | Token::Break => {
-                let value = match tokens.last() {
+                let value = match tokens.peek() {
                     Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => {
                         None
                     },
@@ -320,10 +317,10 @@ impl<'a> ParserScope<'a> {
     }
 
     /// The bool in the tuple is a bool representing whether the infix was valid or not
-    pub fn parse_infix(&self, node: ASTNode, tokens: &mut Vec<Token>) -> Result<(ASTNode, bool), LangError> {
+    pub fn parse_infix(&self, node: ASTNode, tokens: &mut Tokens) -> Result<(ASTNode, bool), LangError> {
 
         // Getting the infix and returning if it's None
-        let infix = tokens.last().cloned();
+        let infix = tokens.peek();
         if matches!(infix, None) { return Ok((node, false)) }
         
         let infix = infix.unwrap();

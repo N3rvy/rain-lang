@@ -1,9 +1,9 @@
 use common::errors::LangError;
 
-use crate::{tokens::Token, resolvers::resolver::{Resolver, ResolverKind, AddResult}};
+use crate::{tokens::Token, resolvers::resolver::{Resolver, ResolverKind, AddResult}, iterator::Tokens};
 
 
-pub fn tokenize(mut script: String) -> Result<Vec<Token>, LangError> {
+pub fn tokenize(mut script: String) -> Result<Tokens, LangError> {
     let mut tokens = Vec::new();
     
     let mut resolver: Resolver = Resolver::new_empty();
@@ -29,7 +29,7 @@ pub fn tokenize(mut script: String) -> Result<Vec<Token>, LangError> {
         }
     }
     
-    Ok(tokens)
+    Ok(Tokens::from_vec(tokens))
 }
 
 fn handle_result(result: AddResult, tokens: &mut Vec<Token>, resolver: &mut Resolver) -> Result<(), LangError> {

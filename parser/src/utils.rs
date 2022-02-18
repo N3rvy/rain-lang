@@ -1,5 +1,5 @@
 use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::LangError};
-use tokenizer::tokens::Token;
+use tokenizer::{tokens::Token, iterator::Tokens};
 use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA, WRONG_TYPE}, parser::ParserScope};
 
 #[macro_export]
@@ -16,7 +16,7 @@ macro_rules! expect_token {
 }
 
 impl<'a> ParserScope<'a> {
-    pub fn parse_object_values(&self, tokens: &mut Vec<Token>) -> Result<Vec<(String, ASTNode)>, LangError> {
+    pub fn parse_object_values(&self, tokens: &mut Tokens) -> Result<Vec<(String, ASTNode)>, LangError> {
         let mut res = Vec::new();
         let mut next_is_argument = true;
         
@@ -69,11 +69,11 @@ impl<'a> ParserScope<'a> {
      * It consumes only the last parenthesis and expectes the first token to be the first statement,
        in this case it will be "var"
      */ 
-    pub fn parse_body(&self, tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> {
+    pub fn parse_body(&self, tokens: &mut Tokens) -> Result<ASTBody, LangError> {
         let mut body = Vec::new();
         
         loop {
-            let token = tokens.last();
+            let token = tokens.peek();
                 
             let result = match token {
                 Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => break,
@@ -94,7 +94,7 @@ impl<'a> ParserScope<'a> {
      * It consumes only the last parenthesis and expectes the first token to be the first argument,
        in this case it will be "arg0"
      */ 
-    pub fn parse_parameter_names(&self, tokens: &mut Vec<Token>) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
+    pub fn parse_parameter_names(&self, tokens: &mut Tokens) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
         let mut names = Vec::new();
         let mut types = Vec::new();
         let mut next_is_argument = true;
@@ -131,13 +131,13 @@ impl<'a> ParserScope<'a> {
         Ok((names, types))
     }
     
-    pub fn parse_vector_values(&self, tokens: &mut Vec<Token>) -> Result<(TypeKind, ASTBody), LangError> {
+    pub fn parse_vector_values(&self, tokens: &mut Tokens) -> Result<(TypeKind, ASTBody), LangError> {
         let mut body = Vec::new();
         let mut next_is_argument = true;
         let mut vector_type = TypeKind::Unknown;
         
         loop {
-            let token = tokens.last();
+            let token = tokens.peek();
                 
             match token {
                 Some(Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close)) => break,
@@ -177,12 +177,12 @@ impl<'a> ParserScope<'a> {
         Ok((vector_type, body))
     }
 
-    pub fn parse_parameter_values(&self, tokens: &mut Vec<Token>) -> Result<ASTBody, LangError> {
+    pub fn parse_parameter_values(&self, tokens: &mut Tokens) -> Result<ASTBody, LangError> {
         let mut body = Vec::new();
         let mut next_is_argument = true;
         
         loop {
-            let token = tokens.last();
+            let token = tokens.peek();
                 
             match token {
                 Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
@@ -214,9 +214,9 @@ impl<'a> ParserScope<'a> {
         Ok(body)
     }
 
-    pub fn parse_type_option(&self, tokens: &mut Vec<Token>) -> Result<Option<TypeKind>, LangError> {
+    pub fn parse_type_option(&self, tokens: &mut Tokens) -> Result<Option<TypeKind>, LangError> {
         // :
-        match tokens.last() {
+        match tokens.peek() {
             Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
             _ => return Ok(None)
         }
@@ -228,9 +228,9 @@ impl<'a> ParserScope<'a> {
         }
     }
 
-    pub fn parse_type_error(&self, tokens: &mut Vec<Token>) -> Result<TypeKind, LangError> {
+    pub fn parse_type_error(&self, tokens: &mut Tokens) -> Result<TypeKind, LangError> {
         // :
-        match tokens.last() {
+        match tokens.peek() {
             Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
             _ => return Err(LangError::new_parser_unexpected_token())
         }
