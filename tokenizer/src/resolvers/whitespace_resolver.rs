@@ -1,3 +1,5 @@
+use crate::tokens::Token;
+
 use super::resolver::{Resolver, AddResult};
 
 pub struct WhitespaceResolver {
@@ -20,7 +22,7 @@ impl Resolver for WhitespaceResolver {
             '\n' => {
                 self.indentation = Some(0);
 
-                AddResult::Ok
+                AddResult::OkToken(Token::NewLine)
             },
             '\t' => {
                 if let Some(indentation) = self.indentation {

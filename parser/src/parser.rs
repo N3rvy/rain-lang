@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use tokenizer::{tokens::Token, iterator::Tokens};
-use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}};
+use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}, expect_indent};
 
 pub fn parse(mut tokens: Tokens) -> Result<ASTNode, LangError> {
     let mut body = Vec::new(); 
@@ -88,7 +88,7 @@ impl<'a> ParserScope<'a> {
                         let ret_type = self.parse_type_error(tokens)?;
                         
                         // Indentation
-                        expect_token!(tokens.pop(), Token::Indent);
+                        expect_indent!(tokens);
 
                         // creating the child scope
                         let body_scope = self.new_child();
@@ -123,8 +123,8 @@ impl<'a> ParserScope<'a> {
                         // return type?
                         let ret_type = self.parse_type_error(tokens)?;
                         
-                        // {
-                        expect_token!(tokens.pop(), Token::Indent);
+                        // Indentation
+                        expect_indent!(tokens);
 
                         // creating the child scope
                         let body_scope = self.new_child();
@@ -246,8 +246,8 @@ impl<'a> ParserScope<'a> {
             Token::If => {
                 // condition
                 let condition = self.parse_statement(tokens)?;
-                // {
-                expect_token!(tokens.pop(), Token::Indent);
+                // Indent
+                expect_indent!(tokens);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -273,7 +273,7 @@ impl<'a> ParserScope<'a> {
                 let max = self.parse_statement(tokens)?;
                 
                 // {
-                expect_token!(tokens.pop(), Token::Indent);
+                expect_indent!(tokens);
                 
                 // ...}
                 let for_scope = self.new_child();
@@ -286,7 +286,7 @@ impl<'a> ParserScope<'a> {
                 // condition 
                 let condition = self.parse_statement(tokens)?;
                 // {
-                expect_token!(tokens.pop(), Token::Indent);
+                expect_indent!(tokens);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -302,6 +302,7 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_import(identifier), TypeKind::Nothing)
             },
+            Token::NewLine => self.parse_statement(tokens)?,
             Token::Operator(_) |
             Token::BoolOperator(_) |
             Token::MathOperator(_) |

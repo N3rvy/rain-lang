@@ -15,6 +15,14 @@ macro_rules! expect_token {
     };
 }
 
+#[macro_export]
+macro_rules! expect_indent {
+    ($token: expr) => {
+        expect_token!($token.pop(), Token::NewLine);
+        expect_token!($token.pop(), Token::Indent);
+    };
+}
+
 impl<'a> ParserScope<'a> {
     pub fn parse_object_values(&self, tokens: &mut Tokens) -> Result<Vec<(String, ASTNode)>, LangError> {
         let mut res = Vec::new();
@@ -77,6 +85,7 @@ impl<'a> ParserScope<'a> {
                 
             let result = match token {
                 Some(Token::Dedent) | None => break,
+                Some(Token::NewLine) => { tokens.pop(); continue },
                 Some(_) => self.parse_statement(tokens)?,
             };
             

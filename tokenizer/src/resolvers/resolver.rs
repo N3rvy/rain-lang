@@ -6,6 +6,8 @@ use super::{number_resolver::NumberResolver, parenthesis_resolver::ParenthesisRe
 pub enum AddResult {
     /// The operation whent ok and there is nothing to do
     Ok,
+    /// The operation whent ok and there is a token but the resolver needs to stay
+    OkToken(Token),
     /// The operation whent ok and the token is ended
     End(Token),
     /// The operation whent ok, there is a leftover character but no token is generated

@@ -38,6 +38,11 @@ impl<'a> Tokenizer<'a> {
 
         match result {
             AddResult::Ok => Ok(()),
+            AddResult::OkToken(token) => {
+                self.tokens.push(token);
+
+                Ok(())
+            },
             AddResult::End(token) => {
                 self.tokens.push(token);
 

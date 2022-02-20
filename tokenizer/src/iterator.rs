@@ -1,8 +1,9 @@
 use crate::tokens::Token;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct TokenSnapshot(usize);
 
+#[derive(Debug)]
 pub struct Tokens {
     tokens: Vec<Token>,
     current_pos: TokenSnapshot,
