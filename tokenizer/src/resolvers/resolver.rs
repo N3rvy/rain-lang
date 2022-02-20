@@ -1,62 +1,38 @@
 use common::errors::LangError;
+use crate::{tokens::Token, tokenizer::Tokenizer};
 
-use crate::{tokens::Token, errors::UNEXPECTED_ERROR};
+use super::{number_resolver::NumberResolver, parenthesis_resolver::ParenthesisResolver, operator_resolver::OperatorResolver, string_resolver::StringResolver, symbol_resolver::SymbolResolver, whitespace_resolver::WhitespaceResolver};
 
-
-#[allow(dead_code)]
-pub(crate) enum ResolverKind {
-    None,
-    Symbol,
-    StringLiteral,
-    NumberLiteral,
-    Operator,
-}
-
-pub(crate) enum AddResult {
+pub enum AddResult {
+    /// The operation whent ok and there is nothing to do
     Ok,
+    /// The operation whent ok and the token is ended
     End(Token),
+    /// The operation whent ok, there is a leftover character but no token is generated
+    ChangeWithoutToken(char),
+    /// The operation whent ok, the indentation changed and there is a leftover character
+    ChangeIndentation(u32, char),
+    /// The operation whent ok, the token in ended and there is a leftover character
     Change(Token, char),
+    /// The operation whent ok, the token in ended and there are leftover characters
     ChangeChars(Token, Vec<char>),
+    /// The operation whent wrong
     Err(LangError),
 }
 
-pub(crate) struct Resolver {
-    pub kind: ResolverKind,
-    pub chars: String,
-    pub add_fn: fn(&mut Self, char: char) -> AddResult,
+pub trait Resolver {
+    fn add(&mut self, char: char) -> AddResult;
 }
 
-impl Resolver {
-    pub(crate) fn new_empty() -> Self {
-        Default::default()
-    }
-    
-    pub(crate) fn from_char(char: char) -> Resolver {
+impl<'a> Tokenizer<'a> {
+    pub fn resolver_from_char(&'a self, char: char) -> Box<dyn Resolver> {
         match char {
-            c if c.is_whitespace() => Resolver::new_empty(),
-            '0'..='9' => Resolver::new_number(),
-            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => Resolver::new_operator(),
-            '(' | ')' | '[' | ']' | '{' | '}' => Resolver::new_parenthesis(),
-            '"' => Resolver::new_string_literal(),
-            _ => Resolver::new_symbol(),
-        }
-    }
-
-    pub(crate) fn add(&mut self, char: char) -> AddResult {
-        (self.add_fn)(self, char)
-    }
-    
-    pub(super) fn add_char(&mut self, char: char) {
-        self.chars.push(char)
-    }
-}
-
-impl Default for Resolver {
-    fn default() -> Self {
-        Self {
-            kind: ResolverKind::None,
-            chars: Default::default(),
-            add_fn: |_, _| AddResult::Err(LangError::new_tokenizer(UNEXPECTED_ERROR.to_string())),
+            c if c.is_whitespace() => Box::new(WhitespaceResolver::new(self.indentation_stack.last().unwrap().clone())),
+            '0'..='9' => Box::new(NumberResolver::new()),
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => Box::new(OperatorResolver::new()),
+            '(' | ')' | '[' | ']' | '{' | '}' => Box::new(ParenthesisResolver::new()),
+            '"' => Box::new(StringResolver::new()),
+            _ => Box::new(SymbolResolver::new()),
         }
     }
 }

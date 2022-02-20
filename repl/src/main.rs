@@ -1,33 +1,48 @@
 use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
-use std::io::{stdin, BufRead};
+use std::{io::Error, env::args, ops::Index, fs};
 use interpreter::{InterpreterEngine, InterpreterFunction};
 
-fn main() {
-    let engine = InterpreterEngine::new();
+fn main() -> Result<(), Error> {
+    // *** ATTENTION ***
+    // This is a temporary solution and this is not a real REPL
 
-    engine.set_function("print", print);
-    
-    for script in stdin().lock().lines() {
-        if let Ok(script) = script {
-            let result = engine.build_module()
-                .with_source(script)
-                .build();
-
-            let module = match result {
-                Ok(module) => module,
-                Err(err) => {
-                    println!("{}", err);
-                    continue
-                },
-            };
-
-            let func: InterpreterFunction<(), AnyValue> = match engine.get_function(&module, "main") {
-                Some(func) => func,
-                None => continue,
-            };
-            println!("{:?}", func.call(()));
-        }
+    // Obtaining the args
+    let args: Vec<String> = args().collect();
+    if args.len() < 2 {
+        panic!("Invalid argument count");
     }
+
+    // Obtaining the source file
+    let source_path = args.index(1);
+    let source = fs::read_to_string(source_path)?;
+
+    // Creating the engine
+    let engine = InterpreterEngine::new();
+    engine.set_function("print", print);
+
+    // Creating the module from the source file
+    let module = engine
+        .build_module()
+        .with_source(source)
+        .build();
+
+    let module = match module {
+        Ok(module) => module,
+        Err(err) => {
+            panic!("{}", err);
+        },
+    };
+
+    // Obtaning the main function inside the module
+    let func: InterpreterFunction<(), AnyValue> = match engine.get_function(&module, "main") {
+        Some(func) => func,
+        None => panic!("Main function not found"),
+    };
+
+    // Printing the return value of the function
+    println!("{:?}", func.call(()));
+    
+    Ok(())
 }
 
 fn print(val: AnyValue) {

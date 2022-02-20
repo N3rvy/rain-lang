@@ -3,6 +3,8 @@ use common::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, TypeK
 
 #[derive(Clone, Debug)]
 pub enum Token {
+    Indent,
+    Dedent,
     Function,
     Variable,
     Return,

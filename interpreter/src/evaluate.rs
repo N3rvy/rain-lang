@@ -154,7 +154,7 @@ impl<'a> Scope<'a> {
                 let max = expect_some!(right, VARIABLE_IS_NOT_A_NUMBER.to_string());
                 
                 for i in min..max {
-                    let for_scope = Scope::new_child(self.clone());
+                    let for_scope = Scope::new_child(self);
                     for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
                     
                     for child in body {

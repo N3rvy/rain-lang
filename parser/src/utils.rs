@@ -76,9 +76,8 @@ impl<'a> ParserScope<'a> {
             let token = tokens.peek();
                 
             let result = match token {
-                Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => break,
+                Some(Token::Dedent) | None => break,
                 Some(_) => self.parse_statement(tokens)?,
-                None => return Err(LangError::new_parser_end_of_file()),
             };
             
             body.push(result);

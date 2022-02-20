@@ -87,8 +87,8 @@ impl<'a> ParserScope<'a> {
                         // return type?
                         let ret_type = self.parse_type_error(tokens)?;
                         
-                        // {
-                        expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+                        // Indentation
+                        expect_token!(tokens.pop(), Token::Indent);
 
                         // creating the child scope
                         let body_scope = self.new_child();
@@ -96,6 +96,7 @@ impl<'a> ParserScope<'a> {
                         for i in 0..param_names.len() {
                             body_scope.declare(param_names[i].clone(), param_types[i].clone());
                         }
+
                         // ...}
                         let body = body_scope.parse_body(tokens)?;
                         
@@ -123,7 +124,7 @@ impl<'a> ParserScope<'a> {
                         let ret_type = self.parse_type_error(tokens)?;
                         
                         // {
-                        expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+                        expect_token!(tokens.pop(), Token::Indent);
 
                         // creating the child scope
                         let body_scope = self.new_child();
@@ -178,7 +179,6 @@ impl<'a> ParserScope<'a> {
 
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
             },
-            Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => return Err(LangError::new_parser_unexpected_token()),
             Token::Symbol(name) => {
                 let var_ref = NodeKind::new_variable_ref(name.clone());
                 let var_type = match self.get(name) {
@@ -220,7 +220,7 @@ impl<'a> ParserScope<'a> {
             },
             Token::Return | Token::Break => {
                 let value = match tokens.peek() {
-                    Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => {
+                    Some(Token::Dedent) => { // TODO: This is not even close to being a good way to handle return not having a value
                         None
                     },
                     Some(_) => {
@@ -247,7 +247,7 @@ impl<'a> ParserScope<'a> {
                 // condition
                 let condition = self.parse_statement(tokens)?;
                 // {
-                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+                expect_token!(tokens.pop(), Token::Indent);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -273,10 +273,12 @@ impl<'a> ParserScope<'a> {
                 let max = self.parse_statement(tokens)?;
                 
                 // {
-                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+                expect_token!(tokens.pop(), Token::Indent);
                 
                 // ...}
-                let body = self.new_child().parse_body(tokens)?;
+                let for_scope = self.new_child();
+                for_scope.declare(iter_name.clone(), TypeKind::Int);
+                let body = for_scope.parse_body(tokens)?;
                 
                 ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Nothing)
             },
@@ -284,7 +286,7 @@ impl<'a> ParserScope<'a> {
                 // condition 
                 let condition = self.parse_statement(tokens)?;
                 // {
-                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
+                expect_token!(tokens.pop(), Token::Indent);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -300,7 +302,12 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_import(identifier), TypeKind::Nothing)
             },
-            Token::Type(_) => return Err(LangError::new_parser_unexpected_token()),
+            Token::Operator(_) |
+            Token::BoolOperator(_) |
+            Token::MathOperator(_) |
+            Token::Type(_) |
+            Token::Indent |
+            Token::Dedent => return Err(LangError::new_parser_unexpected_token()),
         };
         
 
@@ -387,7 +394,7 @@ impl<'a> ParserScope<'a> {
                 }
                 
                 for i in 0..parameters.len() {
-                    if parameters[i].eval_type.is_compatible(&arg_types[i]) {
+                    if !parameters[i].eval_type.is_compatible(&arg_types[i]) {
                         return Err(LangError::new_parser(INVALID_ARGS.to_string()))
                     }
                 }
