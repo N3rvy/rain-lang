@@ -78,76 +78,57 @@ impl<'a> ParserScope<'a> {
         let result = match &token {
             Token::Function => {
                 let next= tokens.pop();
-                
-                // "name" | (
-                match next {
+
+                let name = match next {
                     Some(Token::Symbol(name)) => {
-                        // (
                         expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
-                        
-                        // ...)
-                        let (param_names, param_types) = self.parse_parameter_names(tokens)?;
+                        Some(name)
+                    },
+                    Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => None,
+                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_end_of_file()),
+                };
 
-                        // return type?
-                        let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
-                        
-                        // Indentation
-                        expect_indent!(tokens);
+                // ...)
+                let (param_names, param_types) = self.parse_parameter_names(tokens)?;
 
-                        // creating the child scope
-                        let body_scope = self.new_child();
-                        // declaring the argument types
-                        for i in 0..param_names.len() {
-                            body_scope.declare(param_names[i].clone(), param_types[i].clone());
-                        }
+                // return type?
+                let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
+                
+                // Indentation
+                expect_indent!(tokens);
 
-                        // ...}
-                        let body = body_scope.parse_body(tokens)?;
-                        
-                        let eval_type = TypeKind::Function(param_types, Box::new(ret_type));
-                        
-                        self.declare(name.clone(), eval_type.clone());
+                // creating the child scope
+                let body_scope = self.new_child();
+                // declaring the argument types
+                for i in 0..param_names.len() {
+                    body_scope.declare(param_names[i].clone(), param_types[i].clone());
+                }
+
+                // ...}
+                let body = body_scope.parse_body(tokens)?;
+                
+                let eval_type = TypeKind::Function(param_types.clone(), Box::new(ret_type));
+
+                let func_literal = ASTNode::new(
+                    NodeKind::new_function_literal(
+                        Function::new(body, param_names)),
+                    eval_type.clone(),
+                );
+
+                match name {
+                    Some(name) => {
+                        self.declare(name.clone(), eval_type);
 
                         ASTNode::new(
                             NodeKind::new_variable_decl(
                                 name,
-                                ASTNode::new(
-                                    NodeKind::new_function_literal(
-                                        Function::new(body, param_names)),
-                                    eval_type,
-                                )
+                                func_literal,
                             ),
                             TypeKind::Nothing
                         )
                     },
-                    Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
-                        // ...)
-                        let (param_names, param_types) = self.parse_parameter_names(tokens)?;
-
-                        // return type?
-                        let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
-                        
-                        // Indentation
-                        expect_indent!(tokens);
-
-                        // creating the child scope
-                        let body_scope = self.new_child();
-                        // declaring the argument types
-                        for i in 0..param_names.len() {
-                            body_scope.declare(param_names[i].clone(), param_types[i].clone());
-                        }
-                        // ...}
-                        let body = body_scope.parse_body(tokens)?;
-                        
-                        ASTNode::new(
-                            NodeKind::new_function_literal(
-                                Function::new(body, param_names)
-                            ),
-                            TypeKind::Function(param_types, Box::new(ret_type))
-                        )
-                    },
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                    None => func_literal,
                 }
             },
             Token::Variable => {
