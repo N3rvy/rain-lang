@@ -6,11 +6,9 @@ use crate::{InterpreterModule, InterpreterEngine, scope::Scope};
 pub struct InterpreterModuleBuilder;
 
 impl<'a> ModuleBuilder<'a> for InterpreterModuleBuilder {
-    type Module = InterpreterModule<'a>;
     type Engine = InterpreterEngine<'a>;
 
-    fn new() -> Self { Self }
-    fn build(&self, engine: &'a Self::Engine, sources: &Vec<String>) -> Result<Self::Module, LangError> {
+    fn build(engine: &'a Self::Engine, sources: &Vec<String>) -> Result<<Self::Engine as Engine<'a>>::Module, LangError> {
         let scope = Scope::new_child(
             &engine.global_module.scope);
         

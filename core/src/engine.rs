@@ -2,18 +2,18 @@ use common::{ast::ASTNode, errors::LangError};
 use parser::parser::parse;
 use tokenizer::tokenizer::Tokenizer;
 
-use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}};
+use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
 
 
 pub trait Engine<'a>
 where
     Self: Sized
 {
-    type Module;
+    type Module: EngineModule;
     type ModuleBuilder: ModuleBuilder<'a, Engine = Self>;
 
-    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self::ModuleBuilder, Self> {
-        EngineModuleBuilder::<'a, Self::ModuleBuilder, Self>::new(&self)
+    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self> {
+        EngineModuleBuilder::new(&self)
     }
     
     fn source_to_ast(source: &String) -> Result<ASTNode, LangError> {
