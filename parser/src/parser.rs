@@ -85,7 +85,7 @@ impl<'a> ParserScope<'a> {
                         let (param_names, param_types) = self.parse_parameter_names(tokens)?;
 
                         // return type?
-                        let ret_type = self.parse_type_error(tokens)?;
+                        let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
                         
                         // Indentation
                         expect_indent!(tokens);
@@ -121,7 +121,7 @@ impl<'a> ParserScope<'a> {
                         let (param_names, param_types) = self.parse_parameter_names(tokens)?;
 
                         // return type?
-                        let ret_type = self.parse_type_error(tokens)?;
+                        let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
                         
                         // Indentation
                         expect_indent!(tokens);
