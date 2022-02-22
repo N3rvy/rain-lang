@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use tokenizer::{tokens::Token, iterator::Tokens};
-use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}, expect_indent};
+use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent};
 
 pub fn parse(mut tokens: Tokens, global_types: &Vec<(String, TypeKind)>) -> Result<ASTNode, LangError> {
     let mut body = Vec::new(); 
@@ -107,6 +107,10 @@ impl<'a> ParserScope<'a> {
 
                 // ...}
                 let body = body_scope.parse_body(tokens)?;
+
+                if !body_scope.eval_type.borrow().is_compatible(&ret_type) {
+                    return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                }
                 
                 let eval_type = TypeKind::Function(param_types.clone(), Box::new(ret_type));
 
