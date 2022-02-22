@@ -62,10 +62,6 @@ impl<'a> Scope<'a> {
 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            NodeKind::FunctionDecl { name, value } => {
-                self.declare_var(name.clone(), LangValue::Function(value.clone()));
-                EvalResult::Ok(LangValue::Nothing)
-            },
             NodeKind::VaraibleRef { name } => {
                 match self.get_var(name) {
                     Some(value) => EvalResult::Ok(value.clone()),
@@ -158,7 +154,7 @@ impl<'a> Scope<'a> {
                 let max = expect_some!(right, VARIABLE_IS_NOT_A_NUMBER.to_string());
                 
                 for i in min..max {
-                    let for_scope = Scope::new_child(self.clone());
+                    let for_scope = Scope::new_child(self);
                     for_scope.declare_var(iter_name.clone(), LangValue::Int(i));
                     
                     for child in body {
@@ -218,6 +214,9 @@ impl<'a> Scope<'a> {
                 }
                 
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
+            },
+            NodeKind::FunctionLiteral { value } => {
+                EvalResult::Ok(LangValue::Function(value.clone()))
             },
             NodeKind::Import { identifier: _ } => {
                 todo!()
