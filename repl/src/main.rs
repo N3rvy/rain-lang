@@ -17,8 +17,9 @@ fn main() -> Result<(), Error> {
     let source = fs::read_to_string(source_path)?;
 
     // Creating the engine
-    let engine = InterpreterEngine::new();
+    let mut engine = InterpreterEngine::new();
     engine.set_function("print", print);
+    engine.set_function("sum", |a: i32, b: i32| a + b);
 
     // Creating the module from the source file
     let module = engine

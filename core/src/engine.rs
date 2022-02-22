@@ -1,6 +1,4 @@
-use common::{ast::ASTNode, errors::LangError};
-use parser::parser::parse;
-use tokenizer::tokenizer::Tokenizer;
+use common::ast::types::TypeKind;
 
 use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
 
@@ -15,13 +13,8 @@ where
     fn build_module(&'a self) -> EngineModuleBuilder<'a, Self> {
         EngineModuleBuilder::new(&self)
     }
-    
-    fn source_to_ast(source: &String) -> Result<ASTNode, LangError> {
-        let tokens = Tokenizer::tokenize(source)?;
-        let ast = parse(tokens)?;
 
-        Ok(ast)
-    }
+    fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
 
     fn new() -> Self;
 }
@@ -36,6 +29,6 @@ pub trait InternalFunction<Args, R> {
 }
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
-    fn set_function<F>(&'a self, name: &str, func: F)
+    fn set_function<F>(&mut self, name: &str, func: F)
     where F: Fn<Args, Output = R> + Send + Sync + 'static;
 }

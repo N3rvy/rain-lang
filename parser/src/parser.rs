@@ -4,9 +4,13 @@ use smallvec::SmallVec;
 use tokenizer::{tokens::Token, iterator::Tokens};
 use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR}, expect_indent};
 
-pub fn parse(mut tokens: Tokens) -> Result<ASTNode, LangError> {
+pub fn parse(mut tokens: Tokens, global_types: &Vec<(String, TypeKind)>) -> Result<ASTNode, LangError> {
     let mut body = Vec::new(); 
     let scope = ParserScope::new_root();
+
+    for (t_name, t_kind) in global_types {
+        scope.declare(t_name.clone(), t_kind.clone())
+    }
     
     loop {
         if !tokens.has_next() { break }

@@ -29,7 +29,7 @@ where
 
         for source in self.sources {
             let tokens = Tokenizer::tokenize(&source)?;
-            let ast = parse(tokens)?;
+            let ast = parse(tokens, self.engine.global_types())?;
             asts.push(ast);
         }
 
