@@ -1,4 +1,6 @@
-use common::errors::LangError;
+use common::{errors::LangError, ast::ASTNode};
+use parser::parser::parse;
+use tokenizer::tokenizer::Tokenizer;
 use crate::{Engine, ExternalType};
 
 pub struct EngineModuleBuilder<'a, Eng: Engine<'a>> {
@@ -21,9 +23,17 @@ where
         self.sources.push(source);
         self
     }
-    
+
     pub fn build(self) -> Result<Eng::Module, LangError> {
-        Eng::ModuleBuilder::build(&self.engine, &self.sources)
+        let mut asts = Vec::new();
+
+        for source in self.sources {
+            let tokens = Tokenizer::tokenize(&source)?;
+            let ast = parse(tokens)?;
+            asts.push(ast);
+        }
+
+        Eng::ModuleBuilder::build(&self.engine, asts)
     }
 }
 
@@ -31,7 +41,7 @@ pub trait ModuleBuilder<'a>
 {
     type Engine: Engine<'a>;
 
-    fn build(engine: &'a Self::Engine, sources: &Vec<String>) -> Result<<Self::Engine as Engine<'a>>::Module, LangError>;
+    fn build(engine: &'a Self::Engine, asts: Vec<ASTNode>) -> Result<<Self::Engine as Engine<'a>>::Module, LangError>;
 }
 
 pub trait ModuleBuilderSetFunction<'a, Eng, Args, R>
