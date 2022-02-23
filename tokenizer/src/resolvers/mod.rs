@@ -1,7 +1,6 @@
-pub mod resolver;
-pub mod whitespace_resolver;
-mod parenthesis_resolver;
-mod operator_resolver;
+pub mod parenthesis_resolver;
+pub mod operator_resolver;
 mod number_resolver;
-mod string_resolver;
+mod string_literal_resolver;
 mod symbol_resolver;
+pub(crate) mod resolver;

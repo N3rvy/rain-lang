@@ -1,1 +1,0 @@
-pub const SCOPE_SIZE: usize = 8;

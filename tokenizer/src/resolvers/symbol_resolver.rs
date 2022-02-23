@@ -1,15 +1,29 @@
 use common::ast::types::{OperatorKind, TypeKind};
+
 use crate::tokens::Token;
-use super::resolver::{Resolver, AddResult};
 
-pub struct SymbolResolver {
-    chars: String,
-}
+use super::resolver::{Resolver, ResolverKind, AddResult};
 
-impl SymbolResolver {
-    pub fn new() -> Self {
+impl Resolver {
+    pub(crate) fn new_symbol() -> Self {
         Self {
-            chars: String::new(),
+            kind: ResolverKind::Symbol,
+            add_fn: Self::add_symbol,
+            chars: Default::default(),
+        }
+    }
+    
+    fn add_symbol(&mut self, char: char) -> AddResult {
+        match char {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                self.add_char(char);
+                AddResult::Ok
+            },
+            _ => {
+                let token = self.end_symbol();
+                
+                AddResult::Change(token, char)
+            },
         }
     }
     
@@ -31,22 +45,6 @@ impl SymbolResolver {
             "any" => Token::Type(TypeKind::Unknown),
 
             _ => Token::Symbol(self.chars.clone()),
-        }
-    }
-}
-
-impl Resolver for SymbolResolver {
-    fn add(&mut self, char: char) -> AddResult {
-        match char {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => {
-                self.chars.push(char);
-                AddResult::Ok
-            },
-            _ => {
-                let token = self.end_symbol();
-                
-                AddResult::Change(token, char)
-            },
         }
     }
 }
