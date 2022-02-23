@@ -22,16 +22,12 @@ impl ASTNode {
 }
 
 pub enum NodeKind {
-    Root {
-        body: ASTBody,
+    Module {
+        definitions: Vec<ASTNode>,
     },
     VariableDecl {
         name: String,
         value: ASTNode,
-    },
-    FunctionDecl {
-        name: String,
-        value: Arc<Function>,
     },
     VaraibleRef {
         name: String,
@@ -90,6 +86,9 @@ pub enum NodeKind {
     ObjectLiteral {
         values: Vec<(String, ASTNode)>,
     },
+    FunctionLiteral {
+        value: Arc<Function>,
+    },
     ValueFieldAccess {
         variable: ASTNode,
         value: ASTNode,
@@ -100,16 +99,12 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    pub fn new_root(body: ASTBody) -> NodeKind {
-        NodeKind::Root { body }
+    pub fn new_module(definitions: Vec<ASTNode>) -> NodeKind {
+        NodeKind::Module { definitions }
     }
     
     pub fn new_variable_decl(name: String, value: ASTNode) -> NodeKind {
         NodeKind::VariableDecl { name, value }
-    }
-    
-    pub fn new_function_decl(name: String, value: Arc<Function>) -> NodeKind {
-        NodeKind::FunctionDecl { name, value }
     }
     
     pub fn new_variable_ref(name: String) -> NodeKind {
@@ -166,6 +161,10 @@ impl NodeKind {
     
     pub fn new_object_literal(values: Vec<(String, ASTNode)>) -> NodeKind {
         NodeKind::ObjectLiteral { values }
+    }
+    
+    pub fn new_function_literal(value: Arc<Function>) -> NodeKind {
+        NodeKind::FunctionLiteral { value }
     }
  
     pub fn new_value_field_access(variable: ASTNode, value: ASTNode) -> NodeKind {

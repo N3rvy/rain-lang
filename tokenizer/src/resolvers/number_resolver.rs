@@ -1,22 +1,39 @@
 use common::{errors::LangError, ast::types::LiteralKind};
-
 use crate::{tokens::Token, errors::{INT_PARSE_ERROR, FLOAT_PARSE_ERROR}};
+use super::resolver::{Resolver, AddResult};
 
-use super::resolver::{Resolver, ResolverKind, AddResult};
 
-impl Resolver {
-    pub(crate) fn new_number() -> Self {
+pub struct NumberResolver {
+    chars: String,
+}
+
+impl NumberResolver {
+    pub fn new() -> Self {
         Self {
-            kind: ResolverKind::NumberLiteral,
-            add_fn: Self::add_number,
-            chars: Default::default(),
+            chars: String::new(),
         }
     }
     
-    fn add_number(&mut self, char: char) -> AddResult {
+    fn end_number(&self) -> Result<Token, LangError>  {
+        if self.chars.contains('.') {
+            match self.chars.parse::<f32>() {
+                Ok(value) => Ok(Token::Literal(LiteralKind::Float(value))),
+                Err(_) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
+            }
+        } else {
+            match self.chars.parse::<i32>() {
+                Ok(value) => Ok(Token::Literal(LiteralKind::Int(value))),
+                Err(_) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
+            }
+        }
+    }
+}
+
+impl Resolver for NumberResolver {
+    fn add(&mut self, char: char) -> AddResult {
         match char {
             '0'..='9' => {
-                self.add_char(char);
+                self.chars.push(char);
                 AddResult::Ok
             },
             '.' => {
@@ -47,20 +64,6 @@ impl Resolver {
                     Ok(token) => AddResult::Change(token, char),
                     Err(err) => AddResult::Err(err),
                 }
-            }
-        }
-    }
-    
-    fn end_number(&self) -> Result<Token, LangError>  {
-        if self.chars.contains('.') {
-            match self.chars.parse::<f32>() {
-                Ok(value) => Ok(Token::Literal(LiteralKind::Float(value))),
-                Err(_) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
-            }
-        } else {
-            match self.chars.parse::<i32>() {
-                Ok(value) => Ok(Token::Literal(LiteralKind::Int(value))),
-                Err(_) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
             }
         }
     }
