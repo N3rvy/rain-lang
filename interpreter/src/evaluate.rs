@@ -49,17 +49,17 @@ macro_rules! expect_some {
 impl<'a> Scope<'a> {
     pub fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
-            NodeKind::Module { functions, variables} => {
-                for (func_name, func) in functions {
-                    self.declare_var(func_name.clone(), LangValue::Function(func.clone()));
-                }
+            // NodeKind::Module { functions, variables} => {
+            //     for (func_name, func) in functions {
+            //         self.declare_var(func_name.clone(), LangValue::Function(func.clone()));
+            //     }
 
-                for (var_name, var) in variables {
-                    self.declare_var(var_name.clone(), self.evaluate_ast(var)?);
-                }
+            //     for (var_name, var) in variables {
+            //         self.declare_var(var_name.clone(), self.evaluate_ast(var)?);
+            //     }
                 
-                EvalResult::Ok(LangValue::Nothing)
-            },
+            //     EvalResult::Ok(LangValue::Nothing)
+            // },
             NodeKind::VariableDecl { name, value } => {
                 let value = self.evaluate_ast(value)?;
                 self.declare_var(name.clone(), value.clone());

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
 
 pub mod types;
+pub mod module;
 
 
 pub type ASTBody = Vec<ASTNode>;
@@ -22,10 +23,6 @@ impl ASTNode {
 }
 
 pub enum NodeKind {
-    Module {
-        functions: Vec<(String, Arc<Function>)>,
-        variables: Vec<(String, ASTNode)>,
-    },
     VariableDecl {
         name: String,
         value: ASTNode,
@@ -100,10 +97,6 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    pub fn new_module(functions: Vec<(String, Arc<Function>)>, variables: Vec<(String, ASTNode)>) -> NodeKind {
-        NodeKind::Module { functions, variables }
-    }
-    
     pub fn new_variable_decl(name: String, value: ASTNode) -> NodeKind {
         NodeKind::VariableDecl { name, value }
     }

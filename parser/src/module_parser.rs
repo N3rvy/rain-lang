@@ -1,5 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
-use common::{ast::{ASTNode, types::{OperatorKind, ParenthesisKind, ParenthesisState, TypeKind, Function, FunctionType}, NodeKind}, errors::LangError};
+use common::{ast::{ASTNode, types::{OperatorKind, ParenthesisKind, ParenthesisState, TypeKind, Function, FunctionType}, module::ASTModule}, errors::LangError};
 use tokenizer::{iterator::{Tokens, TokenSnapshot}, tokens::Token};
 use crate::{errors::{ParsingErrorHelper, UNEXPECTED_ERROR}, expect_token, utils::{parse_type_error, parse_parameter_names}, parser::ParserScope, expect_indent};
 
@@ -50,7 +50,7 @@ impl ModuleParser {
         self
     }
 
-    pub fn build(mut self) -> Result<ASTNode, LangError> {
+    pub fn build(mut self) -> Result<ASTModule, LangError> {
         let scope = ParserScope::new_root();
         
         // Declaring every type into the scope
@@ -88,12 +88,9 @@ impl ModuleParser {
             };
         }
 
-        Ok(ASTNode::new(
-            NodeKind::new_module(
-                functions,
-                variables
-            ),
-            TypeKind::Nothing,
+        Ok(ASTModule::new(
+            functions,
+            variables,
         ))
     }
 
