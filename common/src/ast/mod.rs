@@ -23,7 +23,8 @@ impl ASTNode {
 
 pub enum NodeKind {
     Module {
-        definitions: Vec<ASTNode>,
+        functions: Vec<(String, Arc<Function>)>,
+        variables: Vec<(String, ASTNode)>,
     },
     VariableDecl {
         name: String,
@@ -99,8 +100,8 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    pub fn new_module(definitions: Vec<ASTNode>) -> NodeKind {
-        NodeKind::Module { definitions }
+    pub fn new_module(functions: Vec<(String, Arc<Function>)>, variables: Vec<(String, ASTNode)>) -> NodeKind {
+        NodeKind::Module { functions, variables }
     }
     
     pub fn new_variable_decl(name: String, value: ASTNode) -> NodeKind {

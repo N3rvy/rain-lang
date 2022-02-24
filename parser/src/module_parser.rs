@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use common::{ast::{ASTNode, types::{OperatorKind, ParenthesisKind, ParenthesisState, TypeKind, Function, FunctionType}, NodeKind}, errors::LangError};
 use tokenizer::{iterator::{Tokens, TokenSnapshot}, tokens::Token};
 use crate::{errors::{ParsingErrorHelper, UNEXPECTED_ERROR}, expect_token, utils::{parse_type_error, parse_parameter_names}, parser::ParserScope, expect_indent};
@@ -63,20 +63,18 @@ impl ModuleParser {
             scope.declare(name.clone(), type_kind);
         }
 
-        let mut definitions = Vec::new();
+        let mut functions = Vec::new();
+        let mut variables = Vec::new();
 
         // Parsing every definition
         for (name, decl) in self.declarations{
             self.tokens.rollback(decl.body);
 
-            let definition = match decl.kind {
+            match decl.kind {
                 DeclarationKind::Variable(_) => {
                     let value = Self::parse_variable_value(&mut self.tokens, scope.new_child())?;
 
-                    ASTNode::new(
-                        NodeKind::new_variable_decl(name, value),
-                        TypeKind::Nothing,
-                    )
+                    variables.push((name, value));
                 },
                 DeclarationKind::Function(params, func_type) => {
                     let value = Self::parse_function_value(
@@ -85,18 +83,16 @@ impl ModuleParser {
                         params,
                         func_type)?;
 
-                    ASTNode::new(
-                        NodeKind::new_variable_decl(name, value),
-                        TypeKind::Nothing,
-                    )
+                    functions.push((name, value));
                 },
             };
-
-            definitions.push(definition);
         }
 
         Ok(ASTNode::new(
-            NodeKind::new_module(definitions),
+            NodeKind::new_module(
+                functions,
+                variables
+            ),
             TypeKind::Nothing,
         ))
     }
@@ -105,7 +101,7 @@ impl ModuleParser {
         scope.parse_statement(tokens)
     }
 
-    fn parse_function_value(tokens: &mut Tokens, scope: ParserScope, params: Vec<String>, func_type: FunctionType) -> Result<ASTNode, LangError> {
+    fn parse_function_value(tokens: &mut Tokens, scope: ParserScope, params: Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
         if params.len() != func_type.0.len() {
             return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
         }
@@ -116,12 +112,7 @@ impl ModuleParser {
 
         let body = scope.parse_body(tokens)?;
 
-        let func = Function::new(body, params);
-
-        Ok(ASTNode::new(
-            NodeKind::new_function_literal(func),
-            TypeKind::Function(func_type),
-        ))
+        Ok(Function::new(body, params))
     }
 
     fn parse_definition(&mut self) -> Result<(), LangError> {

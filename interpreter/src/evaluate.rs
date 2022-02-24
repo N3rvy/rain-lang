@@ -49,9 +49,13 @@ macro_rules! expect_some {
 impl<'a> Scope<'a> {
     pub fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
-            NodeKind::Module { definitions } => {
-                for def in definitions {
-                    self.evaluate_ast(def)?;
+            NodeKind::Module { functions, variables} => {
+                for (func_name, func) in functions {
+                    self.declare_var(func_name.clone(), LangValue::Function(func.clone()));
+                }
+
+                for (var_name, var) in variables {
+                    self.declare_var(var_name.clone(), self.evaluate_ast(var)?);
                 }
                 
                 EvalResult::Ok(LangValue::Nothing)
