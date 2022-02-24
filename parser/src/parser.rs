@@ -163,7 +163,13 @@ impl<'a> ParserScope<'a> {
                     (ParenthesisKind::Curly, ParenthesisState::Open) => {
                         let values = self.parse_object_values(tokens)?;
                         
-                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(HashMap::new()))
+                        let mut field_map = HashMap::new();
+
+                        for (field_name, field) in &values {
+                            field_map.insert(field_name.clone(), field.eval_type.clone());
+                        }
+                        
+                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(field_map))
                     },
                     _ => return Err(LangError::new_parser_unexpected_token())
                 }

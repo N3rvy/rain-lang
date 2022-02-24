@@ -38,11 +38,6 @@ pub enum NodeKind {
         variable: ASTNode,
         parameters: ASTBody,
     },
-    MethodInvok {
-        object: ASTNode,
-        name: String,
-        parameters: ASTBody,
-    },
     Literal {
         value: LiteralKind,
     },
@@ -111,10 +106,6 @@ impl NodeKind {
     
     pub fn new_function_invok(variable: ASTNode, parameters: ASTBody) -> NodeKind {
         NodeKind::FunctionInvok { variable, parameters }
-    }
-    
-    pub fn new_method_invok(object: ASTNode, name: String, parameters: ASTBody) -> NodeKind {
-        NodeKind::MethodInvok { object, name, parameters }
     }
     
     pub fn new_literal(value: LiteralKind) -> NodeKind {

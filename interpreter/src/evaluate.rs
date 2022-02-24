@@ -78,19 +78,6 @@ impl<'a> Scope<'a> {
                 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            NodeKind::MethodInvok { object, name, parameters } => {
-                let object = self.evaluate_ast(object)?;
-                let func = object.get_field(name);
-                
-                let mut param_values = Vec::new();
-                param_values.push(object);
-                for param in parameters {
-                    let value = self.evaluate_ast(param)?;
-                    param_values.push(value);
-                }
-                
-                self.invoke_function(&func, param_values)
-            },
             NodeKind::FunctionInvok { variable, parameters } => {
                 let func = self.evaluate_ast(variable)?;
 
