@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 use common::{ast::{ASTNode, types::{OperatorKind, ParenthesisKind, ParenthesisState, TypeKind, Function, FunctionType}, module::ASTModule}, errors::LangError};
 use tokenizer::{iterator::{Tokens, TokenSnapshot}, tokens::Token};
-use crate::{errors::{ParsingErrorHelper, UNEXPECTED_ERROR}, expect_token, utils::{parse_type_error, parse_parameter_names}, parser::ParserScope, expect_indent};
+use crate::{errors::{ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE}, expect_token, utils::{parse_type_error, parse_parameter_names}, parser::ParserScope, expect_indent};
 
 pub enum DeclarationKind {
     Variable(TypeKind),
@@ -72,16 +72,22 @@ impl ModuleParser {
 
             match decl.kind {
                 DeclarationKind::Variable(_) => {
-                    let value = Self::parse_variable_value(&mut self.tokens, scope.new_child())?;
+                    let value = Self::parse_variable_value(&mut self.tokens, &scope.new_child())?;
 
                     variables.push((name, value));
                 },
                 DeclarationKind::Function(params, func_type) => {
+                    let scope = scope.new_child();
+
                     let value = Self::parse_function_value(
                         &mut self.tokens,
-                        scope.new_child(),
+                        &scope,
                         params,
-                        func_type)?;
+                        func_type.clone())?;
+
+                    if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
+                        return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                    }
 
                     functions.push((name, value));
                 },
@@ -94,11 +100,11 @@ impl ModuleParser {
         ))
     }
 
-    fn parse_variable_value(tokens: &mut Tokens, scope: ParserScope) -> Result<ASTNode, LangError> {
+    fn parse_variable_value(tokens: &mut Tokens, scope: &ParserScope) -> Result<ASTNode, LangError> {
         scope.parse_statement(tokens)
     }
 
-    fn parse_function_value(tokens: &mut Tokens, scope: ParserScope, params: Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
+    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
         if params.len() != func_type.0.len() {
             return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
         }

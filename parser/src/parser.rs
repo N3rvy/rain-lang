@@ -6,7 +6,7 @@ use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FI
 
 pub struct ParserScope<'a> {
     parent: Option<&'a ParserScope<'a>>,
-    eval_type: RefCell<TypeKind>,
+    pub eval_type: RefCell<TypeKind>,
     
     names: RefCell<SmallVec<[String; SCOPE_SIZE]>>,
     types: RefCell<SmallVec<[TypeKind; SCOPE_SIZE]>>,
