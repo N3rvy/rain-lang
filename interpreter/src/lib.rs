@@ -8,7 +8,7 @@ use std::sync::Arc;
 use common::ast::types::{Function, TypeKind};
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
-use evaluate::EvalResult;
+use evaluate::{EvalResult, EvaluateAST};
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use module_builder::InterpreterModuleBuilder;
@@ -22,12 +22,12 @@ mod object;
 mod errors;
 mod module_builder;
 
-pub struct InterpreterEngine<'a> {
-    global_module: InterpreterModule<'a>,
+pub struct InterpreterEngine {
+    global_module: InterpreterModule,
     global_types: Vec<(String, TypeKind)>,
 }
 
-impl<'a> Default for InterpreterEngine<'a> {
+impl<'a> Default for InterpreterEngine {
     fn default() -> Self {
         Self {
             global_module: InterpreterModule::new(Scope::new()),
@@ -37,14 +37,14 @@ impl<'a> Default for InterpreterEngine<'a> {
 }
 
 
-pub struct InterpreterModule<'a> {
-    scope: Scope<'a>,
+pub struct InterpreterModule {
+    scope: Arc<Scope>,
 }
 
-impl<'a> EngineModule for InterpreterModule<'a> {}
+impl<'a> EngineModule for InterpreterModule {}
 
-impl<'a> InterpreterModule<'a> {
-    fn new(scope: Scope<'a>) -> Self {
+impl InterpreterModule {
+    fn new(scope: Arc<Scope>) -> Self {
         Self {
             scope,
         }
@@ -52,8 +52,8 @@ impl<'a> InterpreterModule<'a> {
 }
 
 
-impl<'a> Engine<'a> for InterpreterEngine<'a> {
-    type Module = InterpreterModule<'a>;
+impl<'a> Engine<'a> for InterpreterEngine {
+    type Module = InterpreterModule;
     type ModuleBuilder = InterpreterModuleBuilder;
 
     fn new() -> Self {
@@ -66,7 +66,7 @@ impl<'a> Engine<'a> for InterpreterEngine<'a> {
 } 
 
 pub struct InterpreterFunction<'a, Args, R: ExternalType> {
-    module: &'a InterpreterModule<'a>,
+    module: &'a InterpreterModule,
     func: Arc<Function>,
     _marker: PhantomData<(Args, R)>,
 }
@@ -75,7 +75,7 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
     for InterpreterFunction<'_, (), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
-        let scope = Scope::new_child(&self.module.scope);
+        let scope = Scope::new_child(self.module.scope.clone());
         let result = scope.invoke_function(
             &LangValue::Function(self.func.clone()),
             vec![],
@@ -99,7 +99,7 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
 
 impl<'a, R: ExternalType> EngineGetFunction
     <'a, (), Result<R, LangError>, InterpreterFunction<'a, (), R>>
-    for InterpreterEngine<'a>
+    for InterpreterEngine
 {
     fn get_function(&'a self, module: &'a Self::Module, name: &str)
         -> Option<InterpreterFunction<'a, (), R>>
@@ -121,7 +121,7 @@ impl<'a, R: ExternalType> EngineGetFunction
     }
 }
 
-impl<'a, R> EngineSetFunction<'a, (), R> for InterpreterEngine<'a>
+impl<'a, R> EngineSetFunction<'a, (), R> for InterpreterEngine
 where
     R: ExternalType
 {
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<'a, R, A0> EngineSetFunction<'a, (A0,), R> for InterpreterEngine<'a>
+impl<'a, R, A0> EngineSetFunction<'a, (A0,), R> for InterpreterEngine
 where
     A0: ExternalType,
     R: ExternalType
@@ -162,7 +162,7 @@ where
     }
 }
 
-impl<'a, R, A0, A1> EngineSetFunction<'a, (A0, A1), R> for InterpreterEngine<'a>
+impl<'a, R, A0, A1> EngineSetFunction<'a, (A0, A1), R> for InterpreterEngine
 where
     A0: ExternalType,
     A1: ExternalType,
@@ -186,7 +186,7 @@ where
     }
 }
 
-impl<'a, R, A0, A1, A2> EngineSetFunction<'a, (A0, A1, A2), R> for InterpreterEngine<'a>
+impl<'a, R, A0, A1, A2> EngineSetFunction<'a, (A0, A1, A2), R> for InterpreterEngine
 where
     A0: ExternalType,
     A1: ExternalType,
@@ -212,7 +212,7 @@ where
     }
 }
 
-impl<'a, R, A0, A1, A2, A3> EngineSetFunction<'a, (A0, A1, A2, A3), R> for InterpreterEngine<'a>
+impl<'a, R, A0, A1, A2, A3> EngineSetFunction<'a, (A0, A1, A2, A3), R> for InterpreterEngine
 where
     A0: ExternalType,
     A1: ExternalType,

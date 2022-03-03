@@ -1,25 +1,25 @@
-use std::{collections::HashMap, cell::RefCell, sync::Mutex};
+use std::{collections::HashMap, cell::RefCell, sync::{Mutex, Arc}};
 
 use crate::lang_value::LangValue;
 
-pub struct Scope<'a> {
-    parent: Option<&'a Scope<'a>>,
+pub struct Scope {
+    parent: Option<Arc<Scope>>,
     variables: Mutex<RefCell<HashMap<String, LangValue>>>,
 }
 
-impl<'a> Scope<'a> {
-    pub fn new() -> Self {
-        Self {
+impl Scope {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             parent: None,
             variables: Mutex::new(RefCell::new(HashMap::new())),
-        }
+        })
     }
 
-    pub fn new_child(parent: &'a Scope) -> Self {
-        Self {
-            parent: Some(&parent),
+    pub fn new_child(parent: Arc<Scope>) -> Arc<Self> {
+        Arc::new(Self {
+            parent: Some(parent),
             variables: Mutex::new(RefCell::new(HashMap::new())),
-        }
+        })
     }
     
     pub fn declare_var(&self, name: String, value: LangValue) {
