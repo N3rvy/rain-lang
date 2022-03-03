@@ -3,9 +3,6 @@ use common::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, TypeK
 
 #[derive(Clone, Debug)]
 pub enum Token {
-    NewLine,
-    Indent,
-    Dedent,
     Function,
     Variable,
     Return,

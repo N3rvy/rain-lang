@@ -1,4 +1,4 @@
-pub mod module_parser;
-mod parser;
+pub mod type_check;
+pub mod parser;
 mod utils;
 mod errors;

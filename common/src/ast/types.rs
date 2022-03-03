@@ -8,6 +8,7 @@ pub enum LiteralKind {
     Int(i32),
     Float(f32),
     String(String),
+    Function(Arc<Function>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,9 +62,6 @@ pub enum ReturnKind {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
-
-#[derive(Clone, Debug, PartialEq)]
 pub enum TypeKind {
     Unknown,
     Int,
@@ -71,9 +69,9 @@ pub enum TypeKind {
     String,
     Bool,
     Nothing,
-    Vector(Box<TypeKind>),
-    Function(FunctionType),
-    Object(HashMap<String, TypeKind>),
+    Vector,
+    Function(Vec<TypeKind>),
+    Object(HashMap<String, TypeKind>)
 }
 
 impl TypeKind {
@@ -86,13 +84,6 @@ impl TypeKind {
             _ => false
         }
     }
-    
-    pub fn is_unknown(&self) -> bool {
-        match self {
-            TypeKind::Unknown => true,
-            _ => false,
-        }
-    }
 }
 
 impl From<LiteralKind> for TypeKind {
@@ -102,6 +93,7 @@ impl From<LiteralKind> for TypeKind {
             LiteralKind::Int(_) => Self::Int,
             LiteralKind::Float(_) => Self::Float,
             LiteralKind::String(_) => Self::String,
+            LiteralKind::Function(_) => Self::Unknown, // TODO: Make it into a function with unknown parameters
         }
     }
 }

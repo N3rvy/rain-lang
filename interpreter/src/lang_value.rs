@@ -410,6 +410,7 @@ impl From<LiteralKind> for LangValue {
             LiteralKind::Int(i) => LangValue::Int(i),
             LiteralKind::Float(f) => LangValue::Float(f),
             LiteralKind::String(s) => LangValue::String(s),
+            LiteralKind::Function(f) => LangValue::Function(f),
         }
     }
 }

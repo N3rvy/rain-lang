@@ -1,15 +1,31 @@
 use common::{errors::LangError, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}};
+
 use crate::{tokens::Token, errors::INVALID_OPERATOR_TOKEN_ERROR};
-use super::resolver::{Resolver, AddResult};
 
-pub struct OperatorResolver {
-    chars: String,
-}
+use super::resolver::{Resolver, ResolverKind, AddResult};
 
-impl OperatorResolver {
-    pub fn new() -> Self {
+impl Resolver {
+    pub(crate) fn new_operator() -> Self {
         Self {
-            chars: String::new(),
+            kind: ResolverKind::StringLiteral,
+            add_fn: Self::add_operator,
+            chars: Default::default(),
+        }
+    }
+    
+    fn add_operator(&mut self, char: char) -> AddResult {
+        match char {
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
+                self.add_char(char);
+                AddResult::Ok
+            },
+
+            _ => {
+                match self.end_operator() {
+                    Ok(token) => AddResult::Change(token, char),
+                    Err(err) => AddResult::Err(err),
+                }
+            },
         }
     }
     
@@ -41,23 +57,5 @@ impl OperatorResolver {
             // Fallback
             _ => return Err(LangError::new_tokenizer(INVALID_OPERATOR_TOKEN_ERROR.to_string()))
         })
-    }
-}
-
-impl Resolver for OperatorResolver {
-    fn add(&mut self, char: char) -> AddResult {
-        match char {
-            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
-                self.chars.push(char);
-                AddResult::Ok
-            },
-
-            _ => {
-                match self.end_operator() {
-                    Ok(token) => AddResult::Change(token, char),
-                    Err(err) => AddResult::Err(err),
-                }
-            },
-        }
     }
 }
