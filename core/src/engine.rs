@@ -1,4 +1,4 @@
-use common::ast::types::TypeKind;
+use common::{ast::types::TypeKind, errors::LangError};
 
 use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
 
@@ -17,6 +17,10 @@ where
     fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
 
     fn new() -> Self;
+}
+
+pub trait EngineBuildSource<'a> : Engine<'a> {
+    fn build_source(&'a self) -> Result<Vec<u8>, LangError>;
 }
 
 pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
