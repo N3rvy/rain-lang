@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 pub mod functions;
 
 lazy_static! {
-    pub static ref ENGINE: InterpreterEngine<'static> = Engine::new();
+    pub static ref ENGINE: InterpreterEngine = Engine::new();
 }
 
 pub fn test_script(source: &str, value: AnyValue) -> Result<(), LangError> {

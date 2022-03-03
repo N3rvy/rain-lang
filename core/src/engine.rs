@@ -1,28 +1,20 @@
-use common::{ast::ASTNode, errors::LangError};
-use parser::{type_check::check_types, parser::parse};
-use tokenizer::tokenizer::tokenize;
+use common::ast::types::TypeKind;
 
-use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}};
+use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
 
 
 pub trait Engine<'a>
 where
     Self: Sized
 {
-    type Module;
+    type Module: EngineModule;
     type ModuleBuilder: ModuleBuilder<'a, Engine = Self>;
 
-    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self::ModuleBuilder, Self> {
-        EngineModuleBuilder::<'a, Self::ModuleBuilder, Self>::new(&self)
+    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self> {
+        EngineModuleBuilder::new(&self)
     }
-    
-    fn source_to_ast(source: &String) -> Result<ASTNode, LangError> {
-        let tokens = tokenize(source.clone())?;
-        let ast = parse(tokens)?;
-        check_types(&ast)?;
 
-        Ok(ast)
-    }
+    fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
 
     fn new() -> Self;
 }
@@ -37,6 +29,6 @@ pub trait InternalFunction<Args, R> {
 }
 
 pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
-    fn set_function<F>(&'a self, name: &str, func: F)
+    fn set_function<F>(&mut self, name: &str, func: F)
     where F: Fn<Args, Output = R> + Send + Sync + 'static;
 }

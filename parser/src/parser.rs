@@ -1,338 +1,446 @@
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError};
-use tokenizer::tokens::Token;
+use std::{collections::HashMap, cell::RefCell};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
+use smallvec::SmallVec;
+use tokenizer::{tokens::Token, iterator::Tokens};
+use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent};
 
-use crate::{utils::{parse_object_values, parse_type}, expect_token, errors::ParsingErrorHelper};
-
-use super::utils::{parse_body, parse_parameter_values, parse_parameter_names};
-
-pub fn parse(mut tokens: Vec<Token>) -> Result<ASTNode, LangError> {
-    // Reversing the vector for using it as a stack
-    tokens.reverse();
-    
+pub fn parse(mut tokens: Tokens, global_types: &Vec<(String, TypeKind)>) -> Result<ASTNode, LangError> {
     let mut body = Vec::new(); 
+    let scope = ParserScope::new_root();
+
+    for (t_name, t_kind) in global_types {
+        scope.declare(t_name.clone(), t_kind.clone())
+    }
     
     loop {
-        if tokens.is_empty() { break }
+        if !tokens.has_next() { break }
 
-        match parse_statement(&mut tokens) {
-            Ok(node) => body.push(node),
-            Err(err) => return Err(err),
-        }
+        body.push(scope.parse_statement(&mut tokens)?); 
     }
     
     Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Unknown))
 }
 
-pub(super) fn parse_statement(tokens: &mut Vec<Token>) -> Result<ASTNode, LangError> {
-    let token = tokens.pop();
-    if let None = token {
-        return Err(LangError::new_parser_end_of_file());
-    }
+pub struct ParserScope<'a> {
+    parent: Option<&'a ParserScope<'a>>,
+    eval_type: RefCell<TypeKind>,
     
-    let token = token.unwrap();
-    
-    let result = match &token {
-        Token::Function => {
-            let next= tokens.pop();
-            
-            // "name" | (
-            match next {
-                Some(Token::Symbol(name)) => {
-                    // (
-                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
-                    
-                    // ...)
-                    let (param_names, mut param_types) = parse_parameter_names(tokens)?;
-
-                    // return type?
-                    let ret_type = parse_type(tokens)?;
-                    param_types.push(ret_type);
-                    
-                    // {
-                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
-
-                    // ...}
-                    let body = parse_body(tokens)?;
-
-                    ASTNode::new(
-                        NodeKind::new_function_decl(
-                            name,
-                            Function::new(body, param_names)
-                        ),
-                        TypeKind::Unknown
-                    )
-                },
-                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => {
-                    // ...)
-                    let (param_names, mut param_types) = parse_parameter_names(tokens)?;
-
-                    // return type?
-                    let ret_type = parse_type(tokens)?;
-                    param_types.push(ret_type);
-                    
-                    // {
-                    expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
-
-                    // ...}
-                    let body = parse_body(tokens)?;
-                    
-                    ASTNode::new(
-                        NodeKind::new_literal(
-                            LiteralKind::Function(Function::new(body, param_names))
-                        ),
-                        TypeKind::Function(param_types)
-                    )
-                },
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            }
-        },
-        Token::Variable => {
-            let name = tokens.pop();
-            let type_kind = parse_type(tokens)?;
-            let assign = tokens.pop();
-            
-            let name = match name {
-                Some(Token::Symbol(name)) => name,
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            };
-
-            match assign {
-                Some(Token::Operator(OperatorKind::Assign)) => (),
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            }
-
-            let value = parse_statement(tokens);
-
-            match value {
-                Ok(node) => ASTNode::new(NodeKind::new_variable_decl(name, node), type_kind),
-                Err(err) => return Err(err),
-            }
-        },
-        Token::Operator(_) | Token::BoolOperator(_) | Token::MathOperator(_) => return Err(LangError::new_parser_unexpected_token()),
-        Token::Symbol(name) => ASTNode::new(NodeKind::new_variable_ref(name.clone()), TypeKind::Unknown),
-        Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
-        Token::Parenthesis(kind, state) => {
-            match (kind, state) {
-                (ParenthesisKind::Round, ParenthesisState::Open) => {
-                    let result = parse_statement(tokens);
-                    
-                    match tokens.pop() {
-                        Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => (),
-                        Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                        None => return Err(LangError::new_parser_end_of_file()),
-                    }
-                    
-                    result?
-                },
-                (ParenthesisKind::Square, ParenthesisState::Open) => {
-                    let values = parse_parameter_values(tokens, ParenthesisKind::Square)?;
-                    
-                    ASTNode::new(NodeKind::new_vector_literal(values), TypeKind::Unknown)
-                },
-                (ParenthesisKind::Curly, ParenthesisState::Open) => {
-                    let values = parse_object_values(tokens)?;
-                    
-                    ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Unknown)
-                },
-                _ => return Err(LangError::new_parser_unexpected_token())
-            }
-        },
-        Token::Return | Token::Break => {
-            let value = match tokens.last() {
-                Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => {
-                    None
-                },
-                Some(_) => {
-                    Some(parse_statement(tokens)?)
-                },
-                None => return Err(LangError::new_parser_end_of_file()),
-            };
-            
-            let kind = match &token {
-                Token::Return => ReturnKind::Return,
-                Token::Break => ReturnKind::Break,
-                _ => panic!("Like WTF"),
-            };
-
-            ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Unknown)
-        },
-        Token::If => {
-            // condition
-            let condition = parse_statement(tokens)?;
-            // {
-            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
-            // ...}
-            let body = parse_body(tokens)?;
-            
-            ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Unknown)
-        },
-        Token::For => {
-            // iter name
-            let iter_name = match tokens.pop() {
-                Some(Token::Symbol(name)) => name,
-                _ => return Err(LangError::new_parser_unexpected_token()),
-            };
-            
-            // in
-            expect_token!(tokens.pop(), Token::Operator(OperatorKind::In));
-            
-            // min value
-            let min = parse_statement(tokens)?;
-            
-            // ..
-            expect_token!(tokens.pop(), Token::Operator(OperatorKind::Range));
-            
-            // max value
-            let max = parse_statement(tokens)?;
-            
-            // {
-            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
-            
-            // ...}
-            let body = parse_body(tokens)?;
-            
-            ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Unknown)
-        },
-        Token::While => {
-            // condition 
-            let condition = parse_statement(tokens)?;
-            // {
-            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
-            // ...}
-            let body = parse_body(tokens)?;
-            
-            ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Unknown)
-        },
-        Token::Import => {
-            // identifier
-            let identifier = match tokens.pop() {
-                Some(Token::Literal(LiteralKind::String(ident))) => ident,
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            };
-            
-            ASTNode::new(NodeKind::new_import(identifier), TypeKind::Unknown)
-        },
-        Token::Type(_) => return Err(LangError::new_parser_unexpected_token()),
-    };
-    
-
-    let mut node = result;
-    
-    Ok(loop {
-        let res = parse_infix(node, tokens)?; 
-        if res.1 {
-            node = res.0;
-        } else {
-            break res.0;
-        }
-    })
+    names: RefCell<SmallVec<[String; SCOPE_SIZE]>>,
+    types: RefCell<SmallVec<[TypeKind; SCOPE_SIZE]>>,
 }
 
-/// The bool in the tuple is a bool representing whether the infix was valid or not
-fn parse_infix(node: ASTNode, tokens: &mut Vec<Token>) -> Result<(ASTNode, bool), LangError> {
+impl<'a> ParserScope<'a> {
+    pub fn new_root() -> Self {
+        Self {
+            parent: None,
+            eval_type: RefCell::new(TypeKind::Nothing),
 
-    // Getting the infix and returning if it's None
-    let infix = tokens.last().cloned();
-    if matches!(infix, None) { return Ok((node, false)) }
+            names: RefCell::new(SmallVec::new()),
+            types: RefCell::new(SmallVec::new()),
+        }
+    }
     
-    let infix = infix.unwrap();
+    pub fn new_child(&'a self) -> Self {
+        Self {
+            parent: Some(self),
+            eval_type: RefCell::new(TypeKind::Nothing),
 
-    match infix {
-        Token::MathOperator(operator) => {
-            tokens.pop();
-            let right = parse_statement(tokens);
-            
-            match right {
-                Ok(right) => Ok((
+            names: RefCell::new(SmallVec::new()),
+            types: RefCell::new(SmallVec::new()),
+        }
+    }
+    
+    pub fn get(&self, name: &String) -> Option<TypeKind> {
+        let types = self.types.borrow();
+        
+        self.names.borrow()
+            .iter()
+            .rev()
+            .enumerate()
+            .find(|(_, value)| (**value).eq(name))
+            .and_then(|(i, _)| Some(types[types.len() - 1 - i].clone()))
+            .or_else(|| self.parent.and_then(|parent| parent.get(name)))
+    }
+    
+    pub fn declare(&self, name: String, type_kind: TypeKind) {
+        self.names.borrow_mut().push(name);
+        self.types.borrow_mut().push(type_kind);
+    }
+
+    pub fn parse_statement(&self, tokens: &mut Tokens) -> Result<ASTNode, LangError> {
+        let token = tokens.pop();
+        if let None = token {
+            return Err(LangError::new_parser_end_of_file());
+        }
+        
+        let token = token.unwrap();
+        
+        let result = match &token {
+            Token::Function => {
+                let next= tokens.pop();
+
+                let name = match next {
+                    Some(Token::Symbol(name)) => {
+                        expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                        Some(name)
+                    },
+                    Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => None,
+                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_end_of_file()),
+                };
+
+                // ...)
+                let (param_names, param_types) = self.parse_parameter_names(tokens)?;
+
+                // return type?
+                let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
+                
+                // Indentation
+                expect_indent!(tokens);
+
+                // creating the child scope
+                let body_scope = self.new_child();
+                // declaring the argument types
+                for i in 0..param_names.len() {
+                    body_scope.declare(param_names[i].clone(), param_types[i].clone());
+                }
+
+                // ...}
+                let body = body_scope.parse_body(tokens)?;
+
+                if !body_scope.eval_type.borrow().is_compatible(&ret_type) {
+                    return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                }
+                
+                let eval_type = TypeKind::Function(param_types.clone(), Box::new(ret_type));
+
+                let func_literal = ASTNode::new(
+                    NodeKind::new_function_literal(
+                        Function::new(body, param_names)),
+                    eval_type.clone(),
+                );
+
+                match name {
+                    Some(name) => {
+                        self.declare(name.clone(), eval_type);
+
                         ASTNode::new(
-                            NodeKind::new_math_operation(operator.clone(), node, right),
-                            TypeKind::Unknown),
-                        true)),
-                Err(err) => Err(err),
-            }
-        },
-        Token::BoolOperator(operator) => {
-            tokens.pop();
-            let right = parse_statement(tokens);
-            
-            match right {
-                Ok(right) => Ok((
-                    ASTNode::new(
-                        NodeKind::new_bool_operation(operator.clone(), node, right),
-                        TypeKind::Unknown),
-                    true)),
-                Err(err) => Err(err),
-            }
+                            NodeKind::new_variable_decl(
+                                name,
+                                func_literal,
+                            ),
+                            TypeKind::Nothing
+                        )
+                    },
+                    None => func_literal,
+                }
+            },
+            Token::Variable => {
+                // name
+                let name = tokens.pop();
+                
+                let name = match name {
+                    Some(Token::Symbol(name)) => name,
+                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
 
-        },
-        Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
-            tokens.pop();
-            
-            let value = parse_statement(tokens)?;
-            
-            expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
-            
-            Ok((
-                ASTNode::new(
-                    NodeKind::new_value_field_access(node, value),
-                    TypeKind::Unknown),
-                true)) 
-        },
-        Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
-            tokens.pop();
+                // ?(: type)
+                let assign_type = self.parse_type_option(tokens)?;
 
-            let parameters = parse_parameter_values(tokens, ParenthesisKind::Round)?;
-            
-            if let NodeKind::FieldAccess { variable: obj, field_name } = *node.kind {
+                // =
+                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
+
+                // value
+                let value = self.parse_statement(tokens)?;
+                
+                let eval_type = match assign_type {
+                    Some(type_kind) => {
+                        if !type_kind.is_compatible(&value.eval_type) {
+                            return Err(LangError::new_parser(INVALID_ASSIGN.to_string()))
+                        }
+                        type_kind
+                    },
+                    None => value.eval_type.clone(),
+                };
+                    
+                self.declare(name.clone(), eval_type.clone());
+
+                ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
+            },
+            Token::Symbol(name) => {
+                let var_ref = NodeKind::new_variable_ref(name.clone());
+                let var_type = match self.get(name) {
+                    Some(t) => t,
+                    None => return Err(LangError::new_parser(VAR_NOT_FOUND.to_string())),
+                };
+
+                ASTNode::new(var_ref, var_type)
+            }
+            Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
+            Token::Parenthesis(kind, state) => {
+                match (kind, state) {
+                    (ParenthesisKind::Round, ParenthesisState::Open) => {
+                        let result = self.parse_statement(tokens);
+                        
+                        match tokens.pop() {
+                            Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => (),
+                            Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                            None => return Err(LangError::new_parser_end_of_file()),
+                        }
+                        
+                        result?
+                    },
+                    (ParenthesisKind::Square, ParenthesisState::Open) => {
+                        let (vector_type, values) = self.parse_vector_values(tokens)?;
+                        
+                        ASTNode::new(
+                            NodeKind::new_vector_literal(values),
+                            TypeKind::Vector(Box::new(vector_type))
+                        )
+                    },
+                    (ParenthesisKind::Curly, ParenthesisState::Open) => {
+                        let values = self.parse_object_values(tokens)?;
+                        
+                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(HashMap::new()))
+                    },
+                    _ => return Err(LangError::new_parser_unexpected_token())
+                }
+            },
+            Token::Return | Token::Break => {
+                let value = match tokens.peek() {
+                    Some(Token::Dedent) => { // TODO: This is not even close to being a good way to handle return not having a value
+                        None
+                    },
+                    Some(_) => {
+                        Some(self.parse_statement(tokens)?)
+                    },
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
+                
+                let kind = match &token {
+                    Token::Return => ReturnKind::Return,
+                    Token::Break => ReturnKind::Break,
+                    _ => panic!("Like WTF"),
+                };
+                
+                let value_type = match &value {
+                    Some(node) => node.eval_type.clone(),
+                    None => TypeKind::Nothing,
+                };
+                self.eval_type.replace(value_type);
+
+                ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Nothing)
+            },
+            Token::If => {
+                // condition
+                let condition = self.parse_statement(tokens)?;
+                // Indent
+                expect_indent!(tokens);
+                // ...}
+                let body = self.new_child().parse_body(tokens)?;
+                
+                ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Nothing)
+            },
+            Token::For => {
+                // iter name
+                let iter_name = match tokens.pop() {
+                    Some(Token::Symbol(name)) => name,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
+                };
+                
+                // in
+                expect_token!(tokens.pop(), Token::Operator(OperatorKind::In));
+                
+                // min value
+                let min = self.parse_statement(tokens)?;
+                
+                // ..
+                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Range));
+                
+                // max value
+                let max = self.parse_statement(tokens)?;
+                
+                // {
+                expect_indent!(tokens);
+                
+                // ...}
+                let for_scope = self.new_child();
+                for_scope.declare(iter_name.clone(), TypeKind::Int);
+                let body = for_scope.parse_body(tokens)?;
+                
+                ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Nothing)
+            },
+            Token::While => {
+                // condition 
+                let condition = self.parse_statement(tokens)?;
+                // {
+                expect_indent!(tokens);
+                // ...}
+                let body = self.new_child().parse_body(tokens)?;
+                
+                ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
+            },
+            Token::Import => {
+                // identifier
+                let identifier = match tokens.pop() {
+                    Some(Token::Literal(LiteralKind::String(ident))) => ident,
+                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
+                
+                ASTNode::new(NodeKind::new_import(identifier), TypeKind::Nothing)
+            },
+            Token::NewLine => self.parse_statement(tokens)?,
+            Token::Operator(_) |
+            Token::BoolOperator(_) |
+            Token::MathOperator(_) |
+            Token::Type(_) |
+            Token::Indent |
+            Token::Dedent => return Err(LangError::new_parser_unexpected_token()),
+        };
+        
+
+        let mut node = result;
+        
+        Ok(loop {
+            let res = self.parse_infix(node, tokens)?; 
+            if res.1 {
+                node = res.0;
+            } else {
+                break res.0;
+            }
+        })
+    }
+
+    /// The bool in the tuple is a bool representing whether the infix was valid or not
+    pub fn parse_infix(&self, node: ASTNode, tokens: &mut Tokens) -> Result<(ASTNode, bool), LangError> {
+
+        // Getting the infix and returning if it's None
+        let infix = tokens.peek();
+        if matches!(infix, None) { return Ok((node, false)) }
+        
+        let infix = infix.unwrap();
+
+        match infix {
+            Token::MathOperator(operator) => {
+                tokens.pop();
+                let right = self.parse_statement(tokens)?;
+                
+                let eval_type = Self::predict_math_result(operator.clone(), &node.eval_type, &right.eval_type);
+                
                 Ok((
                     ASTNode::new(
-                        NodeKind::new_method_invok(obj, field_name , parameters),
-                        TypeKind::Unknown),
-                    true))
-            } else {
+                        NodeKind::new_math_operation(operator.clone(), node, right),
+                        eval_type
+                    ),
+                    true
+                ))
+            },
+            Token::BoolOperator(operator) => {
+                tokens.pop();
+                let right = self.parse_statement(tokens)?;
+                
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_bool_operation(operator.clone(), node, right),
+                        TypeKind::Bool
+                    ),
+                    true
+                ))
+            },
+            Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
+                tokens.pop();
+                
+                let value = self.parse_statement(tokens)?;
+                
+                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
+                
+                let vec_type = match &node.eval_type {
+                    TypeKind::Vector(vt) => (**vt).clone(),
+                    _ => return Err(LangError::new_parser(NOT_A_VECTOR.to_string())),
+                };
+                
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_value_field_access(node, value),
+                        vec_type),
+                    true)) 
+            },
+            Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
+                tokens.pop();
+
+                let parameters = self.parse_parameter_values(tokens)?;
+                
+                // check that node is function
+                let (arg_types, ret_type) = match &node.eval_type {
+                    TypeKind::Function(arg_types, ret_value) => (arg_types, ret_value),
+                    _ => return Err(LangError::new_parser(NOT_A_FUNCTION.to_string())),
+                };
+                
+                // Check parameters types
+                if parameters.len() != arg_types.len() {
+                    return Err(LangError::new_parser(INVALID_ARGS_COUNT.to_string()))
+                }
+                
+                for i in 0..parameters.len() {
+                    if !parameters[i].eval_type.is_compatible(&arg_types[i]) {
+                        return Err(LangError::new_parser(INVALID_ARGS.to_string()))
+                    }
+                }
+                
+                let ret_type = ret_type.as_ref().clone();
+
                 Ok((
                     ASTNode::new(
                         NodeKind::new_function_invok(node, parameters),
-                        TypeKind::Unknown),
+                        ret_type),
+                    true
+                ))
+            },
+            Token::Operator(OperatorKind::Dot) => {
+                tokens.pop();
+
+                let field_name = match tokens.pop() {
+                    Some(Token::Symbol(field_name)) => field_name,
+                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
+                
+                match &node.eval_type {
+                    TypeKind::Object(field_types) => {
+                        let field_type = match field_types.get(&field_name) {
+                            Some(t) => t.clone(),
+                            None => return Err(LangError::new_parser(FIELD_DOESNT_EXIST.to_string())),
+                        };
+
+                        Ok((
+                            ASTNode::new(
+                                NodeKind::new_field_access(node, field_name),
+                                field_type),
+                            true))
+                    },
+                    _ => return Err(LangError::new_parser(INVALID_FIELD_ACCESS.to_string())),
+                }
+            },
+            Token::Operator(OperatorKind::Assign) => {
+                let name = match node.kind.as_ref() {
+                    NodeKind::VaraibleRef { name } => name.to_string(),
+                    _ => return Ok((node, false)),
+                };
+
+                tokens.pop();
+
+                let value = self.parse_statement(tokens)?;
+
+                Ok((
+                    ASTNode::new(
+                        NodeKind::new_variable_asgn(name, value),
+                        TypeKind::Nothing),
                     true))
-            }
-        },
-        Token::Operator(OperatorKind::Dot) => {
-            tokens.pop();
-
-            let field_name = match tokens.pop() {
-                Some(Token::Symbol(field_name)) => field_name,
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            };
+            },
             
-            Ok((
-                ASTNode::new(
-                    NodeKind::new_field_access(node, field_name),
-                    TypeKind::Unknown),
-                true))
-        },
-        Token::Operator(OperatorKind::Assign) => {
-            let name = match node.kind.as_ref() {
-                NodeKind::VaraibleRef { name } => name.to_string(),
-                _ => return Ok((node, false)),
-            };
-
-            tokens.pop();
-
-            let value = parse_statement(tokens)?;
-
-            Ok((
-                ASTNode::new(
-                    NodeKind::new_variable_asgn(name, value),
-                    TypeKind::Unknown),
-                true))
-        },
-        
-        _ => Ok((node, false)),
+            _ => Ok((node, false)),
+        }
     }
 }

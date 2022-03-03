@@ -1,9 +1,12 @@
+use common::ast::types::TypeKind;
+
 
 pub trait ExternalType
 where Self: Sized
 {
     fn concretize(val: AnyValue) -> Option<Self>;
     fn generilize(val: Self) -> AnyValue;
+    fn type_kind() -> TypeKind;
 }
 
 impl ExternalType for () {
@@ -17,6 +20,10 @@ impl ExternalType for () {
     fn generilize(_val: Self) -> AnyValue {
         AnyValue::Nothing
     }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::Nothing
+    }
 }
 impl ExternalType for i32 {
     fn concretize(val: AnyValue) -> Option<Self> {
@@ -28,6 +35,10 @@ impl ExternalType for i32 {
 
     fn generilize(val: Self) -> AnyValue {
         AnyValue::Int(val)
+    }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::Int
     }
 }
 impl ExternalType for f32 {
@@ -41,6 +52,10 @@ impl ExternalType for f32 {
     fn generilize(val: Self) -> AnyValue {
         AnyValue::Float(val)
     }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::Float
+    }
 }
 impl ExternalType for bool {
     fn concretize(val: AnyValue) -> Option<Self> {
@@ -52,6 +67,10 @@ impl ExternalType for bool {
 
     fn generilize(val: Self) -> AnyValue {
         AnyValue::Bool(val)
+    }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::Bool
     }
 }
 impl ExternalType for String {
@@ -65,6 +84,10 @@ impl ExternalType for String {
     fn generilize(val: Self) -> AnyValue {
         AnyValue::String(val)
     }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::String
+    }
 }
 impl ExternalType for AnyValue {
     fn concretize(val: AnyValue) -> Option<Self> {
@@ -72,6 +95,10 @@ impl ExternalType for AnyValue {
     }
     fn generilize(val: Self) -> AnyValue {
         val
+    }
+
+    fn type_kind() -> TypeKind {
+        TypeKind::Unknown
     }
 }
 
@@ -94,70 +121,4 @@ impl ToString for AnyValue {
             AnyValue::String(s) => s.clone(),
         }
     }
-}
-
-
-pub trait ExternalFunction<Args> {
-    type Output: ExternalType;
-
-    fn args_count(&self) -> usize;
-}
-
-impl<R, F> ExternalFunction<()> for F
-where
-    R: ExternalType,
-    F: Fn<(), Output = R>,
-{
-    type Output = R;
-
-    fn args_count(&self) -> usize { 0 }
-}
-
-impl<A0, R, F> ExternalFunction<(A0,)> for F
-where
-    A0: ExternalType,
-    R: ExternalType,
-    F: Fn<(A0,), Output = R>,
-{
-    type Output = R;
-
-    fn args_count(&self) -> usize { 1 }
-}
-
-impl<A0, A1, R, F> ExternalFunction<(A0, A1)> for F
-where
-    A0: ExternalType,
-    R: ExternalType,
-    F: Fn<(A0, A1), Output = R>,
-{
-    type Output = R;
-
-    fn args_count(&self) -> usize { 2 }
-}
-
-impl<A0, A1, A2, R, F> ExternalFunction<(A0, A1, A2)> for F
-where
-    A0: ExternalType,
-    A1: ExternalType,
-    A2: ExternalType,
-    R: ExternalType,
-    F: Fn<(A0, A1, A2), Output = R>,
-{
-    type Output = R;
-
-    fn args_count(&self) -> usize { 3 }
-}
-
-impl<A0, A1, A2, A3, R, F> ExternalFunction<(A0, A1, A2, A3)> for F
-where
-    A0: ExternalType,
-    A1: ExternalType,
-    A2: ExternalType,
-    A3: ExternalType,
-    R: ExternalType,
-    F: Fn<(A0, A1, A2, A3), Output = R>,
-{
-    type Output = R;
-
-    fn args_count(&self) -> usize { 4 }
 }

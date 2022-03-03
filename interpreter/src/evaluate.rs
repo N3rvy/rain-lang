@@ -1,10 +1,7 @@
 use core::LangError;
 use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
-
-use common::{ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}}};
-
+use common::ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}};
 use crate::{lang_value::LangValue, object::LangObject, errors::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
-
 use super::scope::Scope;
 
 
@@ -46,8 +43,13 @@ macro_rules! expect_some {
     };
 }
 
-impl<'a> Scope<'a> {
-    pub fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
+pub trait EvaluateAST {
+    fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult;
+    fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult;
+}
+
+impl EvaluateAST for Arc<Scope> {
+    fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
             NodeKind::Root { body } => {
                 for child in body {
@@ -60,10 +62,6 @@ impl<'a> Scope<'a> {
                 let value = self.evaluate_ast(value)?;
                 self.declare_var(name.clone(), value.clone());
 
-                EvalResult::Ok(LangValue::Nothing)
-            },
-            NodeKind::FunctionDecl { name, value } => {
-                self.declare_var(name.clone(), LangValue::Function(value.clone()));
                 EvalResult::Ok(LangValue::Nothing)
             },
             NodeKind::VaraibleRef { name } => {
@@ -141,7 +139,7 @@ impl<'a> Scope<'a> {
                 let condition = self.evaluate_ast(condition)?;
                 
                 if condition.truthy() {
-                    let if_scope = Scope::new_child(self);
+                    let if_scope = Scope::new_child(self.clone());
 
                     for child in body {
                         if_scope.evaluate_ast(child)?;
@@ -219,13 +217,16 @@ impl<'a> Scope<'a> {
                 
                 EvalResult::Ok(LangValue::Object(LangObject::from_map(map)))
             },
+            NodeKind::FunctionLiteral { value } => {
+                EvalResult::Ok(LangValue::Function(value.clone()))
+            },
             NodeKind::Import { identifier: _ } => {
                 todo!()
             },
         }
     }
 
-    pub(super) fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
+    fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
         match func {
             LangValue::Function(func) => {
                 // Parameters
@@ -233,7 +234,7 @@ impl<'a> Scope<'a> {
                     return EvalResult::Err(LangError::new_runtime(FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
                 }
         
-                let func_scope = Scope::new_child(self);
+                let func_scope = Scope::new_child(self.clone());
                 for i in 0..func.parameters.len() {
                     func_scope.declare_var(func.parameters[i].to_string(), param_values[i].clone());
                 }

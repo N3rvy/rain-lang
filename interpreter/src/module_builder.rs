@@ -1,23 +1,24 @@
 use core::{module_builder::ModuleBuilder, LangError, Engine};
 
-use crate::{InterpreterModule, InterpreterEngine, scope::Scope};
+use common::ast::ASTNode;
+
+use crate::{InterpreterModule, InterpreterEngine, scope::Scope, evaluate::EvaluateAST};
 
 
 pub struct InterpreterModuleBuilder;
 
 impl<'a> ModuleBuilder<'a> for InterpreterModuleBuilder {
-    type Module = InterpreterModule<'a>;
-    type Engine = InterpreterEngine<'a>;
+    type Engine = InterpreterEngine;
 
-    fn new() -> Self { Self }
-    fn build(&self, engine: &'a Self::Engine, sources: &Vec<String>) -> Result<Self::Module, LangError> {
+    fn build(engine: &'a Self::Engine, asts: Vec<ASTNode>) -> Result<<Self::Engine as Engine<'a>>::Module, LangError> {
         let scope = Scope::new_child(
-            &engine.global_module.scope);
+            engine
+                .global_module
+                .scope
+                .clone());
         
-        for source in sources {
-            let ast = InterpreterEngine::source_to_ast(source)?;
-            
-            scope.evaluate_ast(&ast);
+        for ast in asts {
+            scope.clone().evaluate_ast(&ast);
         }
 
         Ok(InterpreterModule::new(scope))
