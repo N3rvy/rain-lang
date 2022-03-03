@@ -3,6 +3,7 @@ use std::sync::Arc;
 use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
 
 pub mod types;
+pub mod module;
 
 
 pub type ASTBody = Vec<ASTNode>;
@@ -22,9 +23,6 @@ impl ASTNode {
 }
 
 pub enum NodeKind {
-    Root {
-        body: ASTBody,
-    },
     VariableDecl {
         name: String,
         value: ASTNode,
@@ -38,11 +36,6 @@ pub enum NodeKind {
     },
     FunctionInvok {
         variable: ASTNode,
-        parameters: ASTBody,
-    },
-    MethodInvok {
-        object: ASTNode,
-        name: String,
         parameters: ASTBody,
     },
     Literal {
@@ -99,10 +92,6 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    pub fn new_root(body: ASTBody) -> NodeKind {
-        NodeKind::Root { body }
-    }
-    
     pub fn new_variable_decl(name: String, value: ASTNode) -> NodeKind {
         NodeKind::VariableDecl { name, value }
     }
@@ -117,10 +106,6 @@ impl NodeKind {
     
     pub fn new_function_invok(variable: ASTNode, parameters: ASTBody) -> NodeKind {
         NodeKind::FunctionInvok { variable, parameters }
-    }
-    
-    pub fn new_method_invok(object: ASTNode, name: String, parameters: ASTBody) -> NodeKind {
-        NodeKind::MethodInvok { object, name, parameters }
     }
     
     pub fn new_literal(value: LiteralKind) -> NodeKind {

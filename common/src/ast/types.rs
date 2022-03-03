@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc, fmt::Debug};
-
 use super::ASTBody;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
@@ -69,7 +71,7 @@ pub enum TypeKind {
     Bool,
     Nothing,
     Vector(Box<TypeKind>),
-    Function(Vec<TypeKind>, Box<TypeKind>),
+    Function(FunctionType),
     Object(HashMap<String, TypeKind>),
 }
 

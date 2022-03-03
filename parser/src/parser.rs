@@ -1,25 +1,8 @@
 use std::{collections::HashMap, cell::RefCell};
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind}}, errors::LangError, constants::SCOPE_SIZE};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind, FunctionType}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use tokenizer::{tokens::Token, iterator::Tokens};
-use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent};
-
-pub fn parse(mut tokens: Tokens, global_types: &Vec<(String, TypeKind)>) -> Result<ASTNode, LangError> {
-    let mut body = Vec::new(); 
-    let scope = ParserScope::new_root();
-
-    for (t_name, t_kind) in global_types {
-        scope.declare(t_name.clone(), t_kind.clone())
-    }
-    
-    loop {
-        if !tokens.has_next() { break }
-
-        body.push(scope.parse_statement(&mut tokens)?); 
-    }
-    
-    Ok(ASTNode::new(NodeKind::new_root(body), TypeKind::Unknown))
-}
+use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent, utils::parse_parameter_names};
 
 pub struct ParserScope<'a> {
     parent: Option<&'a ParserScope<'a>>,
@@ -90,7 +73,7 @@ impl<'a> ParserScope<'a> {
                 };
 
                 // ...)
-                let (param_names, param_types) = self.parse_parameter_names(tokens)?;
+                let (param_names, param_types) = parse_parameter_names(tokens)?;
 
                 // return type?
                 let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
@@ -112,7 +95,7 @@ impl<'a> ParserScope<'a> {
                     return Err(LangError::new_parser(WRONG_TYPE.to_string()));
                 }
                 
-                let eval_type = TypeKind::Function(param_types.clone(), Box::new(ret_type));
+                let eval_type = TypeKind::Function(FunctionType(param_types.clone(), Box::new(ret_type)));
 
                 let func_literal = ASTNode::new(
                     NodeKind::new_function_literal(
@@ -202,7 +185,13 @@ impl<'a> ParserScope<'a> {
                     (ParenthesisKind::Curly, ParenthesisState::Open) => {
                         let values = self.parse_object_values(tokens)?;
                         
-                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(HashMap::new()))
+                        let mut field_map = HashMap::new();
+
+                        for (field_name, field) in &values {
+                            field_map.insert(field_name.clone(), field.eval_type.clone());
+                        }
+                        
+                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(field_map))
                     },
                     _ => return Err(LangError::new_parser_unexpected_token())
                 }
@@ -374,7 +363,7 @@ impl<'a> ParserScope<'a> {
                 
                 // check that node is function
                 let (arg_types, ret_type) = match &node.eval_type {
-                    TypeKind::Function(arg_types, ret_value) => (arg_types, ret_value),
+                    TypeKind::Function(FunctionType(arg_types, ret_value)) => (arg_types, ret_value),
                     _ => return Err(LangError::new_parser(NOT_A_FUNCTION.to_string())),
                 };
                 

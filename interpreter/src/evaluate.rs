@@ -51,13 +51,6 @@ pub trait EvaluateAST {
 impl EvaluateAST for Arc<Scope> {
     fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
-            NodeKind::Root { body } => {
-                for child in body {
-                    self.evaluate_ast(child)?;
-                }
-                
-                EvalResult::Ok(LangValue::Nothing)
-            },
             NodeKind::VariableDecl { name, value } => {
                 let value = self.evaluate_ast(value)?;
                 self.declare_var(name.clone(), value.clone());
@@ -75,19 +68,6 @@ impl EvaluateAST for Arc<Scope> {
                 self.set_var(name, value);
                 
                 EvalResult::Ok(LangValue::Nothing)
-            },
-            NodeKind::MethodInvok { object, name, parameters } => {
-                let object = self.evaluate_ast(object)?;
-                let func = object.get_field(name);
-                
-                let mut param_values = Vec::new();
-                param_values.push(object);
-                for param in parameters {
-                    let value = self.evaluate_ast(param)?;
-                    param_values.push(value);
-                }
-                
-                self.invoke_function(&func, param_values)
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 let func = self.evaluate_ast(variable)?;

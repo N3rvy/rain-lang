@@ -97,47 +97,6 @@ impl<'a> ParserScope<'a> {
         
         Ok(body)
     }
-
-    /** Parses a list of parameter names (something like "(arg0, arg1, arg2)").
-     * It consumes only the last parenthesis and expectes the first token to be the first argument,
-       in this case it will be "arg0"
-     */ 
-    pub fn parse_parameter_names(&self, tokens: &mut Tokens) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
-        let mut names = Vec::new();
-        let mut types = Vec::new();
-        let mut next_is_argument = true;
-        
-        loop {
-            let token = tokens.pop();
-            
-            match &token {
-                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
-                Some(Token::Symbol(name)) => {
-                    if next_is_argument {
-                        next_is_argument = false;
-
-                        let t = self.parse_type_error(tokens)?;
-
-                        names.push(name.clone());
-                        types.push(t);
-                    } else {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
-                    }
-                },
-                Some(Token::Operator(OperatorKind::Comma)) => {
-                    if next_is_argument {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
-                    } else {
-                        next_is_argument = true;
-                    }
-                },
-                Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                None => return Err(LangError::new_parser_end_of_file()),
-            };
-        }
-
-        Ok((names, types))
-    }
     
     pub fn parse_vector_values(&self, tokens: &mut Tokens) -> Result<(TypeKind, ASTBody), LangError> {
         let mut body = Vec::new();
@@ -232,20 +191,6 @@ impl<'a> ParserScope<'a> {
         // type
         match tokens.pop() {
             Some(Token::Type(tk)) => Ok(Some(tk)),
-            _ => Err(LangError::new_parser_unexpected_token())
-        }
-    }
-
-    pub fn parse_type_error(&self, tokens: &mut Tokens) -> Result<TypeKind, LangError> {
-        // :
-        match tokens.peek() {
-            Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
-            _ => return Err(LangError::new_parser_unexpected_token())
-        }
-
-        // type
-        match tokens.pop() {
-            Some(Token::Type(tk)) => Ok(tk),
             _ => Err(LangError::new_parser_unexpected_token())
         }
     }
@@ -350,4 +295,59 @@ impl<'a> ParserScope<'a> {
             },
         }
     }
+}
+
+pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
+    // :
+    match tokens.peek() {
+        Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
+        _ => return Err(LangError::new_parser_unexpected_token())
+    }
+
+    // type
+    match tokens.pop() {
+        Some(Token::Type(tk)) => Ok(tk),
+        _ => Err(LangError::new_parser_unexpected_token())
+    }
+}
+
+/** Parses a list of parameter names (something like "(arg0, arg1, arg2)").
+ * It consumes only the last parenthesis and expectes the first token to be the first argument,
+     in this case it will be "arg0"
+    */ 
+pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
+    let mut names = Vec::new();
+    let mut types = Vec::new();
+    let mut next_is_argument = true;
+    
+    loop {
+        let token = tokens.pop();
+        
+        match &token {
+            Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
+            Some(Token::Symbol(name)) => {
+                if next_is_argument {
+                    next_is_argument = false;
+
+                    let t = parse_type_error(tokens)?;
+
+                    names.push(name.clone());
+                    types.push(t);
+                } else {
+                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                }
+            },
+            Some(Token::Operator(OperatorKind::Comma)) => {
+                if next_is_argument {
+                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                } else {
+                    next_is_argument = true;
+                }
+            },
+            Some(_) => return Err(LangError::new_parser_unexpected_token()),
+            None => return Err(LangError::new_parser_end_of_file()),
+        };
+    }
+
+    Ok((names, types))
 }

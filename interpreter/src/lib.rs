@@ -5,7 +5,7 @@ use core::module::EngineModule;
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use common::ast::types::{Function, TypeKind};
+use common::ast::types::{Function, TypeKind, FunctionType};
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::{EvalResult, EvaluateAST};
@@ -132,8 +132,10 @@ where
         self.global_types.push((
             name.to_string(),
             TypeKind::Function(
-                vec![],
-                Box::new(R::type_kind())
+                FunctionType(
+                    vec![],
+                    Box::new(R::type_kind())
+                )
             )
         ));
         self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
@@ -152,10 +154,12 @@ where
         self.global_types.push((
             name.to_string(),
             TypeKind::Function(
-                vec![
-                    A0::type_kind(),
-                ],
-                Box::new(R::type_kind())
+                FunctionType(
+                    vec![
+                        A0::type_kind(),
+                    ],
+                    Box::new(R::type_kind())
+                )
             )
         ));
         self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
@@ -175,11 +179,13 @@ where
         self.global_types.push((
             name.to_string(),
             TypeKind::Function(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                ],
-                Box::new(R::type_kind())
+                FunctionType(
+                    vec![
+                        A0::type_kind(),
+                        A1::type_kind(),
+                    ],
+                    Box::new(R::type_kind())
+                )
             )
         ));
         self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
@@ -200,12 +206,14 @@ where
         self.global_types.push((
             name.to_string(),
             TypeKind::Function(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                    A2::type_kind(),
-                ],
-                Box::new(R::type_kind())
+                FunctionType(
+                    vec![
+                        A0::type_kind(),
+                        A1::type_kind(),
+                        A2::type_kind(),
+                    ],
+                    Box::new(R::type_kind())
+                )
             )
         ));
         self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
@@ -227,13 +235,15 @@ where
         self.global_types.push((
             name.to_string(),
             TypeKind::Function(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                    A2::type_kind(),
-                    A3::type_kind(),
-                ],
-                Box::new(R::type_kind())
+                FunctionType(
+                    vec![
+                        A0::type_kind(),
+                        A1::type_kind(),
+                        A2::type_kind(),
+                        A3::type_kind(),
+                    ],
+                    Box::new(R::type_kind())
+                )
             )
         ));
         self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
