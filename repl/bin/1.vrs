@@ -1,6 +1,0 @@
-func main(): str
-    var a = 1
-    return a
-
-func test(): str
-    return 0
