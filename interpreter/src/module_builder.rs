@@ -14,7 +14,7 @@ impl<'a> ModuleBuilder<'a> for InterpreterModuleBuilder {
                 .global_module
                 .scope
                 .clone());
-        
+
         for module in modules {
             for (func_name, func) in module.functions {
                 scope.declare_var(func_name.clone(), LangValue::Function(func.clone()));
