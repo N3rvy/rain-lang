@@ -1,5 +1,6 @@
 use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
-use std::{env::args, ops::Index};
+use std::{env, env::args, ops::Index};
+use std::path::PathBuf;
 use std::process::id;
 use common::errors::LangError;
 use interpreter::{InterpreterEngine, InterpreterFunction};
@@ -47,11 +48,14 @@ impl ModuleImporter for ReplImporter {
     }
 
     fn load_module(identifier: &ModuleIdentifier) -> Option<String> {
-        let args = args().collect::<Vec<String>>();
-        let exec_path = args.get(0).unwrap();
+        let mod_path = match env::current_dir() {
+            Ok(path) => path,
+            Err(_) => return None,
+        };
+        let mod_path = mod_path.join(&identifier.0);
+        dbg!(&mod_path);
 
-        dbg!(&identifier.0);
-        let source = std::fs::read_to_string(&identifier.0);
+        let source = std::fs::read_to_string(mod_path);
         let source = match source {
             Ok(source) => source,
             Err(_) => return None,
