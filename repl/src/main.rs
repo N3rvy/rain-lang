@@ -1,8 +1,11 @@
 use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
-use std::{io::Error, env::args, ops::Index, fs};
+use std::{env::args, ops::Index};
+use std::process::id;
+use common::errors::LangError;
 use interpreter::{InterpreterEngine, InterpreterFunction};
+use core::parser::{ModuleIdentifier, ModuleImporter, ModuleUID};
 
-fn main() -> Result<(), Error> {
+fn main() -> anyhow::Result<()> {
     // *** ATTENTION ***
     // This is a temporary solution and this is not a real REPL
 
@@ -14,7 +17,6 @@ fn main() -> Result<(), Error> {
 
     // Obtaining the source file
     let source_path = args.index(1);
-    let source = fs::read_to_string(source_path)?;
 
     // Creating the engine
     let mut engine = InterpreterEngine::new();
@@ -23,19 +25,10 @@ fn main() -> Result<(), Error> {
 
     // Creating the module from the source file
     let module = engine
-        .build_module()
-        .with_source(source)
-        .build();
-
-    let module = match module {
-        Ok(module) => module,
-        Err(err) => {
-            panic!("{}", err);
-        },
-    };
+        .load_module::<ReplImporter>(&ModuleIdentifier(source_path.to_string()))?;
 
     // Obtaning the main function inside the module
-    let func: InterpreterFunction<(), AnyValue> = match engine.get_function(&module, "main") {
+    let func: InterpreterFunction<(), AnyValue> = match engine.get_function(module, "main") {
         Some(func) => func,
         None => panic!("Main function not found"),
     };
@@ -44,6 +37,27 @@ fn main() -> Result<(), Error> {
     println!("{:?}", func.call(()));
     
     Ok(())
+}
+
+struct ReplImporter;
+
+impl ModuleImporter for ReplImporter {
+    fn get_unique_identifier(identifier: &ModuleIdentifier) -> Option<ModuleUID> {
+        Some(ModuleUID::from_string(identifier.0.clone()))
+    }
+
+    fn load_module(identifier: &ModuleIdentifier) -> Option<String> {
+        let args = args().collect::<Vec<String>>();
+        let exec_path = args.get(0).unwrap();
+
+        dbg!(&identifier.0);
+        let source = std::fs::read_to_string(&identifier.0);
+        let source = match source {
+            Ok(source) => source,
+            Err(_) => return None,
+        };
+        Some(source)
+    }
 }
 
 fn print(val: AnyValue) {

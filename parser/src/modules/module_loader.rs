@@ -1,46 +1,37 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use common::errors::LangError;
-use tokenizer::iterator::Tokens;
 use tokenizer::tokenizer::Tokenizer;
+use crate::errors::{LOAD_MODULE_ERROR, UNIQUE_ID_ERROR};
 use crate::modules::loading_module::LoadingModule;
-use crate::modules::module_importer::{Identifier, ModuleImporter, UniqueIdentifier};
+use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
 
 pub struct ModuleLoader<Importer: ModuleImporter> {
-    importer: Importer,
-    modules: HashMap<UniqueIdentifier, LoadingModule>,
-}
-
-impl<Importer: ModuleImporter + Default> ModuleLoader<Importer> {
-    pub fn new() -> Self {
-        Self {
-            importer: Importer::default(),
-            modules: HashMap::new(),
-        }
-    }
+    modules: HashMap<ModuleUID, LoadingModule>,
+    _marker: PhantomData<Importer>,
 }
 
 impl<Importer: ModuleImporter> ModuleLoader<Importer> {
-    pub fn with_importer(importer: Importer) -> Self {
+    pub fn new() -> Self {
         Self {
-            importer,
             modules: HashMap::new(),
+            _marker: PhantomData::default(),
         }
     }
 
-    pub fn load_module(&mut self, identifier: String) -> LoadModuleResult {
-        let identifier = Identifier(identifier);
-        let unique_identifier = match self.importer.get_unique_identifier(identifier) {
-            Ok(id) => id,
-            Err(err) => return LoadModuleResult::Err(err),
+    pub fn load_module(&mut self, id: &ModuleIdentifier) -> LoadModuleResult {
+        let uid = match Importer::get_unique_identifier(id) {
+            Some(uid) => uid,
+            None => return LoadModuleResult::Err(LangError::new_parser(UNIQUE_ID_ERROR.to_string())),
         };
 
-        if !self.modules.contains_key(&unique_identifier) {
-            return LoadModuleResult::AlreadyLoaded
+        if self.modules.contains_key(&uid) {
+            return LoadModuleResult::AlreadyLoaded(uid)
         }
 
-        let source = match self.importer.load_module(&unique_identifier) {
-            Ok(source) => source,
-            Err(err) => return LoadModuleResult::Err(err),
+        let source = match Importer::load_module(id) {
+            Some(source) => source,
+            None => return LoadModuleResult::Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string())),
         };
 
         let tokens = match Tokenizer::tokenize(&source) {
@@ -53,22 +44,30 @@ impl<Importer: ModuleImporter> ModuleLoader<Importer> {
         };
 
         for dep in module.imports() {
-            let result = self.load_module(dep.clone());
+            let result = self.load_module(&ModuleIdentifier(dep.clone()));
             match result {
-                LoadModuleResult::Ok | LoadModuleResult::AlreadyLoaded => (),
+                LoadModuleResult::Ok(_) | LoadModuleResult::AlreadyLoaded(_) => (),
                 LoadModuleResult::NotFound | LoadModuleResult::Err(_) => return result
             }
         }
 
-        self.modules.insert(unique_identifier, module);
+        self.modules.insert(uid.clone(), module);
 
-        LoadModuleResult::Ok
+        LoadModuleResult::Ok(uid)
+    }
+
+    pub fn modules(&self) -> &HashMap<ModuleUID, LoadingModule> {
+        &self.modules
+    }
+
+    pub fn modules_owned(self) -> HashMap<ModuleUID, LoadingModule> {
+        self.modules
     }
 }
 
 pub enum LoadModuleResult {
-    Ok,
-    AlreadyLoaded,
+    Ok(ModuleUID),
+    AlreadyLoaded(ModuleUID),
     NotFound,
     Err(LangError),
 }

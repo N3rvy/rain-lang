@@ -7,4 +7,9 @@ pub use externals::{ExternalType, AnyValue};
 mod engine;
 mod externals;
 pub mod module;
-pub mod module_builder;
+mod errors;
+
+pub mod parser {
+    pub use parser::modules::module_importer::{ModuleIdentifier, ModuleUID, ModuleImporter};
+    pub use parser::modules::loading_module::LoadingModule;
+}

@@ -1,27 +1,54 @@
-use common::ast::types::TypeKind;
+use std::sync::Arc;
+use common::ast::ASTNode;
+use common::ast::module::ASTModule;
+use common::ast::types::{Function, FunctionType, TypeKind};
+use common::errors::LangError;
+use parser::modules::loading_module::DeclarationKind;
+use parser::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
+use tokenizer::iterator::Tokens;
+use tokenizer::tokenizer::Tokenizer;
 
-use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
+use crate::{externals::ExternalType, module::EngineModule};
+use crate::errors::MODULE_NOT_FOUND;
 
 
 pub trait Engine<'a>
 where
-    Self: Sized
+    Self: Sized,
 {
     type Module: EngineModule;
-    type ModuleBuilder: ModuleBuilder<'a, Engine = Self>;
 
-    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self> {
-        EngineModuleBuilder::new(&self)
+    fn load_module<Importer: ModuleImporter>(&'a mut self, identifier: &ModuleIdentifier) -> Result<ModuleUID, LangError> {
+        let mut loader = ModuleLoader::<Importer>::new();
+
+        let main_uid = loader.load_module(identifier);
+
+        let main_uid = match main_uid {
+            LoadModuleResult::Ok(uid) |
+            LoadModuleResult::AlreadyLoaded(uid) => uid,
+            LoadModuleResult::NotFound => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
+            LoadModuleResult::Err(err) => return Err(err),
+        };
+
+        for (uid, module) in loader.modules_owned() {
+            let module = module.build()?;
+
+            self.insert_module(uid, module);
+        }
+
+        Ok(main_uid)
     }
 
     fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
+    fn insert_module(&mut self, uid: ModuleUID, module: ASTModule) -> Result<(), LangError>;
 
     fn new() -> Self;
 }
 
 pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
-    fn get_function(&'a self, module: &'a Self::Module, name: &str)
-        -> Option<Ret>;
+    fn get_function(&'a self, uid: ModuleUID, name: &str)
+                    -> Option<Ret>;
 }
 
 pub trait InternalFunction<Args, R> {

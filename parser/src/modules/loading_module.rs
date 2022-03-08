@@ -1,9 +1,11 @@
-use std::collections::HashMap;
-use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use std::sync::Arc;
+use common::ast::ASTNode;
+use common::ast::module::ASTModule;
+use common::ast::types::{Function, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::LangError;
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use tokenizer::tokens::Token;
-use crate::errors::ParsingErrorHelper;
+use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::{expect_indent, expect_token};
 use crate::parser::ParserScope;
 use crate::utils::{parse_parameter_names, parse_type_error};
@@ -173,5 +175,73 @@ impl LoadingModule {
                 Some(_) => (),
             }
         }
+    }
+
+    pub fn build(mut self) -> Result<ASTModule, LangError> {
+        let scope = ParserScope::new_root();
+
+        // Declaring every type into the scope
+        for (name, def) in &self.declarations {
+            let type_kind = match &def.kind {
+                DeclarationKind::Variable(t) => t.clone(),
+                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
+            };
+
+            scope.declare(name.clone(), type_kind);
+        }
+
+        let mut functions = Vec::new();
+        let mut variables = Vec::new();
+
+        // Parsing every definition
+        for (name, decl) in self.declarations{
+            self.tokens.rollback(decl.body);
+
+            match decl.kind {
+                DeclarationKind::Variable(_) => {
+                    let value = Self::parse_variable_value(&mut self.tokens, &scope.new_child())?;
+
+                    variables.push((name, value));
+                },
+                DeclarationKind::Function(params, func_type) => {
+                    let scope = scope.new_child();
+
+                    let value = Self::parse_function_value(
+                        &mut self.tokens,
+                        &scope,
+                        params,
+                        func_type.clone())?;
+
+                    if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
+                        return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                    }
+
+                    functions.push((name, value));
+                },
+            };
+        }
+
+        Ok(ASTModule::new(
+            functions,
+            variables,
+        ))
+    }
+
+    fn parse_variable_value(tokens: &mut Tokens, scope: &ParserScope) -> Result<ASTNode, LangError> {
+        scope.parse_statement(tokens)
+    }
+
+    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
+        if params.len() != func_type.0.len() {
+            return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
+        }
+
+        for i in 0..params.len() {
+            scope.declare(params[i].clone(), func_type.0[i].clone());
+        }
+
+        let body = scope.parse_body(tokens)?;
+
+        Ok(Function::new(body, params))
     }
 }

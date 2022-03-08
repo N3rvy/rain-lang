@@ -1,18 +1,20 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
+use std::collections::HashMap;
 use core::module::EngineModule;
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
+use common::ast::module::ASTModule;
 use common::ast::types::{Function, TypeKind, FunctionType};
 use common::errors::LangError;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::{EvalResult, EvaluateAST};
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
-use module_builder::InterpreterModuleBuilder;
 use scope::Scope;
+use core::parser::ModuleUID;
 
 mod scope;
 mod evaluate;
@@ -20,11 +22,11 @@ mod lang_value;
 mod external_functions;
 mod object;
 mod errors;
-mod module_builder;
 
 pub struct InterpreterEngine {
     global_module: InterpreterModule,
     global_types: Vec<(String, TypeKind)>,
+    modules: HashMap<ModuleUID, InterpreterModule>,
 }
 
 impl<'a> Default for InterpreterEngine {
@@ -32,6 +34,7 @@ impl<'a> Default for InterpreterEngine {
         Self {
             global_module: InterpreterModule::new(Scope::new()),
             global_types: Vec::new(),
+            modules: HashMap::new(),
         }
     }
 }
@@ -39,6 +42,7 @@ impl<'a> Default for InterpreterEngine {
 
 pub struct InterpreterModule {
     scope: Arc<Scope>,
+    modules: HashMap<ModuleUID, InterpreterModule>,
 }
 
 impl<'a> EngineModule for InterpreterModule {}
@@ -47,6 +51,7 @@ impl InterpreterModule {
     fn new(scope: Arc<Scope>) -> Self {
         Self {
             scope,
+            modules: HashMap::new(),
         }
     }
 }
@@ -54,14 +59,33 @@ impl InterpreterModule {
 
 impl<'a> Engine<'a> for InterpreterEngine {
     type Module = InterpreterModule;
-    type ModuleBuilder = InterpreterModuleBuilder;
-
-    fn new() -> Self {
-        Self::default()
-    }
 
     fn global_types(&'a self) -> &'a Vec<(String, TypeKind)> {
         &self.global_types
+    }
+
+    fn insert_module(&mut self, uid: ModuleUID, module: ASTModule) -> Result<(), LangError> {
+        let scope = Scope::new();
+
+        for (func_name, func) in module.functions {
+            scope.declare_var(func_name.clone(), LangValue::Function(func));
+        }
+
+        for (var_name, var) in module.variables {
+            let value = match scope.evaluate_ast(&var) {
+                EvalResult::Ok(value) => value,
+                EvalResult::Ret(value, _) => value,
+                EvalResult::Err(err) => return Err(err),
+            };
+            scope.declare_var(var_name.clone(), value);
+        }
+
+        self.modules.insert(uid, InterpreterModule::new(scope));
+
+        Ok(())
+    }
+    fn new() -> Self {
+        Self::default()
     }
 } 
 
@@ -101,9 +125,14 @@ impl<'a, R: ExternalType> EngineGetFunction
     <'a, (), Result<R, LangError>, InterpreterFunction<'a, (), R>>
     for InterpreterEngine
 {
-    fn get_function(&'a self, module: &'a Self::Module, name: &str)
+    fn get_function(&'a self, uid: ModuleUID, name: &str)
         -> Option<InterpreterFunction<'a, (), R>>
     {
+        let module = match self.modules.get(&uid) {
+            Some(m) => m,
+            None => return None,
+        };
+
         let value = module.scope.get_var(&name.to_string());
         let func = match value {
             None => return None,

@@ -14,6 +14,8 @@ pub const NOT_A_FUNCTION: &str = "Tried invoking a value that is not a function"
 pub const NOT_A_VECTOR: &str = "Tried indexing a variable that is not a vector";
 pub const INVALID_ARGS_COUNT: &str = "Tried invoking a function with an incorrect number of parameters";
 pub const INVALID_ARGS: &str = "Tried invoking a function with an incorrect parameter type";
+pub const UNIQUE_ID_ERROR: &str = "Could not create unique identifier for module (this should never happen)";
+pub const LOAD_MODULE_ERROR: &str = "Could not load the module";
 
 
 pub trait ParsingErrorHelper {
