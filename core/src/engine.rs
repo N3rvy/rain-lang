@@ -1,13 +1,8 @@
-use std::sync::Arc;
-use common::ast::ASTNode;
 use common::ast::module::ASTModule;
-use common::ast::types::{Function, FunctionType, TypeKind};
+use common::ast::types::TypeKind;
 use common::errors::LangError;
-use parser::modules::loading_module::DeclarationKind;
 use parser::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
 use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
-use tokenizer::iterator::Tokens;
-use tokenizer::tokenizer::Tokenizer;
 
 use crate::{externals::ExternalType, module::EngineModule};
 use crate::errors::MODULE_NOT_FOUND;
@@ -34,7 +29,7 @@ where
         for (uid, module) in loader.modules_owned() {
             let module = module.build()?;
 
-            self.insert_module(uid, module);
+            self.insert_module(uid, module)?;
         }
 
         Ok(main_uid)

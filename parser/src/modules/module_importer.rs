@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use common::errors::LangError;
 use tokenizer::iterator::Tokens;
 
 pub enum ImportResult {
