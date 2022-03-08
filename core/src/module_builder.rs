@@ -24,17 +24,7 @@ impl<Eng: Engine> ModuleBuilder<Eng> {
     }
 
     pub fn load_module(&mut self, uid: ModuleUID, mut module: LoadingModule) -> Result<(), LangError> {
-        let scope = ParserScope::new_root();
-
-        // Declaring every type into the scope
-        for (name, def) in &module.declarations {
-            let type_kind = match &def.kind {
-                DeclarationKind::Variable(t) => t.clone(),
-                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
-            };
-
-            scope.declare(name.clone(), type_kind);
-        }
+        let scope = self.create_scope(&module);
 
         let mut functions = Vec::new();
         let mut variables = Vec::new();
@@ -77,6 +67,22 @@ impl<Eng: Engine> ModuleBuilder<Eng> {
         self.insert_module(uid, module);
 
         Ok(())
+    }
+
+    fn create_scope(&self, module: &LoadingModule) -> ParserScope {
+        let scope = ParserScope::new_root();
+
+        // Declaring every type into the scope
+        for (name, def) in &module.declarations {
+            let type_kind = match &def.kind {
+                DeclarationKind::Variable(t) => t.clone(),
+                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
+            };
+
+            scope.declare(name.clone(), type_kind);
+        }
+
+        scope
     }
 
     fn parse_variable_value(tokens: &mut Tokens, scope: &ParserScope) -> Result<ASTNode, LangError> {
