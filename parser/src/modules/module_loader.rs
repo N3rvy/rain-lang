@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use common::errors::LangError;
 use tokenizer::tokenizer::Tokenizer;
 use crate::errors::{LOAD_MODULE_ERROR, UNIQUE_ID_ERROR};
-use crate::modules::parse_module::{ParseModule, ParseModuleParser};
+use crate::modules::module_parser::{ParseModule, ParseModuleParser};
 use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
 
 pub struct ModuleLoader<Importer: ModuleImporter> {

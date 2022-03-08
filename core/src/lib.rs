@@ -13,5 +13,5 @@ pub mod engine_module_builder;
 
 pub mod parser {
     pub use parser::modules::module_importer::{ModuleIdentifier, ModuleUID, ModuleImporter};
-    pub use parser::modules::parse_module::ParseModule;
+    pub use parser::modules::module_parser::ParseModule;
 }
