@@ -15,7 +15,7 @@ use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
 use core::parser::ModuleUID;
-use core::engine_module_builder::EngineModuleBuilder;
+use core::engine_module_loader::EngineModuleLoader;
 
 mod scope;
 mod evaluate;
@@ -27,7 +27,7 @@ mod errors;
 pub struct InterpreterEngine {
     global_module: InterpreterModule,
     global_types: Vec<(String, TypeKind)>,
-    module_builder: EngineModuleBuilder<Self>,
+    module_builder: EngineModuleLoader<Self>,
 }
 
 impl<'a> Default for InterpreterEngine {
@@ -35,7 +35,7 @@ impl<'a> Default for InterpreterEngine {
         Self {
             global_module: InterpreterModule::new(Scope::new()),
             global_types: Vec::new(),
-            module_builder: EngineModuleBuilder::new(),
+            module_builder: EngineModuleLoader::new(),
         }
     }
 }
@@ -48,7 +48,7 @@ pub struct InterpreterModule {
 impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
     
-    fn new(builder: &EngineModuleBuilder<Self::Engine>, module: ASTModule) -> Result<Self, LangError> {
+    fn new(builder: &EngineModuleLoader<Self::Engine>, module: ASTModule) -> Result<Self, LangError> {
         let scope = Scope::new();
 
         for (func_name, func) in module.functions {
@@ -85,11 +85,11 @@ impl Engine for InterpreterEngine {
         &self.global_types
     }
 
-    fn module_builder(&self) -> &EngineModuleBuilder<Self> {
+    fn module_builder(&self) -> &EngineModuleLoader<Self> {
         &self.module_builder
     }
 
-    fn module_builder_mut(&mut self) -> &mut EngineModuleBuilder<Self> {
+    fn module_builder_mut(&mut self) -> &mut EngineModuleLoader<Self> {
         &mut self.module_builder
     }
 

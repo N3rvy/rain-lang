@@ -12,11 +12,11 @@ use crate::Engine;
 use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::module::EngineModule;
 
-pub struct EngineModuleBuilder<Eng: Engine> {
+pub struct EngineModuleLoader<Eng: Engine> {
     modules: HashMap<ModuleUID, Eng::Module>,
 }
 
-impl<Eng: Engine> EngineModuleBuilder<Eng> {
+impl<Eng: Engine> EngineModuleLoader<Eng> {
     pub fn new() -> Self {
         Self {
             modules: HashMap::new(),

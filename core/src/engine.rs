@@ -5,7 +5,7 @@ use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
 
 use crate::{externals::ExternalType, module::EngineModule};
 use crate::errors::MODULE_NOT_FOUND;
-use crate::engine_module_builder::EngineModuleBuilder;
+use crate::engine_module_loader::EngineModuleLoader;
 
 
 pub trait Engine
@@ -37,8 +37,8 @@ where
     }
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
-    fn module_builder(&self) -> &EngineModuleBuilder<Self>;
-    fn module_builder_mut(&mut self) -> &mut EngineModuleBuilder<Self>;
+    fn module_builder(&self) -> &EngineModuleLoader<Self>;
+    fn module_builder_mut(&mut self) -> &mut EngineModuleLoader<Self>;
 
     fn new() -> Self;
 }

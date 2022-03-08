@@ -9,7 +9,7 @@ mod engine;
 mod externals;
 pub mod module;
 mod errors;
-pub mod engine_module_builder;
+pub mod engine_module_loader;
 
 pub mod parser {
     pub use parser::modules::module_importer::{ModuleIdentifier, ModuleUID, ModuleImporter};
