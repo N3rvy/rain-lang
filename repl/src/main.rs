@@ -23,6 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     // Creating the module from the source file
     let module = engine
+        .module_loader()
         .load_module::<ReplImporter>(&ModuleIdentifier(source_path.to_string()))?;
 
     // Obtaning the main function inside the module

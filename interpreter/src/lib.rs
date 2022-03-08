@@ -27,7 +27,7 @@ mod errors;
 pub struct InterpreterEngine {
     global_module: InterpreterModule,
     global_types: Vec<(String, TypeKind)>,
-    module_builder: EngineModuleLoader<Self>,
+    module_loader: EngineModuleLoader<Self>,
 }
 
 impl<'a> Default for InterpreterEngine {
@@ -35,7 +35,7 @@ impl<'a> Default for InterpreterEngine {
         Self {
             global_module: InterpreterModule::new(Scope::new()),
             global_types: Vec::new(),
-            module_builder: EngineModuleLoader::new(),
+            module_loader: EngineModuleLoader::new(),
         }
     }
 }
@@ -85,12 +85,8 @@ impl Engine for InterpreterEngine {
         &self.global_types
     }
 
-    fn module_builder(&self) -> &EngineModuleLoader<Self> {
-        &self.module_builder
-    }
-
-    fn module_builder_mut(&mut self) -> &mut EngineModuleLoader<Self> {
-        &mut self.module_builder
+    fn module_loader(&mut self) -> &mut EngineModuleLoader<Self> {
+        &mut self.module_loader
     }
 
     fn new() -> Self {
@@ -137,7 +133,7 @@ impl<'a, R: ExternalType> EngineGetFunction
     fn get_function(&'a self, uid: ModuleUID, name: &str)
         -> Option<InterpreterFunction<'a, (), R>>
     {
-        let module = match self.module_builder.get_module(uid) {
+        let module = match self.module_loader.get_module(uid) {
             Some(m) => m,
             None => return None,
         };

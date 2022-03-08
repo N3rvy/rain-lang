@@ -14,31 +14,15 @@ where
 {
     type Module: EngineModule<Engine = Self>;
 
+    #[inline]
     fn load_module<Importer: ModuleImporter>(&mut self, identifier: &ModuleIdentifier) -> Result<ModuleUID, LangError> {
-        let mut loader = ModuleLoader::<Importer>::new();
-
-        let main_uid = loader.load_module(identifier);
-
-        let main_uid = match main_uid {
-            LoadModuleResult::Ok(uid) |
-            LoadModuleResult::AlreadyLoaded(uid) => uid,
-            LoadModuleResult::NotFound => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
-            LoadModuleResult::Err(err) => return Err(err),
-        };
-
-        let module_builder = self.module_builder_mut();
-
-        for (uid, module) in loader.modules_owned() {
-            module_builder
-                .load_module(uid, module)?;
-        }
-
-        Ok(main_uid)
+        self
+            .module_loader()
+            .load_module::<Importer>(identifier)
     }
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
-    fn module_builder(&self) -> &EngineModuleLoader<Self>;
-    fn module_builder_mut(&mut self) -> &mut EngineModuleLoader<Self>;
+    fn module_loader(&mut self) -> &mut EngineModuleLoader<Self>;
 
     fn new() -> Self;
 }

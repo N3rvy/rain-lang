@@ -5,11 +5,12 @@ use common::ast::module::ASTModule;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
 use parser::modules::module_parser::{DeclarationKind, ParseModule};
-use parser::modules::module_importer::ModuleUID;
+use parser::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
 use parser::parser::ParserScope;
 use tokenizer::iterator::Tokens;
 use crate::Engine;
-use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
+use crate::errors::{MODULE_NOT_FOUND, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::module::EngineModule;
 
 pub struct EngineModuleLoader<Eng: Engine> {
@@ -23,7 +24,26 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
         }
     }
 
-    pub fn load_module(&mut self, uid: ModuleUID, mut module: ParseModule) -> Result<(), LangError> {
+    pub fn load_module<Importer: ModuleImporter>(&mut self, identifier: &ModuleIdentifier) -> Result<ModuleUID, LangError> {
+        let mut loader = ModuleLoader::<Importer>::new();
+
+        let main_uid = loader.load_module(identifier);
+
+        let main_uid = match main_uid {
+            LoadModuleResult::Ok(uid) |
+            LoadModuleResult::AlreadyLoaded(uid) => uid,
+            LoadModuleResult::NotFound => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
+            LoadModuleResult::Err(err) => return Err(err),
+        };
+
+        for (uid, module) in loader.modules_owned() {
+            self.build_module(uid, module)?;
+        }
+
+        Ok(main_uid)
+    }
+
+    pub fn build_module(&mut self, uid: ModuleUID, mut module: ParseModule) -> Result<(), LangError> {
         let scope = self.create_scope(&module);
 
         let mut functions = Vec::new();
