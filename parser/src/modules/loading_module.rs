@@ -28,21 +28,21 @@ pub struct LoadingModule {
 
 impl LoadingModule {
     pub fn from_tokens(tokens: Tokens) -> Result<Self, LangError> {
-        let mut parser = Self {
+        let mut module = Self {
             tokens,
             imports: Vec::new(),
             declarations: Vec::new(),
         };
 
         loop {
-            if !parser.tokens.has_next() {
+            if !module.tokens.has_next() {
                 break
             }
 
-            parser.parse_definition()?;
+            module.parse_definition()?;
         }
 
-        Ok(parser)
+        Ok(module)
     }
 
     fn parse_definition(&mut self) -> Result<(), LangError> {
