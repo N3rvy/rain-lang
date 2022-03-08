@@ -4,7 +4,7 @@ use common::ast::ASTNode;
 use common::ast::module::ASTModule;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
-use parser::modules::loading_module::{DeclarationKind, LoadingModule};
+use parser::modules::parser_module::{DeclarationKind, ParseModule};
 use parser::modules::module_importer::ModuleUID;
 use parser::parser::ParserScope;
 use tokenizer::iterator::Tokens;
@@ -23,7 +23,7 @@ impl<Eng: Engine> ModuleBuilder<Eng> {
         }
     }
 
-    pub fn load_module(&mut self, uid: ModuleUID, mut module: LoadingModule) -> Result<(), LangError> {
+    pub fn load_module(&mut self, uid: ModuleUID, mut module: ParseModule) -> Result<(), LangError> {
         let scope = self.create_scope(&module);
 
         let mut functions = Vec::new();
@@ -69,7 +69,7 @@ impl<Eng: Engine> ModuleBuilder<Eng> {
         Ok(())
     }
 
-    fn create_scope(&self, module: &LoadingModule) -> ParserScope {
+    fn create_scope(&self, module: &ParseModule) -> ParserScope {
         let scope = ParserScope::new_root();
 
         // Declaring every type into the scope

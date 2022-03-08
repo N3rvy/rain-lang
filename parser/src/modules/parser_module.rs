@@ -22,25 +22,25 @@ pub struct Declaration {
     pub body: TokenSnapshot,
 }
 
-pub struct LoadingModule {
+pub struct ParseModule {
     pub tokens: Tokens,
     pub imports: Vec<ModuleUID>,
     pub declarations: Vec<(String, Declaration)>
 }
 
-pub struct LoadingModuleLoader<'a, Importer: ModuleImporter> {
+pub struct ParseModuleParser<'a, Importer: ModuleImporter> {
     loader: &'a mut ModuleLoader<Importer>,
 }
 
-impl<'a, Importer: ModuleImporter> LoadingModuleLoader<'a, Importer> {
+impl<'a, Importer: ModuleImporter> ParseModuleParser<'a, Importer> {
     pub fn new(loader: &'a mut ModuleLoader<Importer>) -> Self {
         Self {
             loader,
         }
     }
 
-    pub fn load(&mut self, tokens: Tokens) -> Result<LoadingModule, LangError> {
-        let mut module = LoadingModule {
+    pub fn parse(&mut self, tokens: Tokens) -> Result<ParseModule, LangError> {
+        let mut module = ParseModule {
             tokens,
             imports: Vec::new(),
             declarations: Vec::new(),
@@ -75,7 +75,7 @@ impl<'a, Importer: ModuleImporter> LoadingModuleLoader<'a, Importer> {
         Ok(module)
     }
 
-    fn parse_declaration(&mut self, module: &mut LoadingModule) -> Result<DeclarationParseAction, LangError> {
+    fn parse_declaration(&mut self, module: &mut ParseModule) -> Result<DeclarationParseAction, LangError> {
         let token = match module.tokens.pop() {
             Some(t) => t,
             None => return Err(LangError::new_parser_end_of_file()),

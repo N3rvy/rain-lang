@@ -3,11 +3,11 @@ use std::marker::PhantomData;
 use common::errors::LangError;
 use tokenizer::tokenizer::Tokenizer;
 use crate::errors::{LOAD_MODULE_ERROR, UNIQUE_ID_ERROR};
-use crate::modules::loading_module::{LoadingModule, LoadingModuleLoader};
+use crate::modules::parser_module::{ParseModule, ParseModuleParser};
 use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
 
 pub struct ModuleLoader<Importer: ModuleImporter> {
-    modules: HashMap<ModuleUID, LoadingModule>,
+    modules: HashMap<ModuleUID, ParseModule>,
     _marker: PhantomData<Importer>,
 }
 
@@ -39,8 +39,8 @@ impl<Importer: ModuleImporter> ModuleLoader<Importer> {
             Err(err) => return LoadModuleResult::Err(err),
         };
 
-        let module = LoadingModuleLoader::new(self)
-            .load(tokens);
+        let module = ParseModuleParser::new(self)
+            .parse(tokens);
 
         let module = match module {
             Ok(m) => m,
@@ -52,11 +52,11 @@ impl<Importer: ModuleImporter> ModuleLoader<Importer> {
         LoadModuleResult::Ok(uid)
     }
 
-    pub fn modules(&self) -> &HashMap<ModuleUID, LoadingModule> {
+    pub fn modules(&self) -> &HashMap<ModuleUID, ParseModule> {
         &self.modules
     }
 
-    pub fn modules_owned(self) -> HashMap<ModuleUID, LoadingModule> {
+    pub fn modules_owned(self) -> HashMap<ModuleUID, ParseModule> {
         self.modules
     }
 }
