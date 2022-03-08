@@ -22,7 +22,7 @@ pub struct Declaration {
 
 pub struct LoadingModule {
     pub tokens: Tokens,
-    imports: Vec<String>,
+    pub imports: Vec<String>,
     pub declarations: Vec<(String, Declaration)>
 }
 

@@ -43,7 +43,7 @@ impl<Importer: ModuleImporter> ModuleLoader<Importer> {
             Err(err) => return LoadModuleResult::Err(err),
         };
 
-        for dep in module.imports() {
+        for dep in &module.imports {
             let result = self.load_module(&ModuleIdentifier(dep.clone()));
             match result {
                 LoadModuleResult::Ok(_) | LoadModuleResult::AlreadyLoaded(_) => (),
