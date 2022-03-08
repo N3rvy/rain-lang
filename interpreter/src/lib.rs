@@ -15,6 +15,7 @@ use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
 use core::parser::ModuleUID;
+use core::module_builder::ModuleBuilder;
 
 mod scope;
 mod evaluate;
@@ -26,7 +27,7 @@ mod errors;
 pub struct InterpreterEngine {
     global_module: InterpreterModule,
     global_types: Vec<(String, TypeKind)>,
-    modules: HashMap<ModuleUID, InterpreterModule>,
+    module_builder: ModuleBuilder<Self>,
 }
 
 impl<'a> Default for InterpreterEngine {
@@ -34,18 +35,38 @@ impl<'a> Default for InterpreterEngine {
         Self {
             global_module: InterpreterModule::new(Scope::new()),
             global_types: Vec::new(),
-            modules: HashMap::new(),
+            module_builder: ModuleBuilder::new(),
         }
     }
 }
-
 
 pub struct InterpreterModule {
     scope: Arc<Scope>,
     modules: HashMap<ModuleUID, InterpreterModule>,
 }
 
-impl<'a> EngineModule for InterpreterModule {}
+impl EngineModule for InterpreterModule {
+    type Engine = InterpreterEngine;
+    
+    fn new(builder: &ModuleBuilder<Self::Engine>, module: ASTModule) -> Result<Self, LangError> {
+        let scope = Scope::new();
+
+        for (func_name, func) in module.functions {
+            scope.declare_var(func_name.clone(), LangValue::Function(func));
+        }
+
+        for (var_name, var) in module.variables {
+            let value = match scope.evaluate_ast(&var) {
+                EvalResult::Ok(value) => value,
+                EvalResult::Ret(value, _) => value,
+                EvalResult::Err(err) => return Err(err),
+            };
+            scope.declare_var(var_name.clone(), value);
+        }
+
+        Ok(InterpreterModule::new(scope))
+    }
+}
 
 impl InterpreterModule {
     fn new(scope: Arc<Scope>) -> Self {
@@ -64,29 +85,12 @@ impl Engine for InterpreterEngine {
         &self.global_types
     }
 
-    fn insert_module(&mut self, uid: ModuleUID, module: ASTModule) -> Result<(), LangError> {
-        let scope = Scope::new();
-
-        for (func_name, func) in module.functions {
-            scope.declare_var(func_name.clone(), LangValue::Function(func));
-        }
-
-        for (var_name, var) in module.variables {
-            let value = match scope.evaluate_ast(&var) {
-                EvalResult::Ok(value) => value,
-                EvalResult::Ret(value, _) => value,
-                EvalResult::Err(err) => return Err(err),
-            };
-            scope.declare_var(var_name.clone(), value);
-        }
-
-        self.modules.insert(uid, InterpreterModule::new(scope));
-
-        Ok(())
+    fn module_builder(&self) -> &ModuleBuilder<Self> {
+        &self.module_builder
     }
 
-    fn get_module(&self, uid: ModuleUID) -> Option<&Self::Module> {
-        self.modules.get(&uid)
+    fn module_builder_mut(&mut self) -> &mut ModuleBuilder<Self> {
+        &mut self.module_builder
     }
 
     fn new() -> Self {
@@ -133,7 +137,7 @@ impl<'a, R: ExternalType> EngineGetFunction
     fn get_function(&'a self, uid: ModuleUID, name: &str)
         -> Option<InterpreterFunction<'a, (), R>>
     {
-        let module = match self.modules.get(&uid) {
+        let module = match self.module_builder.get_module(uid) {
             Some(m) => m,
             None => return None,
         };
