@@ -84,6 +84,11 @@ impl<'a> Engine<'a> for InterpreterEngine {
 
         Ok(())
     }
+
+    fn get_module(&self, uid: ModuleUID) -> Option<&Self::Module> {
+        self.modules.get(uid)
+    }
+
     fn new() -> Self {
         Self::default()
     }

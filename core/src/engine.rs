@@ -27,7 +27,7 @@ where
         };
 
         for (uid, module) in loader.modules_owned() {
-            let module = module.build()?;
+            let module = module.load()?;
 
             self.insert_module(uid, module)?;
         }
@@ -37,6 +37,7 @@ where
 
     fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
     fn insert_module(&mut self, uid: ModuleUID, module: ASTModule) -> Result<(), LangError>;
+    fn get_module(&self, uid: ModuleUID) -> Option<&Self::Module>;
 
     fn new() -> Self;
 }

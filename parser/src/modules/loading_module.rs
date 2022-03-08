@@ -177,7 +177,7 @@ impl LoadingModule {
         }
     }
 
-    pub fn build(mut self) -> Result<ASTModule, LangError> {
+    pub fn load(mut self) -> Result<ASTModule, LangError> {
         let scope = ParserScope::new_root();
 
         // Declaring every type into the scope
