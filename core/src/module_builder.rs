@@ -4,7 +4,7 @@ use common::ast::ASTNode;
 use common::ast::module::ASTModule;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
-use parser::modules::parser_module::{DeclarationKind, ParseModule};
+use parser::modules::parse_module::{DeclarationKind, ParseModule};
 use parser::modules::module_importer::ModuleUID;
 use parser::parser::ParserScope;
 use tokenizer::iterator::Tokens;
