@@ -57,10 +57,10 @@ impl InterpreterModule {
 }
 
 
-impl<'a> Engine<'a> for InterpreterEngine {
+impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
 
-    fn global_types(&'a self) -> &'a Vec<(String, TypeKind)> {
+    fn global_types(&self) -> &Vec<(String, TypeKind)> {
         &self.global_types
     }
 
@@ -86,7 +86,7 @@ impl<'a> Engine<'a> for InterpreterEngine {
     }
 
     fn get_module(&self, uid: ModuleUID) -> Option<&Self::Module> {
-        self.modules.get(uid)
+        self.modules.get(&uid)
     }
 
     fn new() -> Self {
