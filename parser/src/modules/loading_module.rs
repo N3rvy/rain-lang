@@ -5,8 +5,10 @@ use common::ast::types::{Function, FunctionType, LiteralKind, OperatorKind, Pare
 use common::errors::LangError;
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use tokenizer::tokens::Token;
-use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE};
+use crate::errors::{LOAD_MODULE_ERROR, ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::{expect_indent, expect_token};
+use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use crate::modules::module_loader::{LoadModuleResult, ModuleLoader};
 use crate::parser::ParserScope;
 use crate::utils::{parse_parameter_names, parse_type_error};
 
@@ -22,13 +24,23 @@ pub struct Declaration {
 
 pub struct LoadingModule {
     pub tokens: Tokens,
-    pub imports: Vec<String>,
+    pub imports: Vec<ModuleUID>,
     pub declarations: Vec<(String, Declaration)>
 }
 
-impl LoadingModule {
-    pub fn from_tokens(tokens: Tokens) -> Result<Self, LangError> {
-        let mut module = Self {
+pub struct LoadingModuleLoader<'a, Importer: ModuleImporter> {
+    loader: &'a mut ModuleLoader<Importer>,
+}
+
+impl<'a, Importer: ModuleImporter> LoadingModuleLoader<'a, Importer> {
+    pub fn new(loader: &'a mut ModuleLoader<Importer>) -> Self {
+        Self {
+            loader,
+        }
+    }
+
+    pub fn load(&mut self, tokens: Tokens) -> Result<LoadingModule, LangError> {
+        let mut module = LoadingModule {
             tokens,
             imports: Vec::new(),
             declarations: Vec::new(),
@@ -39,14 +51,32 @@ impl LoadingModule {
                 break
             }
 
-            module.parse_definition()?;
+            let result = self.parse_declaration(&mut module);
+            match result {
+                Ok(DeclarationParseAction::Import(path)) => {
+                    let result = self.loader.load_module(&ModuleIdentifier(path));
+
+                    let uid = match result {
+                        LoadModuleResult::Ok(uid) |
+                        LoadModuleResult::AlreadyLoaded(uid) => uid,
+                        LoadModuleResult::NotFound => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string())),
+                        LoadModuleResult::Err(err) => return Err(err),
+                    };
+
+                    module.imports.push(uid);
+                },
+                Ok(DeclarationParseAction::Declaration(name, declaration)) => {
+                    module.declarations.push((name, declaration));
+                },
+                Err(err) => return Err(err),
+            }
         }
 
         Ok(module)
     }
 
-    fn parse_definition(&mut self) -> Result<(), LangError> {
-        let token = match self.tokens.pop() {
+    fn parse_declaration(&mut self, module: &mut LoadingModule) -> Result<DeclarationParseAction, LangError> {
+        let token = match module.tokens.pop() {
             Some(t) => t,
             None => return Err(LangError::new_parser_end_of_file()),
         };
@@ -56,93 +86,83 @@ impl LoadingModule {
                 // import [path]
 
                 // [path]
-                let path = match self.tokens.pop() {
+                let path = match module.tokens.pop() {
                     Some(Token::Literal(LiteralKind::String(path))) => path,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // new line
-                expect_token!(self.tokens.pop(), Token::NewLine);
+                expect_token!(module.tokens.pop(), Token::NewLine);
 
-                self.imports.push(path);
-
-                Ok(())
+                Ok(DeclarationParseAction::Import(path))
             },
             Token::Variable => {
                 // var <name>: (type) = [value]
 
                 // <name>
-                let name = match self.tokens.pop() {
+                let name = match module.tokens.pop() {
                     Some(Token::Symbol(name)) => name,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // : (type)
-                let type_kind = parse_type_error(&mut self.tokens)?;
+                let type_kind = parse_type_error(&mut module.tokens)?;
 
                 // =
-                expect_token!(self.tokens.pop(), Token::Operator(OperatorKind::Assign));
+                expect_token!(module.tokens.pop(), Token::Operator(OperatorKind::Assign));
 
                 // [value]
-                let body = self.tokens.snapshot();
-                Self::pop_until_newline(&mut self.tokens);
+                let body = module.tokens.snapshot();
+                Self::pop_until_newline(&mut module.tokens);
 
-                self.declarations.push((
+                Ok(DeclarationParseAction::Declaration(
                     name,
                     Declaration {
                         kind: DeclarationKind::Variable(type_kind),
                         body,
                     },
-                ));
-
-                Ok(())
+                ))
             },
             Token::Function => {
                 // func <name>((<param_name>: (type))*): (type) {body}
 
                 // <name>
-                let name = match self.tokens.pop() {
+                let name = match module.tokens.pop() {
                     Some(Token::Symbol(name)) => name,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // (
-                expect_token!(self.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                expect_token!(module.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
                 // (<param_name>: (type))*)
-                let (param_names, param_types) = parse_parameter_names(&mut self.tokens)?;
+                let (param_names, param_types) = parse_parameter_names(&mut module.tokens)?;
 
                 // : (type)
-                let ret_type = parse_type_error(&mut self.tokens)?;
+                let ret_type = parse_type_error(&mut module.tokens)?;
 
-                expect_indent!(self.tokens);
+                expect_indent!(module.tokens);
 
                 // {body}
-                let body = self.tokens.snapshot();
-                Self::pop_until_dedent(&mut self.tokens);
+                let body = module.tokens.snapshot();
+                Self::pop_until_dedent(&mut module.tokens);
 
                 let func_type = FunctionType(param_types, Box::new(ret_type));
 
-                self.declarations.push((
+                Ok(DeclarationParseAction::Declaration(
                     name,
                     Declaration {
                         kind: DeclarationKind::Function(param_names, func_type),
                         body,
                     }
-                ));
-
-                Ok(())
+                ))
             },
-            Token::NewLine => self.parse_definition(),
+            Token::NewLine => self.parse_declaration(module),
             _ => Err(LangError::new_parser_unexpected_token()),
         }
-    }
-
-    pub fn imports(&self) -> &Vec<String> {
-        &self.imports
     }
 
     fn pop_until_dedent(tokens: &mut Tokens) {
@@ -172,4 +192,9 @@ impl LoadingModule {
             }
         }
     }
+}
+
+enum DeclarationParseAction {
+    Import(String),
+    Declaration(String, Declaration),
 }

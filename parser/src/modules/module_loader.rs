@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use common::errors::LangError;
 use tokenizer::tokenizer::Tokenizer;
 use crate::errors::{LOAD_MODULE_ERROR, UNIQUE_ID_ERROR};
-use crate::modules::loading_module::LoadingModule;
+use crate::modules::loading_module::{LoadingModule, LoadingModuleLoader};
 use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
 
 pub struct ModuleLoader<Importer: ModuleImporter> {
@@ -38,18 +38,14 @@ impl<Importer: ModuleImporter> ModuleLoader<Importer> {
             Ok(tok) => tok,
             Err(err) => return LoadModuleResult::Err(err),
         };
-        let module = match LoadingModule::from_tokens(tokens) {
+
+        let module = LoadingModuleLoader::new(self)
+            .load(tokens);
+
+        let module = match module {
             Ok(m) => m,
             Err(err) => return LoadModuleResult::Err(err),
         };
-
-        for dep in &module.imports {
-            let result = self.load_module(&ModuleIdentifier(dep.clone()));
-            match result {
-                LoadModuleResult::Ok(_) | LoadModuleResult::AlreadyLoaded(_) => (),
-                LoadModuleResult::NotFound | LoadModuleResult::Err(_) => return result
-            }
-        }
 
         self.modules.insert(uid.clone(), module);
 
