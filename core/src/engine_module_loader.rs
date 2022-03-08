@@ -13,8 +13,13 @@ use crate::Engine;
 use crate::errors::{MODULE_NOT_FOUND, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::module::EngineModule;
 
+struct InternalModule<Module: EngineModule> {
+    module: Module,
+    dependencies: Vec<ModuleUID>,
+}
+
 pub struct EngineModuleLoader<Eng: Engine> {
-    modules: HashMap<ModuleUID, Eng::Module>,
+    modules: HashMap<ModuleUID, InternalModule<Eng::Module>>,
 }
 
 impl<Eng: Engine> EngineModuleLoader<Eng> {
@@ -82,9 +87,14 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
             variables,
         );
 
-        let module = Eng::Module::new(self, ast_module)?;
+        let eng_module = Eng::Module::new(self, ast_module)?;
 
-        self.insert_module(uid, module);
+        let int_module = InternalModule {
+            module: eng_module,
+            dependencies: module.imports,
+        };
+
+        self.insert_module(uid, int_module);
 
         Ok(())
     }
@@ -123,11 +133,14 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
         Ok(Function::new(body, params))
     }
 
-    pub fn insert_module(&mut self, uid: ModuleUID, module: Eng::Module) {
+    fn insert_module(&mut self, uid: ModuleUID, module: InternalModule<Eng::Module>) {
         self.modules.insert(uid, module);
     }
 
     pub fn get_module(&self, uid: ModuleUID) -> Option<&Eng::Module> {
-        self.modules.get(&uid)
+        self
+            .modules
+            .get(&uid)
+            .and_then(|int_mod| Some(&int_mod.module))
     }
 }
