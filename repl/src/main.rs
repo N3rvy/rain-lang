@@ -1,7 +1,8 @@
 use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::{env, env::args, ops::Index};
+use common::module::{ModuleIdentifier, ModuleUID};
 use interpreter::{InterpreterEngine, InterpreterFunction};
-use core::parser::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use core::parser::ModuleImporter;
 
 fn main() -> anyhow::Result<()> {
     // *** ATTENTION ***

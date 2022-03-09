@@ -4,8 +4,9 @@ use common::ast::ASTNode;
 use common::ast::module::ASTModule;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
+use common::module::{ModuleIdentifier, ModuleUID};
 use parser::modules::module_parser::{DeclarationKind, ParseModule};
-use parser::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
 use parser::parser::ParserScope;
 use tokenizer::iterator::Tokens;
@@ -13,8 +14,8 @@ use crate::Engine;
 use crate::errors::{MODULE_NOT_FOUND, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::module::EngineModule;
 
-struct ModuleMetadata {
-    declarations: Vec<(String, TypeKind)>,
+pub struct ModuleMetadata {
+    pub declarations: Vec<(String, TypeKind)>,
 }
 
 pub struct EngineModuleLoader<Eng: Engine> {
@@ -110,10 +111,11 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
             };
         }
 
-        let ast_module = ASTModule::new(
+        let ast_module = ASTModule {
+            imports: module.imports,
             functions,
             variables,
-        );
+        };
 
         let eng_module = Eng::Module::new(self, ast_module)?;
 
@@ -170,6 +172,10 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
 
     fn insert_module(&mut self, uid: ModuleUID, module: Eng::Module) {
         self.modules.insert(uid, module);
+    }
+
+    pub fn get_metadata(&self, uid: ModuleUID) -> Option<&ModuleMetadata> {
+        self.metadata.get(&uid)
     }
 
     pub fn get_module(&self, uid: ModuleUID) -> Option<&Eng::Module> {

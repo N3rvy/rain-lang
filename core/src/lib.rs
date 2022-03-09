@@ -12,6 +12,6 @@ mod errors;
 pub mod engine_module_loader;
 
 pub mod parser {
-    pub use parser::modules::module_importer::{ModuleIdentifier, ModuleUID, ModuleImporter};
+    pub use parser::modules::module_importer::ModuleImporter;
     pub use parser::modules::module_parser::ParseModule;
 }

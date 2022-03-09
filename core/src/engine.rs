@@ -1,6 +1,7 @@
 use common::ast::types::TypeKind;
 use common::errors::LangError;
-use parser::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use common::module::{ModuleIdentifier, ModuleUID};
+use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::{LoadModuleResult, ModuleLoader};
 
 use crate::{externals::ExternalType, module::EngineModule};

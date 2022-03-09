@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use common::module::ModuleUID;
 use common::errors::LangError;
+use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
 use crate::errors::{LOAD_MODULE_ERROR, UNIQUE_ID_ERROR};
 use crate::modules::module_parser::{ParseModule, ParseModuleParser};
-use crate::modules::module_importer::{ModuleIdentifier, ModuleImporter, ModuleUID};
+use crate::modules::module_importer::ModuleImporter;
 
 pub struct ModuleLoader<Importer: ModuleImporter> {
     modules: HashMap<ModuleUID, ParseModule>,

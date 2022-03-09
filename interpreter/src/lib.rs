@@ -9,12 +9,12 @@ use std::sync::Arc;
 use common::ast::module::ASTModule;
 use common::ast::types::{Function, TypeKind, FunctionType};
 use common::errors::LangError;
+use common::module::ModuleUID;
 use errors::CANT_CONVERT_VALUE;
 use evaluate::{EvalResult, EvaluateAST};
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
-use core::parser::ModuleUID;
 use core::engine_module_loader::EngineModuleLoader;
 
 mod scope;
