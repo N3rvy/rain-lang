@@ -23,6 +23,7 @@ mod lang_value;
 mod external_functions;
 mod object;
 mod errors;
+mod module_scope;
 
 pub struct InterpreterEngine {
     global_module: InterpreterModule,
