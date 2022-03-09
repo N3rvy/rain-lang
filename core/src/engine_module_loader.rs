@@ -13,19 +13,20 @@ use crate::Engine;
 use crate::errors::{MODULE_NOT_FOUND, UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::module::EngineModule;
 
-struct InternalModule<Module: EngineModule> {
-    module: Module,
-    dependencies: Vec<ModuleUID>,
+struct ModuleMetadata {
+    declarations: Vec<(String, TypeKind)>,
 }
 
 pub struct EngineModuleLoader<Eng: Engine> {
-    modules: HashMap<ModuleUID, InternalModule<Eng::Module>>,
+    modules: HashMap<ModuleUID, Eng::Module>,
+    metadata: HashMap<ModuleUID, ModuleMetadata>,
 }
 
 impl<Eng: Engine> EngineModuleLoader<Eng> {
     pub fn new() -> Self {
         Self {
             modules: HashMap::new(),
+            metadata: HashMap::new(),
         }
     }
 
@@ -40,6 +41,33 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
             LoadModuleResult::NotFound => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
             LoadModuleResult::Err(err) => return Err(err),
         };
+
+        self.metadata
+            .extend(
+                loader
+                    .modules()
+                    .iter()
+                    .map(|(uid, module)| {
+                        let declarations = module.declarations
+                            .iter()
+                            .map(|(name, decl)| {
+                                let decl_kind = match & decl.kind {
+                                    DeclarationKind::Variable(var_type) => var_type.clone(),
+                                    DeclarationKind::Function(_, func_type) => TypeKind::Function(func_type.clone()),
+                                };
+
+                                (name.clone(), decl_kind)
+                            })
+                            .collect::<Vec<(String, TypeKind)>>();
+
+                        (
+                            *uid,
+                            ModuleMetadata {
+                                declarations,
+                            }
+                        )
+                    })
+            );
 
         for (uid, module) in loader.modules_owned() {
             self.build_module(uid, module)?;
@@ -89,12 +117,7 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
 
         let eng_module = Eng::Module::new(self, ast_module)?;
 
-        let int_module = InternalModule {
-            module: eng_module,
-            dependencies: module.imports,
-        };
-
-        self.insert_module(uid, int_module);
+        self.insert_module(uid, eng_module);
 
         Ok(())
     }
@@ -110,6 +133,18 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
             };
 
             scope.declare(name.clone(), type_kind);
+        }
+
+        for import in &module.imports {
+            let metadata = self.metadata.get(import);
+            let metadata = match metadata {
+                Some(md) => md,
+                None => return scope,
+            };
+
+            for (name, decl) in &metadata.declarations {
+                scope.declare(name.clone(), decl.clone());
+            }
         }
 
         scope
@@ -133,14 +168,11 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
         Ok(Function::new(body, params))
     }
 
-    fn insert_module(&mut self, uid: ModuleUID, module: InternalModule<Eng::Module>) {
+    fn insert_module(&mut self, uid: ModuleUID, module: Eng::Module) {
         self.modules.insert(uid, module);
     }
 
     pub fn get_module(&self, uid: ModuleUID) -> Option<&Eng::Module> {
-        self
-            .modules
-            .get(&uid)
-            .and_then(|int_mod| Some(&int_mod.module))
+        self.modules.get(&uid)
     }
 }
