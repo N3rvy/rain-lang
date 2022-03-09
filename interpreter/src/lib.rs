@@ -64,6 +64,18 @@ impl EngineModule for InterpreterModule {
             scope.declare_var(var_name.clone(), value);
         }
 
+        for import in module.imports {
+            let module = match builder.get_module(import) {
+                Some(module) => module,
+                None => continue,
+            };
+
+            let vars = module.scope.variables_unsecure();
+            for (name, value) in vars.borrow().iter() {
+                scope.declare_var(name.clone(), value.clone());
+            }
+        }
+
         Ok(InterpreterModule::new(scope))
     }
 }

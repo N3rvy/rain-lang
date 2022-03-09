@@ -1,4 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, sync::{Mutex, Arc}};
+use std::borrow::Borrow;
+use std::sync::MutexGuard;
 
 use crate::lang_value::LangValue;
 
@@ -54,5 +56,11 @@ impl Scope {
                 }
             },
         }
+    }
+
+    /// This is considered unsecure because it has a refcell and doesn't check for external
+    /// modifications that can lead to a panic from the RefCell
+    pub fn variables_unsecure(&self) -> MutexGuard<RefCell<HashMap<String, LangValue>>> {
+        self.variables.lock().unwrap()
     }
 }
