@@ -11,11 +11,12 @@ use common::ast::types::{Function, TypeKind, FunctionType};
 use common::errors::LangError;
 use common::module::ModuleUID;
 use errors::CANT_CONVERT_VALUE;
-use evaluate::{EvalResult, EvaluateAST};
+use evaluate::EvalResult;
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
 use core::engine_module_loader::EngineModuleLoader;
+use crate::module_scope::ModuleScope;
 
 mod scope;
 mod evaluate;
@@ -31,37 +32,29 @@ pub struct InterpreterEngine {
     module_loader: EngineModuleLoader<Self>,
 }
 
-impl<'a> Default for InterpreterEngine {
-    fn default() -> Self {
-        Self {
-            global_module: InterpreterModule::new(Scope::new()),
-            global_types: Vec::new(),
-            module_loader: EngineModuleLoader::new(),
-        }
-    }
-}
-
 pub struct InterpreterModule {
-    scope: Arc<Scope>,
+    scope: Arc<ModuleScope>,
 }
 
 impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
     
-    fn new(builder: &EngineModuleLoader<Self::Engine>, module: ASTModule) -> Result<Self, LangError> {
-        let scope = Scope::new();
+    fn new(builder: &EngineModuleLoader<Self::Engine>, uid: ModuleUID, module: ASTModule) -> Result<Self, LangError> {
+        let scope = ModuleScope::new(uid);
 
         for (func_name, func) in module.functions {
-            scope.declare_var(func_name.clone(), LangValue::Function(func));
+            scope.force_set_var(func_name.clone(), LangValue::Function(func));
         }
 
         for (var_name, var) in module.variables {
-            let value = match scope.evaluate_ast(&var) {
+            let func_scope = Scope::new_module_child(scope.clone());
+
+            let value = match func_scope.evaluate_ast(&var) {
                 EvalResult::Ok(value) => value,
                 EvalResult::Ret(value, _) => value,
                 EvalResult::Err(err) => return Err(err),
             };
-            scope.declare_var(var_name.clone(), value);
+            scope.force_set_var(var_name.clone(), value);
         }
 
         for import in module.imports {
@@ -69,11 +62,6 @@ impl EngineModule for InterpreterModule {
                 Some(module) => module,
                 None => continue,
             };
-
-            let vars = module.scope.variables_unsecure();
-            for (name, value) in vars.borrow().iter() {
-                scope.declare_var(name.clone(), value.clone());
-            }
         }
 
         Ok(InterpreterModule::new(scope))
@@ -81,7 +69,7 @@ impl EngineModule for InterpreterModule {
 }
 
 impl InterpreterModule {
-    fn new(scope: Arc<Scope>) -> Self {
+    fn new(scope: Arc<ModuleScope>) -> Self {
         Self {
             scope,
         }
@@ -101,7 +89,16 @@ impl Engine for InterpreterEngine {
     }
 
     fn new() -> Self {
-        Self::default()
+        // TODO: Temporary fix
+        let global_module = InterpreterModule::new(
+            ModuleScope::new(
+                ModuleUID::from_string("global_module".to_string())));
+
+        Self {
+            global_module,
+            global_types: Vec::new(),
+            module_loader: EngineModuleLoader::new(),
+        }
     }
 } 
 
@@ -115,7 +112,7 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
     for InterpreterFunction<'_, (), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
-        let scope = Scope::new_child(self.module.scope.clone());
+        let scope = Scope::new_module_child(self.module.scope.clone());
         let result = scope.invoke_function(
             &LangValue::Function(self.func.clone()),
             vec![],
@@ -183,7 +180,7 @@ where
                 )
             )
         ));
-        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -207,7 +204,7 @@ where
                 )
             )
         ));
-        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -233,7 +230,7 @@ where
                 )
             )
         ));
-        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -261,7 +258,7 @@ where
                 )
             )
         ));
-        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
 
@@ -291,6 +288,6 @@ where
                 )
             )
         ));
-        self.global_module.scope.declare_var(name.to_string(), LangValue::ExtFunction(ext_func));
+        self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }

@@ -43,13 +43,8 @@ macro_rules! expect_some {
     };
 }
 
-pub trait EvaluateAST {
-    fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult;
-    fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult;
-}
-
-impl EvaluateAST for Arc<Scope> {
-    fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
+impl<'a> Scope<'a> {
+    pub(crate) fn evaluate_ast(&self, ast: &ASTNode) -> EvalResult {
         match ast.kind.as_ref() {
             NodeKind::VariableDecl { name, value } => {
                 let value = self.evaluate_ast(value)?;
@@ -206,7 +201,7 @@ impl EvaluateAST for Arc<Scope> {
         }
     }
 
-    fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
+    pub(crate) fn invoke_function(&self, func: &LangValue, param_values: Vec<LangValue>) -> EvalResult {
         match func {
             LangValue::Function(func) => {
                 // Parameters

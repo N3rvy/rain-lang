@@ -117,7 +117,7 @@ impl<Eng: Engine> EngineModuleLoader<Eng> {
             variables,
         };
 
-        let eng_module = Eng::Module::new(self, ast_module)?;
+        let eng_module = Eng::Module::new(self, uid, ast_module)?;
 
         self.insert_module(uid, eng_module);
 

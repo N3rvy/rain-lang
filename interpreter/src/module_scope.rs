@@ -1,17 +1,29 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use common::module::ModuleUID;
 use crate::LangValue;
 
 pub struct ModuleScope {
+    uid: ModuleUID,
     variables: Mutex<HashMap<String, LangValue>>,
+    imports: HashMap<ModuleUID, Arc<ModuleScope>>,
 }
 
 impl ModuleScope {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(uid: ModuleUID) -> Arc<Self> {
+        Arc::new(Self {
+            uid,
             variables: Mutex::new(HashMap::new()),
-        }
+            imports: HashMap::new(),
+        })
+    }
+
+    pub fn force_set_var(&self, name: String, value: LangValue) {
+        self.variables
+            .lock()
+            .unwrap()
+            .insert(name, value);
     }
 
     pub fn define_var(&self, name: String) {
@@ -35,6 +47,17 @@ impl ModuleScope {
                 Some(())
             },
             None => None,
+        }
+    }
+
+    /// Returns the variable and if it does not have it, it searches imported modules
+    pub fn search_var(&self, module: ModuleUID, name: &String) -> Option<LangValue> {
+        if module == self.uid {
+            self.get_var(name)
+        } else {
+            self.imports
+                .get(&module)
+                .and_then(|module| module.get_var(name))
         }
     }
 

@@ -1,31 +1,44 @@
 use std::{collections::HashMap, cell::RefCell, sync::{Mutex, Arc}};
 use std::borrow::Borrow;
 use std::sync::MutexGuard;
-
 use crate::lang_value::LangValue;
+use crate::module_scope::ModuleScope;
 
-pub struct Scope {
-    parent: Option<Arc<Scope>>,
-    variables: Mutex<RefCell<HashMap<String, LangValue>>>,
+pub enum Parent<'a> {
+    Module(Arc<ModuleScope>),
+    Scope(&'a Scope<'a>),
+    None,
 }
 
-impl Scope {
+pub struct Scope<'a> {
+    parent: Parent<'a>,
+    variables: Mutex<HashMap<String, LangValue>>,
+}
+
+impl<'a> Scope<'a> {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            parent: None,
-            variables: Mutex::new(RefCell::new(HashMap::new())),
+            parent: Parent::None,
+            variables: Mutex::new(HashMap::new()),
         })
     }
 
-    pub fn new_child(parent: Arc<Scope>) -> Arc<Self> {
-        Arc::new(Self {
-            parent: Some(parent),
-            variables: Mutex::new(RefCell::new(HashMap::new())),
-        })
+    pub fn new_module_child(module: Arc<ModuleScope>) -> Self {
+        Self {
+            parent: Parent::Module(module),
+            variables: Mutex::new(HashMap::new())
+        }
+    }
+
+    pub fn new_child(&'a self) -> Self {
+        Self {
+            parent: Parent::Scope(self),
+            variables: Mutex::new(HashMap::new()),
+        }
     }
     
     pub fn declare_var(&self, name: String, value: LangValue) {
-        self.variables.lock().unwrap().borrow_mut().insert(name, value); 
+        self.variables.lock().unwrap().insert(name, value);
     }
     
     pub(super) fn get_var(&self, name: &String) -> Option<LangValue> {
@@ -33,34 +46,30 @@ impl Scope {
             Some(value) => Some(value.clone()),
             None => {
                 match &self.parent {
-                    Some(scope) => scope.get_var(name),
-                    None => None,
+                    Parent::Module(module) => module.get_var(name),
+                    Parent::Scope(scope) => scope.get_var(name),
+                    Parent::None => None,
                 }
             },
         }
     }
     
     pub(super) fn set_var(&self, name: &String, value: LangValue) -> bool {
-        match self.variables.lock().unwrap().borrow_mut().get_mut(name) {
+        match self.variables.lock().unwrap().get_mut(name) {
             Some(val) => {
                 *val = value;
                 true
             },
             None => {
                 match &self.parent {
-                    Some(scope) => {
+                    Parent::Module(_) => false,
+                    Parent::Scope(scope) => {
                         scope.set_var(name, value);  
                         true
                     },
-                    None => false,
+                    Parent::None => false,
                 }
             },
         }
-    }
-
-    /// This is considered unsecure because it has a refcell and doesn't check for external
-    /// modifications that can lead to a panic from the RefCell
-    pub fn variables_unsecure(&self) -> MutexGuard<RefCell<HashMap<String, LangValue>>> {
-        self.variables.lock().unwrap()
     }
 }
