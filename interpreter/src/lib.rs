@@ -43,7 +43,6 @@ impl<'a> Default for InterpreterEngine {
 
 pub struct InterpreterModule {
     scope: Arc<Scope>,
-    modules: HashMap<ModuleUID, InterpreterModule>,
 }
 
 impl EngineModule for InterpreterModule {
@@ -85,7 +84,6 @@ impl InterpreterModule {
     fn new(scope: Arc<Scope>) -> Self {
         Self {
             scope,
-            modules: HashMap::new(),
         }
     }
 }
