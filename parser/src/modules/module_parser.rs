@@ -1,201 +1,120 @@
+use std::ptr::addr_of_mut;
 use std::sync::Arc;
 use common::ast::ASTNode;
-use common::ast::module::ASTModule;
-use common::ast::types::{Function, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
-use common::module::{ModuleIdentifier, ModuleUID};
-use tokenizer::iterator::{Tokens, TokenSnapshot};
-use tokenizer::tokens::Token;
-use crate::errors::{LOAD_MODULE_ERROR, ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE};
-use crate::{expect_indent, expect_token};
+use common::module::{Module, ModuleMetadata, ModuleUID};
+use tokenizer::iterator::Tokens;
+use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::modules::module_importer::ModuleImporter;
-use crate::modules::module_loader::{LoadModuleResult, ModuleLoader};
+use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
+use crate::modules::module_loader::{ModuleLoader, ModuleLoaderContext};
 use crate::parser::ParserScope;
-use crate::utils::{parse_parameter_names, parse_type_error};
 
-pub enum DeclarationKind {
-    Variable(TypeKind),
-    Function(Vec<String>, FunctionType),
+pub struct ModuleParser<'a> {
+    loader_context: &'a ModuleLoaderContext<'a>,
 }
 
-pub struct Declaration {
-    pub kind: DeclarationKind,
-    pub body: TokenSnapshot,
-}
-
-pub struct ParseModule {
-    pub tokens: Tokens,
-    pub imports: Vec<ModuleUID>,
-    pub declarations: Vec<(String, Declaration)>
-}
-
-pub struct ParseModuleParser<'a, Importer: ModuleImporter> {
-    loader: &'a mut ModuleLoader<Importer>,
-}
-
-impl<'a, Importer: ModuleImporter> ParseModuleParser<'a, Importer> {
-    pub fn new(loader: &'a mut ModuleLoader<Importer>) -> Self {
+impl<'a> ModuleParser<'a> {
+    pub fn new(loader_context: &'a ModuleLoaderContext) -> Self {
         Self {
-            loader,
+            loader_context
         }
     }
 
-    pub fn parse(&mut self, tokens: Tokens) -> Result<ParseModule, LangError> {
-        let mut module = ParseModule {
-            tokens,
-            imports: Vec::new(),
-            declarations: Vec::new(),
-        };
+    pub fn parse_module<Importer: ModuleImporter>(&self, module: &ParsableModule) -> Result<Module, LangError> {
+        let scope = self.create_scope::<Importer>(&module);
 
-        loop {
-            if !module.tokens.has_next() {
-                break
-            }
+        let mut functions = Vec::new();
+        let mut variables = Vec::new();
 
-            let result = self.parse_declaration(&mut module);
-            match result {
-                Ok(DeclarationParseAction::Import(path)) => {
-                    let result = self.loader.load_module(&ModuleIdentifier(path));
+        // Parsing every definition
+        for (name, decl) in &module.declarations {
+            let mut tokens = module.tokens.new_clone(decl.body);
 
-                    let uid = match result {
-                        LoadModuleResult::Ok(uid) |
-                        LoadModuleResult::AlreadyLoaded(uid) => uid,
-                        LoadModuleResult::NotFound => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string())),
-                        LoadModuleResult::Err(err) => return Err(err),
-                    };
+            match &decl.kind {
+                DeclarationKind::Variable(_) => {
+                    let value = Self::parse_variable_value(&mut tokens, &scope.new_child())?;
 
-                    module.imports.push(uid);
+                    variables.push((name.clone(), value));
                 },
-                Ok(DeclarationParseAction::Declaration(name, declaration)) => {
-                    module.declarations.push((name, declaration));
+                DeclarationKind::Function(params, func_type) => {
+                    let scope = scope.new_child();
+
+                    let value = Self::parse_function_value(
+                        &mut tokens,
+                        &scope,
+                        params,
+                        func_type.clone())?;
+
+                    if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
+                        return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                    }
+
+                    functions.push((name.clone(), value));
                 },
-                Err(err) => return Err(err),
-            }
+            };
         }
+
+        let module = Module {
+            imports: vec![],
+            metadata: ModuleMetadata { definitions: vec![] },
+
+            functions,
+            variables,
+        };
 
         Ok(module)
     }
 
-    fn parse_declaration(&mut self, module: &mut ParseModule) -> Result<DeclarationParseAction, LangError> {
-        let token = match module.tokens.pop() {
-            Some(t) => t,
-            None => return Err(LangError::new_parser_end_of_file()),
-        };
+    fn create_scope<Importer: ModuleImporter>(&self, module: &ParsableModule) -> ParserScope {
+        let scope = ParserScope::new_root();
 
-        match token {
-            Token::Import => {
-                // import [path]
+        // Declaring every type into the scope
+        for (name, def) in &module.declarations {
+            let type_kind = match &def.kind {
+                DeclarationKind::Variable(t) => t.clone(),
+                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
+            };
 
-                // [path]
-                let path = match module.tokens.pop() {
-                    Some(Token::Literal(LiteralKind::String(path))) => path,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
-                };
-
-                // new line
-                expect_token!(module.tokens.pop(), Token::NewLine);
-
-                Ok(DeclarationParseAction::Import(path))
-            },
-            Token::Variable => {
-                // var <name>: (type) = [value]
-
-                // <name>
-                let name = match module.tokens.pop() {
-                    Some(Token::Symbol(name)) => name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
-                };
-
-                // : (type)
-                let type_kind = parse_type_error(&mut module.tokens)?;
-
-                // =
-                expect_token!(module.tokens.pop(), Token::Operator(OperatorKind::Assign));
-
-                // [value]
-                let body = module.tokens.snapshot();
-                Self::pop_until_newline(&mut module.tokens);
-
-                Ok(DeclarationParseAction::Declaration(
-                    name,
-                    Declaration {
-                        kind: DeclarationKind::Variable(type_kind),
-                        body,
-                    },
-                ))
-            },
-            Token::Function => {
-                // func <name>((<param_name>: (type))*): (type) {body}
-
-                // <name>
-                let name = match module.tokens.pop() {
-                    Some(Token::Symbol(name)) => name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
-                };
-
-                // (
-                expect_token!(module.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
-
-                // (<param_name>: (type))*)
-                let (param_names, param_types) = parse_parameter_names(&mut module.tokens)?;
-
-                // : (type)
-                let ret_type = parse_type_error(&mut module.tokens)?;
-
-                expect_indent!(module.tokens);
-
-                // {body}
-                let body = module.tokens.snapshot();
-                Self::pop_until_dedent(&mut module.tokens);
-
-                let func_type = FunctionType(param_types, Box::new(ret_type));
-
-                Ok(DeclarationParseAction::Declaration(
-                    name,
-                    Declaration {
-                        kind: DeclarationKind::Function(param_names, func_type),
-                        body,
-                    }
-                ))
-            },
-            Token::NewLine => self.parse_declaration(module),
-            _ => Err(LangError::new_parser_unexpected_token()),
+            scope.declare(name.clone(), type_kind);
         }
-    }
 
-    fn pop_until_dedent(tokens: &mut Tokens) {
-        let mut indentations = 0;
+        for import in &module.imports {
+            let uid = match Importer::get_unique_identifier(import) {
+                Some(uid) => uid,
+                None => continue,
+            };
 
-        loop {
-            match tokens.pop() {
-                Some(Token::Indent) => indentations += 1,
-                Some(Token::Dedent) => {
-                    if indentations == 0 {
-                        break;
-                    }
+            let metadata = match self.loader_context.get_metadata(uid) {
+                Some(uid) => uid,
+                None => continue,
+            };
 
-                    indentations -= 1;
-                },
-                None => break,
-                Some(_) => (),
+            for (name, decl) in &metadata.definitions {
+                scope.declare(name.clone(), decl.clone());
             }
         }
+
+        scope
     }
 
-    fn pop_until_newline(tokens: &mut Tokens) {
-        loop {
-            match tokens.pop() {
-                Some(Token::NewLine) | None => break,
-                Some(_) => (),
-            }
+    fn parse_variable_value(tokens: &mut Tokens, scope: &ParserScope) -> Result<ASTNode, LangError> {
+        scope.parse_statement(tokens)
+    }
+
+    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: &Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
+        if params.len() != func_type.0.len() {
+            return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
         }
-    }
-}
 
-enum DeclarationParseAction {
-    Import(String),
-    Declaration(String, Declaration),
+        for i in 0..params.len() {
+            scope.declare(params[i].clone(), func_type.0[i].clone());
+        }
+
+        let body = scope.parse_body(tokens)?;
+
+        Ok(Function::new(body, params.clone()))
+    }
+
 }

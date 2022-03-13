@@ -3,7 +3,6 @@ use std::sync::Arc;
 use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
 
 pub mod types;
-pub mod module;
 
 
 pub type ASTBody = Vec<ASTNode>;

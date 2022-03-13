@@ -1,3 +1,5 @@
+#![feature(explicit_generic_args_with_impl_trait)]
+
 use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::{env, env::args, ops::Index};
 use common::module::{ModuleIdentifier, ModuleUID};
@@ -24,8 +26,7 @@ fn main() -> anyhow::Result<()> {
 
     // Creating the module from the source file
     let module = engine
-        .module_loader()
-        .load_module::<ReplImporter>(&ModuleIdentifier(source_path.to_string()))?;
+        .load_module::<ReplImporter>(source_path.to_string())?;
 
     // Obtaning the main function inside the module
     let func: InterpreterFunction<(), AnyValue> = match engine.get_function(module, "main") {

@@ -1,14 +1,14 @@
-use common::ast::module::ASTModule;
+use std::sync::Arc;
 use common::errors::LangError;
-use common::module::ModuleUID;
+use common::module::{Module, ModuleUID};
+use parser::modules::module_loader::ModuleLoader;
 use crate::{Engine, ExternalType, InternalFunction};
-use crate::engine_module_loader::EngineModuleLoader;
 
 
 pub trait EngineModule : Sized {
     type Engine: Engine;
 
-    fn new(builder: &EngineModuleLoader<Self::Engine>, uid: ModuleUID, module: ASTModule) -> Result<Self, LangError>;
+    fn new(engine: &mut Self::Engine, uid: ModuleUID, module: Arc<Module>) -> Result<Self, LangError>;
 }
 
 pub trait EngineModuleSetFunction<Args, R: ExternalType> : EngineModule {

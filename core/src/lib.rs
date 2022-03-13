@@ -9,9 +9,9 @@ mod engine;
 mod externals;
 pub mod module;
 mod errors;
-pub mod engine_module_loader;
 
 pub mod parser {
     pub use parser::modules::module_importer::ModuleImporter;
-    pub use parser::modules::module_parser::ParseModule;
+    pub use parser::modules::module_initializer::ParsableModule;
+    pub use parser::modules::module_loader::ModuleLoader;
 }

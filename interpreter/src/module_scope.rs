@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use common::module::ModuleUID;
 use crate::LangValue;
 
@@ -67,5 +67,11 @@ impl ModuleScope {
             .unwrap()
             .get(name)
             .cloned()
+    }
+
+    pub fn variables(&self) -> MutexGuard<HashMap<String, LangValue>> {
+        self.variables
+            .lock()
+            .unwrap()
     }
 }

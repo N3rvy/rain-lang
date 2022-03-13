@@ -1,19 +1,27 @@
+use std::sync::Arc;
 use crate::tokens::Token;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TokenSnapshot(usize);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tokens {
-    tokens: Vec<Token>,
+    tokens: Arc<Vec<Token>>,
     current_pos: TokenSnapshot,
 }
 
 impl Tokens {
     pub fn from_vec(vec: Vec<Token>) -> Self {
         Self {
-            tokens: vec,
+            tokens: Arc::new(vec),
             current_pos: TokenSnapshot(0),
+        }
+    }
+
+    pub fn new_clone(&self, snapshot: TokenSnapshot) -> Tokens {
+        Self {
+            tokens: self.tokens.clone(),
+            current_pos: snapshot,
         }
     }
     

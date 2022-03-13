@@ -1,13 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use common::module::ModuleUID;
 use common::module::ModuleIdentifier;
-use tokenizer::iterator::Tokens;
-
-pub enum ImportResult {
-    Ok(String, Tokens),
-    NotFound,
-}
 
 pub trait ModuleImporter {
     /// Returns an unique identifier of a specified module identifier.
