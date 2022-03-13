@@ -26,7 +26,7 @@ pub enum NodeKind {
         name: String,
         value: ASTNode,
     },
-    VaraibleRef {
+    VariableRef {
         name: String,
     },
     VariableAsgn {
@@ -96,7 +96,7 @@ impl NodeKind {
     }
     
     pub fn new_variable_ref(name: String) -> NodeKind {
-        NodeKind::VaraibleRef { name }
+        NodeKind::VariableRef { name }
     }
     
     pub fn new_variable_asgn(name: String, value: ASTNode) -> NodeKind {

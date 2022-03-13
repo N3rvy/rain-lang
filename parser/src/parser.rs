@@ -414,7 +414,7 @@ impl<'a> ParserScope<'a> {
             },
             Token::Operator(OperatorKind::Assign) => {
                 let name = match node.kind.as_ref() {
-                    NodeKind::VaraibleRef { name } => name.to_string(),
+                    NodeKind::VariableRef { name } => name.to_string(),
                     _ => return Ok((node, false)),
                 };
 
