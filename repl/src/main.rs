@@ -53,7 +53,6 @@ impl ModuleImporter for ReplImporter {
             Err(_) => return None,
         };
         let mod_path = mod_path.join(&identifier.0);
-        dbg!(&mod_path);
 
         let source = std::fs::read_to_string(mod_path);
         let source = match source {

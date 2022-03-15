@@ -6,7 +6,7 @@ use crate::ast::types::{Function, TypeKind};
 
 pub struct ModuleIdentifier(pub String);
 
-#[derive(Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct ModuleUID(u64);
 
 impl ModuleUID {

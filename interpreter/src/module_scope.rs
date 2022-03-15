@@ -1,21 +1,22 @@
 use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use common::module::ModuleUID;
-use crate::LangValue;
+use crate::{InterpreterEngine, InterpreterModule, LangValue};
 
 pub struct ModuleScope {
     uid: ModuleUID,
     variables: Mutex<HashMap<String, LangValue>>,
-    imports: HashMap<ModuleUID, Arc<ModuleScope>>,
+    modules: Arc<RefCell<HashMap<ModuleUID, InterpreterModule>>>,
 }
 
 impl ModuleScope {
-    pub fn new(uid: ModuleUID) -> Arc<Self> {
+    pub fn new(uid: ModuleUID, engine: &InterpreterEngine) -> Arc<Self> {
         Arc::new(Self {
             uid,
             variables: Mutex::new(HashMap::new()),
-            imports: HashMap::new(),
+            modules: engine.modules.clone(),
         })
     }
 
@@ -55,9 +56,9 @@ impl ModuleScope {
         if module == self.uid {
             self.get_var(name)
         } else {
-            self.imports
+            (*self.modules).borrow()
                 .get(&module)
-                .and_then(|module| module.get_var(name))
+                .and_then(|m| m.scope.search_var(module, name))
         }
     }
 

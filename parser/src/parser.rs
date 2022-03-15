@@ -169,13 +169,13 @@ impl<'a> ParserScope<'a> {
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
             },
             Token::Symbol(name) => {
-                let var_ref = NodeKind::new_variable_ref(name.clone());
-                let var_type = match self.get(name) {
+                let (module, var_type) = match self.get(name) {
                     Some(t) => t,
                     None => return Err(LangError::new_parser(VAR_NOT_FOUND.to_string())),
                 };
 
-                ASTNode::new(var_ref, var_type.1)
+                let var_ref = NodeKind::new_variable_ref(module, name.clone());
+                ASTNode::new(var_ref, var_type)
             }
             Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
             Token::Parenthesis(kind, state) => {
@@ -431,7 +431,7 @@ impl<'a> ParserScope<'a> {
             },
             Token::Operator(OperatorKind::Assign) => {
                 let name = match node.kind.as_ref() {
-                    NodeKind::VariableRef { name } => name.to_string(),
+                    NodeKind::VariableRef { module: _, name } => name.to_string(),
                     _ => return Ok((node, false)),
                 };
 

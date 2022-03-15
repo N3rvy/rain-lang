@@ -1,12 +1,14 @@
 use std::{collections::HashMap, cell::RefCell, sync::{Mutex, Arc}};
 use std::borrow::Borrow;
 use std::sync::MutexGuard;
+use common::module::ModuleUID;
 use crate::lang_value::LangValue;
 use crate::module_scope::ModuleScope;
 
 pub enum Parent<'a> {
     Module(Arc<ModuleScope>),
     Scope(&'a Scope<'a>),
+    // TODO: Remove (not used)
     None,
 }
 
@@ -41,13 +43,13 @@ impl<'a> Scope<'a> {
         self.variables.lock().unwrap().insert(name, value);
     }
     
-    pub(super) fn get_var(&self, name: &String) -> Option<LangValue> {
+    pub(super) fn get_var(&self, module_uid: ModuleUID, name: &String) -> Option<LangValue> {
         match (*self.variables.lock().unwrap()).borrow().get(name) {
             Some(value) => Some(value.clone()),
             None => {
                 match &self.parent {
-                    Parent::Module(module) => module.get_var(name),
-                    Parent::Scope(scope) => scope.get_var(name),
+                    Parent::Module(module) => module.search_var(module_uid, name),
+                    Parent::Scope(scope) => scope.get_var(module_uid, name),
                     Parent::None => None,
                 }
             },

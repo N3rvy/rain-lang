@@ -52,8 +52,8 @@ impl<'a> Scope<'a> {
 
                 EvalResult::Ok(LangValue::Nothing)
             },
-            NodeKind::VariableRef { name } => {
-                match self.get_var(name) {
+            NodeKind::VariableRef { module, name } => {
+                match self.get_var(*module, name) {
                     Some(value) => EvalResult::Ok(value.clone()),
                     None => EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
                 }

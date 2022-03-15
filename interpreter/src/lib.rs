@@ -1,6 +1,8 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
@@ -16,6 +18,7 @@ use evaluate::EvalResult;
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
+use crate::errors::{MODULE_NOT_FOUND, VARIABLE_IS_NOT_A_FUNCTION, VARIABLE_NOT_DECLARED};
 use crate::module_scope::ModuleScope;
 
 mod scope;
@@ -29,7 +32,7 @@ mod module_scope;
 pub struct InterpreterEngine {
     global_types: Vec<(String, TypeKind)>,
     module_loader: ModuleLoader,
-    modules: HashMap<ModuleUID, InterpreterModule>,
+    modules: Arc<RefCell<HashMap<ModuleUID, InterpreterModule>>>,
 }
 
 pub struct InterpreterModule {
@@ -40,7 +43,7 @@ impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
     
     fn new(engine: &mut Self::Engine, uid: ModuleUID, module: Arc<Module>) -> Result<Self, LangError> {
-        let scope = ModuleScope::new(uid);
+        let scope = ModuleScope::new(uid, engine);
 
         for (func_name, func) in &module.functions {
             scope.force_set_var(func_name.clone(), LangValue::Function(func.clone()));
@@ -55,17 +58,6 @@ impl EngineModule for InterpreterModule {
                 EvalResult::Err(err) => return Err(err),
             };
             scope.force_set_var(var_name.clone(), value);
-        }
-
-        for import in &module.imports {
-            let module = match engine.modules.get(&import) {
-                Some(m) => m,
-                None => continue,
-            };
-
-            for (name, value) in module.scope.variables().iter() {
-                scope.declare_var(name, value.clone());
-            }
         }
 
         Ok(InterpreterModule {
@@ -85,7 +77,9 @@ impl Engine for InterpreterEngine {
 
         let module = InterpreterModule::new(self, uid, module)?;
 
-        self.modules.insert(uid, module);
+        (*self.modules)
+            .borrow_mut()
+            .insert(uid, module);
 
         Ok(uid)
     }
@@ -102,20 +96,21 @@ impl Engine for InterpreterEngine {
         Self {
             global_types: Vec::new(),
             module_loader: ModuleLoader::new(),
-            modules: HashMap::new(),
+            modules: Arc::new(RefCell::new(HashMap::new())),
         }
     }
 }
 
 impl InterpreterEngine {
-    fn get_module(&self, uid: ModuleUID) -> Option<&InterpreterModule> {
-        self.modules.get(&uid)
+    fn modules(&self) -> Ref<HashMap<ModuleUID, InterpreterModule>> {
+        (*self.modules).borrow()
     }
 }
 
 pub struct InterpreterFunction<'a, Args, R: ExternalType> {
-    module: &'a InterpreterModule,
-    func: Arc<Function>,
+    engine: &'a InterpreterEngine,
+    module: ModuleUID,
+    name: String,
     _marker: PhantomData<(Args, R)>,
 }
 
@@ -123,9 +118,24 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
     for InterpreterFunction<'_, (), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
-        let scope = Scope::new_module_child(self.module.scope.clone());
+        let modules = self.engine.modules();
+        let module = match modules.get(&self.module) {
+            Some(m) => m,
+            None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
+        };
+
+        let value = module.scope.get_var(&self.name);
+        let func = match value {
+            None => return Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
+            Some(value) => match value {
+                LangValue::Function(func) => func,
+                _ => return Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string()))
+            },
+        };
+
+        let scope = Scope::new_module_child(module.scope.clone());
         let result = scope.invoke_function(
-            &LangValue::Function(self.func.clone()),
+            &LangValue::Function(func.clone()),
             vec![],
         );
 
@@ -152,23 +162,10 @@ impl<'a, R: ExternalType> EngineGetFunction
     fn get_function(&'a self, uid: ModuleUID, name: &str)
         -> Option<InterpreterFunction<'a, (), R>>
     {
-        let module = match self.get_module(uid) {
-            Some(m) => m,
-            None => return None,
-        };
-
-        let value = module.scope.get_var(&name.to_string());
-        let func = match value {
-            None => return None,
-            Some(value) => match value {
-                LangValue::Function(func) => func,
-                _ => return None
-            },
-        };
-        
         Some(InterpreterFunction {
-            module,
-            func,
+            engine: self,
+            module: uid,
+            name: name.to_string(),
             _marker: PhantomData::default(),
         })
     }
