@@ -1,13 +1,10 @@
-use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::errors::LangError;
-use common::module::{ModuleIdentifier, ModuleUID};
+use common::module::ModuleUID;
 use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::ModuleLoader;
 
 use crate::{externals::ExternalType, module::EngineModule};
-use crate::errors::MODULE_NOT_FOUND;
-use crate::module_store::ModuleStore;
 
 
 pub trait Engine

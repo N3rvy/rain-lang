@@ -1,9 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
+use std::cell::RefCell;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
 use core::parser::ModuleLoader;
@@ -11,7 +9,7 @@ use core::module_store::ModuleStore;
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use common::ast::types::{Function, TypeKind, FunctionType};
+use common::ast::types::{TypeKind, FunctionType};
 use common::errors::LangError;
 use common::module::{Module, ModuleIdentifier, ModuleUID};
 use errors::CANT_CONVERT_VALUE;

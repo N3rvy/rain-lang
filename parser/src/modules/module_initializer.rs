@@ -1,14 +1,10 @@
-use std::sync::Arc;
-use common::ast::ASTNode;
-use common::ast::types::{Function, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::LangError;
-use common::module::{ModuleIdentifier, ModuleUID};
+use common::module::ModuleIdentifier;
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use tokenizer::tokens::Token;
-use crate::errors::{LOAD_MODULE_ERROR, ParsingErrorHelper, UNEXPECTED_ERROR, WRONG_TYPE};
+use crate::errors::ParsingErrorHelper;
 use crate::{expect_indent, expect_token};
-use crate::modules::module_loader::ModuleLoader;
-use crate::parser::ParserScope;
 use crate::utils::{parse_parameter_names, parse_type_error};
 
 pub enum DeclarationKind {

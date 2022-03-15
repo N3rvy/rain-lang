@@ -1,6 +1,5 @@
-use std::{collections::HashMap, cell::RefCell, sync::{Mutex, Arc}};
+use std::{collections::HashMap, sync::{Mutex, Arc}};
 use std::borrow::Borrow;
-use std::sync::MutexGuard;
 use common::module::ModuleUID;
 use crate::lang_value::LangValue;
 use crate::module_scope::ModuleScope;
@@ -8,8 +7,6 @@ use crate::module_scope::ModuleScope;
 pub enum Parent<'a> {
     Module(Arc<ModuleScope>),
     Scope(&'a Scope<'a>),
-    // TODO: Remove (not used)
-    None,
 }
 
 pub struct Scope<'a> {
@@ -18,13 +15,6 @@ pub struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            parent: Parent::None,
-            variables: Mutex::new(HashMap::new()),
-        })
-    }
-
     pub fn new_module_child(module: Arc<ModuleScope>) -> Self {
         Self {
             parent: Parent::Module(module),
@@ -50,7 +40,6 @@ impl<'a> Scope<'a> {
                 match &self.parent {
                     Parent::Module(module) => module.search_var(module_uid, name),
                     Parent::Scope(scope) => scope.get_var(module_uid, name),
-                    Parent::None => None,
                 }
             },
         }
@@ -64,12 +53,11 @@ impl<'a> Scope<'a> {
             },
             None => {
                 match &self.parent {
-                    Parent::Module(_) => false,
+                    Parent::Module(module) => module.declare_var(name, value).is_some(),
                     Parent::Scope(scope) => {
                         scope.set_var(name, value);  
                         true
                     },
-                    Parent::None => false,
                 }
             },
         }

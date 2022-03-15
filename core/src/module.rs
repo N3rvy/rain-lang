@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use common::errors::LangError;
-use common::module::{Module, ModuleUID};
-use parser::modules::module_loader::ModuleLoader;
+use common::module::Module;
 use crate::{Engine, ExternalType, InternalFunction};
 
 

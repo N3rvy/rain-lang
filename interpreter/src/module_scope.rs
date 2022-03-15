@@ -1,9 +1,8 @@
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use common::module::ModuleUID;
-use crate::{Engine, InterpreterEngine, InterpreterModule, LangValue, ModuleStore};
+use crate::{InterpreterEngine, InterpreterModule, LangValue, ModuleStore};
 
 pub struct ModuleScope {
     uid: ModuleUID,

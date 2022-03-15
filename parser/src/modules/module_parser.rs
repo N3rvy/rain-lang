@@ -7,12 +7,12 @@ use tokenizer::iterator::Tokens;
 use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
-use crate::modules::module_loader::{ModuleLoader, ModuleLoaderContext};
+use crate::modules::module_loader::ModuleLoaderContext;
 use crate::parser::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
 
 pub struct ModuleParser<'a> {
-    loader_context: &'a ModuleLoaderContext<'a>,
+    loader_context: &'a ModuleLoaderContext,
 }
 
 impl<'a> ModuleParser<'a> {

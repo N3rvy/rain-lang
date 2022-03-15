@@ -1,15 +1,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::module::{Module, ModuleMetadata, ModuleUID};
 use common::errors::LangError;
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
-use crate::errors::{LOAD_MODULE_ERROR, MODULE_NOT_FOUND, UNEXPECTED_ERROR};
-use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, Declaration, DeclarationKind};
+use crate::errors::{LOAD_MODULE_ERROR, MODULE_NOT_FOUND};
+use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, DeclarationKind};
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
 
@@ -41,7 +39,7 @@ impl ModuleLoader {
         };
         let tokens = Tokenizer::tokenize(&source)?;
         let parsable_module = ModuleInitializer::create(tokens)?;
-        let context = self.create_context::<Importer>(&parsable_module);
+        let context = self.create_context::<Importer>(&parsable_module)?;
         let parser = ModuleParser::new(&context);
 
         // Return result vector
@@ -72,15 +70,14 @@ impl ModuleLoader {
         Ok((uid, modules))
     }
 
-    fn create_context<Importer: ModuleImporter>(&self, module: &ParsableModule) -> ModuleLoaderContext {
+    fn create_context<Importer: ModuleImporter>(&self, module: &ParsableModule) -> Result<ModuleLoaderContext, LangError> {
         let mut modules = Vec::new();
 
-        self.add_imports::<Importer>(&mut modules, &module);
+        self.add_imports::<Importer>(&mut modules, &module)?;
 
-        ModuleLoaderContext {
+        Ok(ModuleLoaderContext {
             modules,
-            module_loader: self,
-        }
+        })
     }
 
     fn add_imports<Importer: ModuleImporter>(
@@ -107,7 +104,7 @@ impl ModuleLoader {
 
             let parsable_module = ModuleInitializer::create(tokens)?;
 
-            self.add_imports::<Importer>(vec, &parsable_module);
+            self.add_imports::<Importer>(vec, &parsable_module)?;
 
             vec.push((uid, parsable_module));
         }
@@ -123,12 +120,11 @@ impl ModuleLoader {
     }
 }
 
-pub struct ModuleLoaderContext<'a> {
-    module_loader: &'a ModuleLoader,
+pub struct ModuleLoaderContext {
     modules: Vec<(ModuleUID, ParsableModule)>,
 }
 
-impl<'a> ModuleLoaderContext<'a> {
+impl ModuleLoaderContext {
     pub fn get_metadata(&self, module: ModuleUID) -> Option<ModuleMetadata> {
         match self.modules
             .iter()
