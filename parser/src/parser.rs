@@ -1,22 +1,31 @@
 use std::{collections::HashMap, cell::RefCell};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind, FunctionType}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
+use common::module::ModuleUID;
 use tokenizer::{tokens::Token, iterator::Tokens};
 use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent, utils::parse_parameter_names};
+use crate::parser_module_scope::ParserModuleScope;
+
+pub enum ScopeParent<'a> {
+    Module(&'a ParserModuleScope),
+    Scope(&'a ParserScope<'a>),
+}
 
 pub struct ParserScope<'a> {
-    parent: Option<&'a ParserScope<'a>>,
+    parent: ScopeParent<'a>,
     pub eval_type: RefCell<TypeKind>,
+    module_uid: ModuleUID,
     
     names: RefCell<SmallVec<[String; SCOPE_SIZE]>>,
     types: RefCell<SmallVec<[TypeKind; SCOPE_SIZE]>>,
 }
 
 impl<'a> ParserScope<'a> {
-    pub fn new_root() -> Self {
+    pub fn new_module_child(module: &'a ParserModuleScope) -> Self {
         Self {
-            parent: None,
+            parent: ScopeParent::Module(module),
             eval_type: RefCell::new(TypeKind::Nothing),
+            module_uid: module.uid,
 
             names: RefCell::new(SmallVec::new()),
             types: RefCell::new(SmallVec::new()),
@@ -25,24 +34,32 @@ impl<'a> ParserScope<'a> {
     
     pub fn new_child(&'a self) -> Self {
         Self {
-            parent: Some(self),
+            parent: ScopeParent::Scope(self),
             eval_type: RefCell::new(TypeKind::Nothing),
+            module_uid: self.module_uid,
 
             names: RefCell::new(SmallVec::new()),
             types: RefCell::new(SmallVec::new()),
         }
     }
     
-    pub fn get(&self, name: &String) -> Option<TypeKind> {
+    pub fn get(&self, name: &String) -> Option<(ModuleUID, TypeKind)> {
         let types = self.types.borrow();
         
-        self.names.borrow()
+        let value = self.names.borrow()
             .iter()
             .rev()
             .enumerate()
             .find(|(_, value)| (**value).eq(name))
-            .and_then(|(i, _)| Some(types[types.len() - 1 - i].clone()))
-            .or_else(|| self.parent.and_then(|parent| parent.get(name)))
+            .and_then(|(i, _)| Some(types[types.len() - 1 - i].clone()));
+
+        match value {
+            Some(value) => Some((self.module_uid, value)),
+            None => match self.parent {
+                ScopeParent::Module(module) => module.get(name),
+                ScopeParent::Scope(scope) => scope.get(name),
+            },
+        }
     }
     
     pub fn declare(&self, name: String, type_kind: TypeKind) {
@@ -158,7 +175,7 @@ impl<'a> ParserScope<'a> {
                     None => return Err(LangError::new_parser(VAR_NOT_FOUND.to_string())),
                 };
 
-                ASTNode::new(var_ref, var_type)
+                ASTNode::new(var_ref, var_type.1)
             }
             Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
             Token::Parenthesis(kind, state) => {

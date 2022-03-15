@@ -46,12 +46,12 @@ impl ModuleLoader {
 
         // Loading all the dependencies
         for (uid, parsable_module) in &context.modules {
-            let module = parser.parse_module::<Importer>(parsable_module)?;
+            let module = parser.parse_module::<Importer>(parsable_module, *uid)?;
             self.modules.borrow_mut().insert(*uid, Arc::new(module));
         }
 
         // Loading the main module
-        let module = parser.parse_module::<Importer>(&parsable_module)?;
+        let module = parser.parse_module::<Importer>(&parsable_module, uid)?;
 
         self.modules.borrow_mut().insert(uid, Arc::new(module));
 

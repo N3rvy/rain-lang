@@ -1,4 +1,3 @@
-use std::ptr::addr_of_mut;
 use std::sync::Arc;
 use common::ast::ASTNode;
 use common::ast::types::{Function, FunctionType, TypeKind};
@@ -10,6 +9,7 @@ use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
 use crate::modules::module_loader::{ModuleLoader, ModuleLoaderContext};
 use crate::parser::ParserScope;
+use crate::parser_module_scope::ParserModuleScope;
 
 pub struct ModuleParser<'a> {
     loader_context: &'a ModuleLoaderContext<'a>,
@@ -22,8 +22,8 @@ impl<'a> ModuleParser<'a> {
         }
     }
 
-    pub fn parse_module<Importer: ModuleImporter>(&self, module: &ParsableModule) -> Result<Module, LangError> {
-        let scope = self.create_scope::<Importer>(&module);
+    pub fn parse_module<Importer: ModuleImporter>(&self, module: &ParsableModule, uid: ModuleUID) -> Result<Module, LangError> {
+        let scope = self.create_scope::<Importer>(&module, uid);
 
         let mut functions = Vec::new();
         let mut variables = Vec::new();
@@ -67,8 +67,8 @@ impl<'a> ModuleParser<'a> {
         Ok(module)
     }
 
-    fn create_scope<Importer: ModuleImporter>(&self, module: &ParsableModule) -> ParserScope {
-        let scope = ParserScope::new_root();
+    fn create_scope<Importer: ModuleImporter>(&self, module: &ParsableModule, uid: ModuleUID) -> ParserModuleScope {
+        let mut scope = ParserModuleScope::new(uid);
 
         // Declaring every type into the scope
         for (name, def) in &module.declarations {
@@ -92,7 +92,7 @@ impl<'a> ModuleParser<'a> {
             };
 
             for (name, decl) in &metadata.definitions {
-                scope.declare(name.clone(), decl.clone());
+                scope.declare_external(name.clone(), uid, decl.clone());
             }
         }
 
