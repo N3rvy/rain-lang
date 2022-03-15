@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
 use core::parser::ModuleLoader;
+use core::module_store::ModuleStore;
 use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -32,7 +33,7 @@ mod module_scope;
 pub struct InterpreterEngine {
     global_types: Vec<(String, TypeKind)>,
     module_loader: ModuleLoader,
-    modules: Arc<RefCell<HashMap<ModuleUID, InterpreterModule>>>,
+    pub(crate) module_store: Arc<RefCell<ModuleStore<InterpreterModule>>>,
 }
 
 pub struct InterpreterModule {
@@ -42,8 +43,8 @@ pub struct InterpreterModule {
 impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
     
-    fn new(engine: &mut Self::Engine, uid: ModuleUID, module: Arc<Module>) -> Result<Self, LangError> {
-        let scope = ModuleScope::new(uid, engine);
+    fn new(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError> {
+        let scope = ModuleScope::new(module.uid, engine);
 
         for (func_name, func) in &module.functions {
             scope.force_set_var(func_name.clone(), LangValue::Function(func.clone()));
@@ -71,15 +72,17 @@ impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
 
     fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError> {
-        let (uid, module) = self
+        let (uid, modules) = self
             .module_loader()
-            .get_or_load_module::<Importer>(&ModuleIdentifier(identifier.into()))?;
+            .load_module::<Importer>(&ModuleIdentifier(identifier.into()))?;
 
-        let module = InterpreterModule::new(self, uid, module)?;
+        for module in &modules {
+            let eng_module = InterpreterModule::new(self, module.clone())?;
 
-        (*self.modules)
-            .borrow_mut()
-            .insert(uid, module);
+            (*self.module_store)
+                .borrow_mut()
+                .insert(module.uid, eng_module);
+        }
 
         Ok(uid)
     }
@@ -96,30 +99,27 @@ impl Engine for InterpreterEngine {
         Self {
             global_types: Vec::new(),
             module_loader: ModuleLoader::new(),
-            modules: Arc::new(RefCell::new(HashMap::new())),
+            module_store: Arc::new(RefCell::new(ModuleStore::new())),
         }
     }
 }
 
-impl InterpreterEngine {
-    fn modules(&self) -> Ref<HashMap<ModuleUID, InterpreterModule>> {
-        (*self.modules).borrow()
-    }
-}
-
-pub struct InterpreterFunction<'a, Args, R: ExternalType> {
-    engine: &'a InterpreterEngine,
+pub struct InterpreterFunction<Args, R: ExternalType> {
+    module_store: Arc<RefCell<ModuleStore<InterpreterModule>>>,
     module: ModuleUID,
     name: String,
     _marker: PhantomData<(Args, R)>,
 }
 
-impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
-    for InterpreterFunction<'_, (), R>
+impl<R: ExternalType> InternalFunction<(), Result<R, LangError>>
+    for InterpreterFunction<(), R>
 {
     fn call(&self, _args: ()) -> Result<R, LangError> {
-        let modules = self.engine.modules();
-        let module = match modules.get(&self.module) {
+        let module = (*self.module_store)
+            .borrow()
+            .get(self.module);
+
+        let module = match module {
             Some(m) => m,
             None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
         };
@@ -155,15 +155,15 @@ impl<'a, R: ExternalType> InternalFunction<(), Result<R, LangError>>
     }
 }
 
-impl<'a, R: ExternalType> EngineGetFunction
-    <'a, (), Result<R, LangError>, InterpreterFunction<'a, (), R>>
+impl<R: ExternalType> EngineGetFunction
+    <(), Result<R, LangError>, InterpreterFunction<(), R>>
     for InterpreterEngine
 {
-    fn get_function(&'a self, uid: ModuleUID, name: &str)
-        -> Option<InterpreterFunction<'a, (), R>>
+    fn get_function(&self, uid: ModuleUID, name: &str)
+        -> Option<InterpreterFunction<(), R>>
     {
         Some(InterpreterFunction {
-            engine: self,
+            module_store: self.module_store.clone(),
             module: uid,
             name: name.to_string(),
             _marker: PhantomData::default(),

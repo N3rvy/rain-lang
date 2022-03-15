@@ -3,12 +3,12 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use common::module::ModuleUID;
-use crate::{InterpreterEngine, InterpreterModule, LangValue};
+use crate::{Engine, InterpreterEngine, InterpreterModule, LangValue, ModuleStore};
 
 pub struct ModuleScope {
     uid: ModuleUID,
     variables: Mutex<HashMap<String, LangValue>>,
-    modules: Arc<RefCell<HashMap<ModuleUID, InterpreterModule>>>,
+    modules: Arc<RefCell<ModuleStore<InterpreterModule>>>,
 }
 
 impl ModuleScope {
@@ -16,7 +16,7 @@ impl ModuleScope {
         Arc::new(Self {
             uid,
             variables: Mutex::new(HashMap::new()),
-            modules: engine.modules.clone(),
+            modules: engine.module_store.clone(),
         })
     }
 
@@ -56,8 +56,9 @@ impl ModuleScope {
         if module == self.uid {
             self.get_var(name)
         } else {
-            (*self.modules).borrow()
-                .get(&module)
+            self.modules
+                .borrow()
+                .get(module)
                 .and_then(|m| m.scope.search_var(module, name))
         }
     }

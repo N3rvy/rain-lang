@@ -8,6 +8,7 @@ pub use externals::{ExternalType, AnyValue};
 mod engine;
 mod externals;
 pub mod module;
+pub mod module_store;
 mod errors;
 
 pub mod parser {

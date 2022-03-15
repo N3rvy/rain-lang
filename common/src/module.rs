@@ -23,6 +23,7 @@ pub struct ModuleMetadata {
 }
 
 pub struct Module {
+    pub uid: ModuleUID,
     pub imports: Vec<ModuleUID>,
     pub metadata: ModuleMetadata,
 

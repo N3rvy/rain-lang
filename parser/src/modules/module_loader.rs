@@ -24,7 +24,7 @@ impl ModuleLoader {
         }
     }
 
-    pub fn load_module<Importer: ModuleImporter>(&mut self, id: &ModuleIdentifier) -> Result<ModuleUID, LangError> {
+    pub fn load_module<Importer: ModuleImporter>(&mut self, id: &ModuleIdentifier) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
         let uid = match Importer::get_unique_identifier(id) {
             Some(uid) => uid,
             None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string()))
@@ -32,7 +32,7 @@ impl ModuleLoader {
 
         // If cached then simply return
         if self.modules.borrow().contains_key(&uid) {
-            return Ok(uid)
+            return Ok((uid, Vec::new()))
         }
 
         let source = match Importer::load_module(id) {
@@ -44,18 +44,32 @@ impl ModuleLoader {
         let context = self.create_context::<Importer>(&parsable_module);
         let parser = ModuleParser::new(&context);
 
+        // Return result vector
+        let mut modules = Vec::new();
+
         // Loading all the dependencies
         for (uid, parsable_module) in &context.modules {
-            let module = parser.parse_module::<Importer>(parsable_module, *uid)?;
-            self.modules.borrow_mut().insert(*uid, Arc::new(module));
+            let module = Arc::new(
+                parser.parse_module::<Importer>(parsable_module, *uid)?);
+
+            modules.push(module.clone());
+
+            self.modules
+                .borrow_mut()
+                .insert(*uid, module);
         }
 
         // Loading the main module
-        let module = parser.parse_module::<Importer>(&parsable_module, uid)?;
+        let module = Arc::new(
+            parser.parse_module::<Importer>(&parsable_module, uid)?);
 
-        self.modules.borrow_mut().insert(uid, Arc::new(module));
+        modules.push(module.clone());
 
-        Ok(uid)
+        self.modules
+            .borrow_mut()
+            .insert(uid, module);
+
+        Ok((uid, modules))
     }
 
     fn create_context<Importer: ModuleImporter>(&self, module: &ParsableModule) -> ModuleLoaderContext {
@@ -106,15 +120,6 @@ impl ModuleLoader {
             .borrow()
             .get(&uid)
             .cloned()
-    }
-
-    pub fn get_or_load_module<Importer: ModuleImporter>(&mut self, id: &ModuleIdentifier) -> Result<(ModuleUID, Arc<Module>), LangError> {
-        let uid = self.load_module::<Importer>(id)?;
-
-        match self.get_module(uid) {
-            Some(module) => Ok((uid, module)),
-            None => Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()))
-        }
     }
 }
 

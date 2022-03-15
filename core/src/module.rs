@@ -8,7 +8,7 @@ use crate::{Engine, ExternalType, InternalFunction};
 pub trait EngineModule : Sized {
     type Engine: Engine;
 
-    fn new(engine: &mut Self::Engine, uid: ModuleUID, module: Arc<Module>) -> Result<Self, LangError>;
+    fn new(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError>;
 }
 
 pub trait EngineModuleSetFunction<Args, R: ExternalType> : EngineModule {

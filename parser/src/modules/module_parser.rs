@@ -57,6 +57,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         let module = Module {
+            uid,
             imports: vec![],
             metadata: ModuleMetadata { definitions: vec![] },
 

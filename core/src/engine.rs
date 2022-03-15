@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::errors::LangError;
 use common::module::{ModuleIdentifier, ModuleUID};
@@ -6,6 +7,7 @@ use parser::modules::module_loader::ModuleLoader;
 
 use crate::{externals::ExternalType, module::EngineModule};
 use crate::errors::MODULE_NOT_FOUND;
+use crate::module_store::ModuleStore;
 
 
 pub trait Engine
@@ -14,12 +16,7 @@ where
 {
     type Module: EngineModule<Engine = Self>;
 
-    #[inline]
-    fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError> {
-        self
-            .module_loader()
-            .load_module::<Importer>(&ModuleIdentifier(identifier.into()))
-    }
+    fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError>;
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;
@@ -27,8 +24,8 @@ where
     fn new() -> Self;
 }
 
-pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine {
-    fn get_function(&'a self, uid: ModuleUID, name: &str)
+pub trait EngineGetFunction<Args, R, Ret: InternalFunction<Args, R>> : Engine {
+    fn get_function(&self, uid: ModuleUID, name: &str)
                     -> Option<Ret>;
 }
 
