@@ -45,18 +45,16 @@ impl<'a> Scope<'a> {
         }
     }
     
-    pub(super) fn set_var(&self, name: &String, value: LangValue) -> bool {
+    pub(super) fn set_var(&self, name: &String, value: LangValue) {
         match self.variables.lock().unwrap().get_mut(name) {
             Some(val) => {
                 *val = value;
-                true
             },
             None => {
                 match &self.parent {
-                    Parent::Module(module) => module.declare_var(name, value).is_some(),
+                    Parent::Module(module) => module.set_var(name.to_string(), value),
                     Parent::Scope(scope) => {
                         scope.set_var(name, value);  
-                        true
                     },
                 }
             },

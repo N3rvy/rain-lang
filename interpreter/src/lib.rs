@@ -9,7 +9,7 @@ use core::module_store::ModuleStore;
 use core::{ExternalType, Engine, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use common::ast::types::{TypeKind, FunctionType};
+use common::ast::types::TypeKind;
 use common::errors::LangError;
 use common::module::{Module, ModuleIdentifier, ModuleUID};
 use errors::CANT_CONVERT_VALUE;
@@ -37,7 +37,6 @@ pub struct InterpreterEngine {
 }
 
 pub struct InterpreterModule {
-    uid: ModuleUID,
     scope: Arc<ModuleScope>,
 }
 
@@ -51,7 +50,6 @@ impl EngineModule for InterpreterModule {
         };
 
         Ok(Self {
-            uid,
             scope: ModuleScope::new(uid, engine),
         })
     }
@@ -60,7 +58,7 @@ impl EngineModule for InterpreterModule {
         let scope = ModuleScope::new(module.uid, engine);
 
         for (func_name, func) in &module.functions {
-            scope.force_set_var(func_name.clone(), LangValue::Function(func.clone()));
+            scope.set_var(func_name.clone(), LangValue::Function(func.clone()));
         }
 
         for (var_name, var) in &module.variables {
@@ -71,11 +69,10 @@ impl EngineModule for InterpreterModule {
                 EvalResult::Ret(value, _) => value,
                 EvalResult::Err(err) => return Err(err),
             };
-            scope.force_set_var(var_name.clone(), value);
+            scope.set_var(var_name.clone(), value);
         }
 
         Ok(InterpreterModule {
-            uid: module.uid,
             scope,
         })
     }

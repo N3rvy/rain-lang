@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use common::module::ModuleUID;
 use crate::{InterpreterEngine, InterpreterModule, LangValue, ModuleStore};
 
@@ -19,35 +19,11 @@ impl ModuleScope {
         })
     }
 
-    pub fn force_set_var(&self, name: String, value: LangValue) {
+    pub fn set_var(&self, name: String, value: LangValue) {
         self.variables
             .lock()
             .unwrap()
             .insert(name, value);
-    }
-
-    pub fn define_var(&self, name: String) {
-        self.variables
-            .lock()
-            .unwrap()
-            .insert(name, LangValue::Nothing);
-    }
-
-    pub fn declare_var(&self, name: &String, value: LangValue) -> Option<()> {
-        let mut guard = self.variables
-            .lock()
-            .unwrap();
-
-        let variable = guard
-            .get_mut(name);
-
-        match variable {
-            Some(var) => {
-                *var = value;
-                Some(())
-            },
-            None => None,
-        }
     }
 
     /// Returns the variable and if it does not have it, it searches imported modules
@@ -68,11 +44,5 @@ impl ModuleScope {
             .unwrap()
             .get(name)
             .cloned()
-    }
-
-    pub fn variables(&self) -> MutexGuard<HashMap<String, LangValue>> {
-        self.variables
-            .lock()
-            .unwrap()
     }
 }

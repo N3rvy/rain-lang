@@ -2,7 +2,7 @@ use std::sync::Arc;
 use common::errors::LangError;
 use common::module::{Module, ModuleIdentifier};
 use parser::modules::module_importer::ModuleImporter;
-use crate::{Engine, ExternalType, InternalFunction};
+use crate::Engine;
 
 
 pub trait EngineModule : Sized {

@@ -1,9 +1,7 @@
-use std::sync::Arc;
 use common::ast::types::{FunctionType, TypeKind};
-use common::errors::LangError;
 use common::module::{Module, ModuleIdentifier, ModuleMetadata, ModuleUID};
 use core::external_module::{ExternalModule, ExternalModuleSetFunction};
-use crate::{ExternalType, InterpreterEngine, InterpreterFunction, InterpreterModule, IntoExternalFunctionRunner, LangValue, ModuleImporter, ModuleScope};
+use crate::{ExternalType, InterpreterEngine, InterpreterModule, IntoExternalFunctionRunner, LangValue, ModuleImporter, ModuleScope};
 
 pub struct InterpreterExternalModule {
     pub uid: ModuleUID,
@@ -29,7 +27,6 @@ impl ExternalModule for InterpreterExternalModule {
                 variables: Vec::new(),
             },
             engine_module: InterpreterModule {
-                uid,
                 scope: ModuleScope::new(uid, engine),
             },
         })
@@ -45,7 +42,7 @@ impl<R> ExternalModuleSetFunction<(), R> for InterpreterExternalModule
         let ext_func = IntoExternalFunctionRunner::<(), R>::external(func);
 
         self.engine_module.scope
-            .declare_var(&name.to_string(), LangValue::ExtFunction(ext_func));
+            .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
         let func_type = TypeKind::Function(
             FunctionType(
@@ -69,7 +66,7 @@ impl<A0, R> ExternalModuleSetFunction<(A0,), R> for InterpreterExternalModule
         let ext_func = IntoExternalFunctionRunner::<(A0,), R>::external(func);
 
         self.engine_module.scope
-            .force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
+            .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
         let func_type = TypeKind::Function(
             FunctionType(
@@ -94,7 +91,7 @@ impl<A0, A1, R> ExternalModuleSetFunction<(A0, A1), R> for InterpreterExternalMo
         let ext_func = IntoExternalFunctionRunner::<(A0, A1), R>::external(func);
 
         self.engine_module.scope
-            .force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
+            .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
         let func_type = TypeKind::Function(
             FunctionType(
@@ -123,7 +120,7 @@ impl<A0, A1, A2, R> ExternalModuleSetFunction<(A0, A1, A2), R> for InterpreterEx
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2), R>::external(func);
 
         self.engine_module.scope
-            .force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
+            .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
         let func_type = TypeKind::Function(
             FunctionType(
@@ -154,7 +151,7 @@ impl<A0, A1, A2, A3, R> ExternalModuleSetFunction<(A0, A1, A2, A3), R> for Inter
         let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2, A3), R>::external(func);
 
         self.engine_module.scope
-            .force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
+            .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
         let func_type = TypeKind::Function(
             FunctionType(

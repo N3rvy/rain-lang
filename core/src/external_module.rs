@@ -1,7 +1,6 @@
-use common::errors::LangError;
 use common::module::ModuleIdentifier;
 use parser::modules::module_importer::ModuleImporter;
-use crate::{Engine, ExternalType, InternalFunction};
+use crate::{Engine, ExternalType};
 
 pub trait ExternalModule {
     type Engine: Engine;
