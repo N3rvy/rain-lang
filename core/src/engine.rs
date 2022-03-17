@@ -15,7 +15,7 @@ where
     type Module: EngineModule<Engine = Self>;
     type ExternalModule: ExternalModule<Engine = Self>;
 
-    fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError>;
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;

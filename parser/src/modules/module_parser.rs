@@ -22,8 +22,8 @@ impl<'a> ModuleParser<'a> {
         }
     }
 
-    pub fn parse_module<Importer: ModuleImporter>(&self, module: &ParsableModule, uid: ModuleUID) -> Result<Module, LangError> {
-        let scope = self.create_scope::<Importer>(&module, uid);
+    pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
+        let scope = self.create_scope(&module, uid, importer);
 
         let mut functions = Vec::new();
         let mut variables = Vec::new();
@@ -68,7 +68,7 @@ impl<'a> ModuleParser<'a> {
         Ok(module)
     }
 
-    fn create_scope<Importer: ModuleImporter>(&self, module: &ParsableModule, uid: ModuleUID) -> ParserModuleScope {
+    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> ParserModuleScope {
         let mut scope = ParserModuleScope::new(uid);
 
         // Declaring every type into the scope
@@ -82,7 +82,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         for import in &module.imports {
-            let uid = match Importer::get_unique_identifier(import) {
+            let uid = match importer.get_unique_identifier(import) {
                 Some(uid) => uid,
                 None => continue,
             };

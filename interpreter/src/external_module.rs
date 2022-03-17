@@ -12,8 +12,8 @@ pub struct InterpreterExternalModule {
 impl ExternalModule for InterpreterExternalModule {
     type Engine = InterpreterEngine;
 
-    fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier) -> Option<Self> {
-        let uid = Importer::get_unique_identifier(id)?;
+    fn new(engine: &mut Self::Engine, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Option<Self> {
+        let uid = importer.get_unique_identifier(id)?;
 
         Some(Self {
             uid,

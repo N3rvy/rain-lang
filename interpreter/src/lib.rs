@@ -43,8 +43,8 @@ pub struct InterpreterModule {
 impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
 
-    fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier) -> Result<Self, LangError> {
-        let uid = match Importer::get_unique_identifier(id) {
+    fn new(engine: &mut Self::Engine, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<Self, LangError> {
+        let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
             None => return Err(LangError::new_runtime(INVALID_IDENTIFIER.to_string())),
         };
@@ -83,10 +83,10 @@ impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
     type ExternalModule = InterpreterExternalModule;
 
-    fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError> {
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
         let (uid, modules) = self
             .module_loader()
-            .load_module::<Importer>(&ModuleIdentifier(identifier.into()))?;
+            .load_module(&ModuleIdentifier(identifier.into()), importer)?;
 
         for module in &modules {
             let eng_module = InterpreterModule::from_module(self, module.clone())?;

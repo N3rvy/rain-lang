@@ -28,14 +28,17 @@ fn main() -> anyhow::Result<()> {
     let std_identifier = ModuleIdentifier("std".to_string());
 
     // Creating the external definitions module
-    let mut std_module = InterpreterExternalModule::new::<ReplImporter>(&mut engine, &std_identifier).unwrap();
+    let mut std_module = InterpreterExternalModule::new(
+        &mut engine,
+        &std_identifier,
+        &ReplImporter).unwrap();
     std_module.set_function("times4", |x: i32| x * 4);
 
     engine.insert_external_module(std_module);
 
     // Creating the module from the source file
     let module = engine
-        .load_module::<ReplImporter>(source_path.to_string())?;
+        .load_module(source_path.to_string(), &ReplImporter)?;
 
     // Obtaning the main function inside the module
     let func: InterpreterFunction<(), AnyValue> = match engine.get_function(module, "main") {
@@ -52,11 +55,11 @@ fn main() -> anyhow::Result<()> {
 struct ReplImporter;
 
 impl ModuleImporter for ReplImporter {
-    fn get_unique_identifier(identifier: &ModuleIdentifier) -> Option<ModuleUID> {
+    fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
         Some(ModuleUID::from_string(identifier.0.clone()))
     }
 
-    fn load_module(identifier: &ModuleIdentifier) -> Option<String> {
+    fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
         let mod_path = match env::current_dir() {
             Ok(path) => path,
             Err(_) => return None,

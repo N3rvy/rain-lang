@@ -8,6 +8,6 @@ use crate::Engine;
 pub trait EngineModule : Sized {
     type Engine: Engine;
 
-    fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier) -> Result<Self, LangError>;
+    fn new(engine: &mut Self::Engine, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<Self, LangError>;
     fn from_module(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError>;
 }

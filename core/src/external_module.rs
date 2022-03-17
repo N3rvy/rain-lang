@@ -5,7 +5,7 @@ use crate::{Engine, ExternalType};
 pub trait ExternalModule {
     type Engine: Engine;
 
-    fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier)
+    fn new(engine: &mut Self::Engine, id: &ModuleIdentifier, importer: &impl ModuleImporter)
         -> Option<Self>
     where Self: Sized;
 }

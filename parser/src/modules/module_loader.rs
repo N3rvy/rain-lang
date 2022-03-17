@@ -28,8 +28,8 @@ impl ModuleLoader {
             .insert(uid, Arc::new(module));
     }
 
-    pub fn load_module<Importer: ModuleImporter>(&mut self, id: &ModuleIdentifier) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
-        let uid = match Importer::get_unique_identifier(id) {
+    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
+        let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
             None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string()))
         };
@@ -39,13 +39,13 @@ impl ModuleLoader {
             return Ok((uid, Vec::new()))
         }
 
-        let source = match Importer::load_module(id) {
+        let source = match importer.load_module(id) {
             Some(source) => source,
             None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
         };
         let tokens = Tokenizer::tokenize(&source)?;
         let parsable_module = ModuleInitializer::create(tokens)?;
-        let context = self.create_context::<Importer>(&parsable_module)?;
+        let context = self.create_context(&parsable_module, importer)?;
         let parser = ModuleParser::new(&context);
 
         // Return result vector
@@ -54,7 +54,7 @@ impl ModuleLoader {
         // Loading all the dependencies
         for (uid, parsable_module) in &context.modules {
             let module = Arc::new(
-                parser.parse_module::<Importer>(parsable_module, *uid)?);
+                parser.parse_module(parsable_module, *uid, importer)?);
 
             modules.push(module.clone());
 
@@ -65,7 +65,7 @@ impl ModuleLoader {
 
         // Loading the main module
         let module = Arc::new(
-            parser.parse_module::<Importer>(&parsable_module, uid)?);
+            parser.parse_module(&parsable_module, uid, importer)?);
 
         modules.push(module.clone());
 
@@ -76,10 +76,10 @@ impl ModuleLoader {
         Ok((uid, modules))
     }
 
-    fn create_context<Importer: ModuleImporter>(&self, module: &ParsableModule) -> Result<ModuleLoaderContext, LangError> {
+    fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> Result<ModuleLoaderContext, LangError> {
         let mut modules = Vec::new();
 
-        self.add_imports::<Importer>(&mut modules, &module)?;
+        self.add_imports(&mut modules, &module, importer)?;
 
         Ok(ModuleLoaderContext {
             module_loader: self,
@@ -87,14 +87,15 @@ impl ModuleLoader {
         })
     }
 
-    fn add_imports<Importer: ModuleImporter>(
+    fn add_imports(
         &self,
         vec: &mut Vec<(ModuleUID, ParsableModule)>,
-        module: &ParsableModule
+        module: &ParsableModule,
+        importer: &impl ModuleImporter,
     ) -> Result<(), LangError> {
 
         for import in &module.imports {
-            let uid = match Importer::get_unique_identifier(import) {
+            let uid = match importer.get_unique_identifier(import) {
                 Some(uid) => uid,
                 None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
             };
@@ -103,7 +104,7 @@ impl ModuleLoader {
                 continue
             }
 
-            let source = match Importer::load_module(&import) {
+            let source = match importer.load_module(&import) {
                 Some(source) => source,
                 None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
             };
@@ -111,7 +112,7 @@ impl ModuleLoader {
 
             let parsable_module = ModuleInitializer::create(tokens)?;
 
-            self.add_imports::<Importer>(vec, &parsable_module)?;
+            self.add_imports(vec, &parsable_module, importer)?;
 
             vec.push((uid, parsable_module));
         }
