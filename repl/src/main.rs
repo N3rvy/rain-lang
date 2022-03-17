@@ -5,7 +5,7 @@ use std::{env, env::args, ops::Index};
 use common::module::{ModuleIdentifier, ModuleUID};
 use interpreter::{InterpreterEngine, InterpreterFunction};
 use core::parser::ModuleImporter;
-use core::external_module::{ExternalModule, ExternalModuleSetFunction};
+use core::external_module::{ExternalModule, ExternalModuleSetFunction, ExternalModuleSetValue};
 use interpreter::external_module::InterpreterExternalModule;
 
 fn main() -> anyhow::Result<()> {
@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
         &std_identifier,
         &ReplImporter).unwrap();
     std_module.set_function("times4", |x: i32| x * 4);
+    std_module.set_value("extvalue", 10);
 
     engine.insert_external_module(std_module);
 

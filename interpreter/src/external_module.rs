@@ -1,6 +1,6 @@
 use common::ast::types::{FunctionType, TypeKind};
 use common::module::{Module, ModuleIdentifier, ModuleMetadata, ModuleUID};
-use core::external_module::{ExternalModule, ExternalModuleSetFunction};
+use core::external_module::{ExternalModule, ExternalModuleSetFunction, ExternalModuleSetValue};
 use crate::{ExternalType, InterpreterEngine, InterpreterModule, IntoExternalFunctionRunner, LangValue, ModuleImporter, ModuleScope};
 
 pub struct InterpreterExternalModule {
@@ -30,6 +30,16 @@ impl ExternalModule for InterpreterExternalModule {
                 scope: ModuleScope::new(uid, engine),
             },
         })
+    }
+}
+
+impl<R: ExternalType> ExternalModuleSetValue<R> for InterpreterExternalModule {
+    fn set_value(&mut self, name: &str, value: R) {
+        self.engine_module.scope
+            .set_var(name.to_string(), R::generilize(value).into());
+
+        self.module.metadata.definitions
+            .push((name.to_string(), R::type_kind()));
     }
 }
 
