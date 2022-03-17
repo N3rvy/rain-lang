@@ -22,6 +22,12 @@ impl ModuleLoader {
         }
     }
 
+    pub fn insert_module(&mut self, uid: ModuleUID, module: Module) {
+        self.modules
+            .borrow_mut()
+            .insert(uid, Arc::new(module));
+    }
+
     pub fn load_module<Importer: ModuleImporter>(&mut self, id: &ModuleIdentifier) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
         let uid = match Importer::get_unique_identifier(id) {
             Some(uid) => uid,
@@ -76,6 +82,7 @@ impl ModuleLoader {
         self.add_imports::<Importer>(&mut modules, &module)?;
 
         Ok(ModuleLoaderContext {
+            module_loader: self,
             modules,
         })
     }
@@ -93,7 +100,7 @@ impl ModuleLoader {
             };
 
             if self.modules.borrow().contains_key(&uid) {
-                break
+                continue
             }
 
             let source = match Importer::load_module(&import) {
@@ -120,11 +127,12 @@ impl ModuleLoader {
     }
 }
 
-pub struct ModuleLoaderContext {
+pub struct ModuleLoaderContext<'a> {
+    module_loader: &'a ModuleLoader,
     modules: Vec<(ModuleUID, ParsableModule)>,
 }
 
-impl ModuleLoaderContext {
+impl<'a> ModuleLoaderContext<'a> {
     pub fn get_metadata(&self, module: ModuleUID) -> Option<ModuleMetadata> {
         match self.modules
             .iter()
@@ -146,7 +154,10 @@ impl ModuleLoaderContext {
                         .collect(),
                 })
             },
-            None => todo!(),
+            None => self.module_loader
+                .get_module(module)
+                .and_then(|module|
+                    Some(module.metadata.clone())),
         }
     }
 }

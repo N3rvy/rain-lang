@@ -5,6 +5,8 @@ use std::{env, env::args, ops::Index};
 use common::module::{ModuleIdentifier, ModuleUID};
 use interpreter::{InterpreterEngine, InterpreterFunction};
 use core::parser::ModuleImporter;
+use core::external_module::{ExternalModule, ExternalModuleSetFunction};
+use interpreter::external_module::InterpreterExternalModule;
 
 fn main() -> anyhow::Result<()> {
     // *** ATTENTION ***
@@ -21,6 +23,15 @@ fn main() -> anyhow::Result<()> {
 
     // Creating the engine
     let mut engine = InterpreterEngine::new();
+
+    // Creating the identifier of the definitions module
+    let std_identifier = ModuleIdentifier("std".to_string());
+
+    // Creating the external definitions module
+    let mut std_module = InterpreterExternalModule::new::<ReplImporter>(&mut engine, &std_identifier).unwrap();
+    std_module.set_function("times4", |x: i32| x * 4);
+
+    engine.insert_external_module(std_module);
 
     // Creating the module from the source file
     let module = engine
@@ -59,8 +70,4 @@ impl ModuleImporter for ReplImporter {
         };
         Some(source)
     }
-}
-
-fn print(val: AnyValue) {
-    println!("{}", val.to_string());
 }

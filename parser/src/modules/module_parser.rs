@@ -12,7 +12,7 @@ use crate::parser::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
 
 pub struct ModuleParser<'a> {
-    loader_context: &'a ModuleLoaderContext,
+    loader_context: &'a ModuleLoaderContext<'a>,
 }
 
 impl<'a> ModuleParser<'a> {
@@ -92,8 +92,8 @@ impl<'a> ModuleParser<'a> {
                 None => continue,
             };
 
-            for (name, decl) in &metadata.definitions {
-                scope.declare_external(name.clone(), uid, decl.clone());
+            for (name, decl) in metadata.definitions {
+                scope.declare_external(name, uid, decl);
             }
         }
 

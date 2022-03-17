@@ -1,10 +1,11 @@
 use common::ast::types::TypeKind;
 use common::errors::LangError;
-use common::module::ModuleUID;
+use common::module::{ModuleIdentifier, ModuleUID};
 use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::ModuleLoader;
 
 use crate::{externals::ExternalType, module::EngineModule};
+use crate::external_module::ExternalModule;
 
 
 pub trait Engine
@@ -12,12 +13,13 @@ where
     Self: Sized,
 {
     type Module: EngineModule<Engine = Self>;
+    type ExternalModule: ExternalModule<Engine = Self>;
 
     fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError>;
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;
-    fn insert_module(&mut self, module: Self::Module);
+    fn insert_external_module(&mut self, module: Self::ExternalModule);
 
     fn new() -> Self;
 }

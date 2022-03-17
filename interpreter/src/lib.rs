@@ -18,6 +18,7 @@ use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
 use crate::errors::{INVALID_IDENTIFIER, MODULE_NOT_FOUND, VARIABLE_IS_NOT_A_FUNCTION, VARIABLE_NOT_DECLARED};
+use crate::external_module::InterpreterExternalModule;
 use crate::module_scope::ModuleScope;
 
 mod scope;
@@ -27,6 +28,7 @@ mod external_functions;
 mod object;
 mod errors;
 mod module_scope;
+pub mod external_module;
 
 pub struct InterpreterEngine {
     global_types: Vec<(String, TypeKind)>,
@@ -82,6 +84,7 @@ impl EngineModule for InterpreterModule {
 
 impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
+    type ExternalModule = InterpreterExternalModule;
 
     fn load_module<Importer: ModuleImporter>(&mut self, identifier: impl Into<String>) -> Result<ModuleUID, LangError> {
         let (uid, modules) = self
@@ -107,10 +110,13 @@ impl Engine for InterpreterEngine {
         &mut self.module_loader
     }
 
-    fn insert_module(&mut self, module: Self::Module) {
+    fn insert_external_module(&mut self, module: Self::ExternalModule) {
+        self.module_loader()
+            .insert_module(module.uid, module.module);
+
         (*self.module_store)
             .borrow_mut()
-            .insert(module.uid, module);
+            .insert(module.uid, module.engine_module);
     }
 
     fn new() -> Self {

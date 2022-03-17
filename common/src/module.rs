@@ -18,6 +18,7 @@ impl ModuleUID {
     }
 }
 
+#[derive(Clone)]
 pub struct ModuleMetadata {
     pub definitions: Vec<(String, TypeKind)>,
 }

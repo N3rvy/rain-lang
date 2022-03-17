@@ -11,10 +11,3 @@ pub trait EngineModule : Sized {
     fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier) -> Result<Self, LangError>;
     fn from_module(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError>;
 }
-
-pub trait EngineModuleSetFunction<Args, R: ExternalType> : EngineModule {
-    type Function: InternalFunction<Args, R>;
-
-    fn set_function<F>(&self, name: &str, func: F)
-    where F: Fn<Args, Output = R> + Send + Sync + 'static;
-}

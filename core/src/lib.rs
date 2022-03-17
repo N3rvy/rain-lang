@@ -9,6 +9,7 @@ mod engine;
 mod externals;
 pub mod module;
 pub mod module_store;
+pub mod external_module;
 
 pub mod parser {
     pub use parser::modules::module_importer::ModuleImporter;
