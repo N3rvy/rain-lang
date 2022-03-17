@@ -32,7 +32,9 @@ fn main() -> anyhow::Result<()> {
         &mut engine,
         &std_identifier,
         &ReplImporter).unwrap();
+
     std_module.set_function("times4", |x: i32| x * 4);
+    std_module.set_function("print", |value: AnyValue| println!("{}", value.to_string()));
     std_module.set_value("extvalue", 10);
 
     engine.insert_external_module(std_module);
