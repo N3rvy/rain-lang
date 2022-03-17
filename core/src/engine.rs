@@ -17,6 +17,7 @@ where
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;
+    fn insert_module(&mut self, module: Self::Module);
 
     fn new() -> Self;
 }
@@ -28,9 +29,4 @@ pub trait EngineGetFunction<Args, R, Ret: InternalFunction<Args, R>> : Engine {
 
 pub trait InternalFunction<Args, R> {
     fn call(&self, args: Args) -> R;
-}
-
-pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine {
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<Args, Output = R> + Send + Sync + 'static;
 }

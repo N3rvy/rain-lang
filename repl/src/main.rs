@@ -1,6 +1,6 @@
 #![feature(explicit_generic_args_with_impl_trait)]
 
-use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
+use core::{AnyValue, Engine, EngineGetFunction, InternalFunction};
 use std::{env, env::args, ops::Index};
 use common::module::{ModuleIdentifier, ModuleUID};
 use interpreter::{InterpreterEngine, InterpreterFunction};
@@ -21,8 +21,6 @@ fn main() -> anyhow::Result<()> {
 
     // Creating the engine
     let mut engine = InterpreterEngine::new();
-    engine.set_function("print", print);
-    engine.set_function("sum", |a: i32, b: i32| a + b);
 
     // Creating the module from the source file
     let module = engine

@@ -6,7 +6,7 @@ use core::module::EngineModule;
 use core::parser::ModuleImporter;
 use core::parser::ModuleLoader;
 use core::module_store::ModuleStore;
-use core::{ExternalType, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
+use core::{ExternalType, Engine, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use common::ast::types::{TypeKind, FunctionType};
@@ -17,7 +17,7 @@ use evaluate::EvalResult;
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
-use crate::errors::{MODULE_NOT_FOUND, VARIABLE_IS_NOT_A_FUNCTION, VARIABLE_NOT_DECLARED};
+use crate::errors::{INVALID_IDENTIFIER, MODULE_NOT_FOUND, VARIABLE_IS_NOT_A_FUNCTION, VARIABLE_NOT_DECLARED};
 use crate::module_scope::ModuleScope;
 
 mod scope;
@@ -35,13 +35,26 @@ pub struct InterpreterEngine {
 }
 
 pub struct InterpreterModule {
+    uid: ModuleUID,
     scope: Arc<ModuleScope>,
 }
 
 impl EngineModule for InterpreterModule {
     type Engine = InterpreterEngine;
-    
-    fn new(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError> {
+
+    fn new<Importer: ModuleImporter>(engine: &mut Self::Engine, id: &ModuleIdentifier) -> Result<Self, LangError> {
+        let uid = match Importer::get_unique_identifier(id) {
+            Some(uid) => uid,
+            None => return Err(LangError::new_runtime(INVALID_IDENTIFIER.to_string())),
+        };
+
+        Ok(Self {
+            uid,
+            scope: ModuleScope::new(uid, engine),
+        })
+    }
+
+    fn from_module(engine: &mut Self::Engine, module: Arc<Module>) -> Result<Self, LangError> {
         let scope = ModuleScope::new(module.uid, engine);
 
         for (func_name, func) in &module.functions {
@@ -60,6 +73,7 @@ impl EngineModule for InterpreterModule {
         }
 
         Ok(InterpreterModule {
+            uid: module.uid,
             scope,
         })
     }
@@ -75,7 +89,7 @@ impl Engine for InterpreterEngine {
             .load_module::<Importer>(&ModuleIdentifier(identifier.into()))?;
 
         for module in &modules {
-            let eng_module = InterpreterModule::new(self, module.clone())?;
+            let eng_module = InterpreterModule::from_module(self, module.clone())?;
 
             (*self.module_store)
                 .borrow_mut()
@@ -91,6 +105,12 @@ impl Engine for InterpreterEngine {
 
     fn module_loader(&mut self) -> &mut ModuleLoader {
         &mut self.module_loader
+    }
+
+    fn insert_module(&mut self, module: Self::Module) {
+        (*self.module_store)
+            .borrow_mut()
+            .insert(module.uid, module);
     }
 
     fn new() -> Self {
@@ -166,134 +186,5 @@ impl<R: ExternalType> EngineGetFunction
             name: name.to_string(),
             _marker: PhantomData::default(),
         })
-    }
-}
-
-impl<'a, R> EngineSetFunction<'a, (), R> for InterpreterEngine
-where
-    R: ExternalType
-{
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<(), Output = R> + Send + Sync + 'static {
-        let ext_func = IntoExternalFunctionRunner::<(), R>::external(func);
-
-        self.global_types.push((
-            name.to_string(),
-            TypeKind::Function(
-                FunctionType(
-                    vec![],
-                    Box::new(R::type_kind())
-                )
-            )
-        ));
-        // self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
-    }
-}
-
-impl<'a, R, A0> EngineSetFunction<'a, (A0,), R> for InterpreterEngine
-where
-    A0: ExternalType,
-    R: ExternalType
-{
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<(A0,), Output = R> + Send + Sync + 'static {
-        let ext_func = IntoExternalFunctionRunner::<(A0,), R>::external(func);
-
-        self.global_types.push((
-            name.to_string(),
-            TypeKind::Function(
-                FunctionType(
-                    vec![
-                        A0::type_kind(),
-                    ],
-                    Box::new(R::type_kind())
-                )
-            )
-        ));
-        // self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
-    }
-}
-
-impl<'a, R, A0, A1> EngineSetFunction<'a, (A0, A1), R> for InterpreterEngine
-where
-    A0: ExternalType,
-    A1: ExternalType,
-    R: ExternalType
-{
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<(A0, A1), Output = R> + Send + Sync + 'static {
-        let ext_func = IntoExternalFunctionRunner::<(A0, A1), R>::external(func);
-
-        self.global_types.push((
-            name.to_string(),
-            TypeKind::Function(
-                FunctionType(
-                    vec![
-                        A0::type_kind(),
-                        A1::type_kind(),
-                    ],
-                    Box::new(R::type_kind())
-                )
-            )
-        ));
-        // self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
-    }
-}
-
-impl<'a, R, A0, A1, A2> EngineSetFunction<'a, (A0, A1, A2), R> for InterpreterEngine
-where
-    A0: ExternalType,
-    A1: ExternalType,
-    A2: ExternalType,
-    R: ExternalType
-{
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<(A0, A1, A2), Output = R> + Send + Sync + 'static {
-        let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2), R>::external(func);
-
-        self.global_types.push((
-            name.to_string(),
-            TypeKind::Function(
-                FunctionType(
-                    vec![
-                        A0::type_kind(),
-                        A1::type_kind(),
-                        A2::type_kind(),
-                    ],
-                    Box::new(R::type_kind())
-                )
-            )
-        ));
-        // self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
-    }
-}
-
-impl<'a, R, A0, A1, A2, A3> EngineSetFunction<'a, (A0, A1, A2, A3), R> for InterpreterEngine
-where
-    A0: ExternalType,
-    A1: ExternalType,
-    A2: ExternalType,
-    A3: ExternalType,
-    R: ExternalType
-{
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<(A0, A1, A2, A3), Output = R> + Send + Sync + 'static {
-        let ext_func = IntoExternalFunctionRunner::<(A0, A1, A2, A3), R>::external(func);
-
-        self.global_types.push((
-            name.to_string(),
-            TypeKind::Function(
-                FunctionType(
-                    vec![
-                        A0::type_kind(),
-                        A1::type_kind(),
-                        A2::type_kind(),
-                        A3::type_kind(),
-                    ],
-                    Box::new(R::type_kind())
-                )
-            )
-        ));
-        // self.global_module.scope.force_set_var(name.to_string(), LangValue::ExtFunction(ext_func));
     }
 }
