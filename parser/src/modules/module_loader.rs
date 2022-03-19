@@ -28,21 +28,9 @@ impl ModuleLoader {
             .insert(uid, Arc::new(module));
     }
 
-    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
-        let uid = match importer.get_unique_identifier(id) {
-            Some(uid) => uid,
-            None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string()))
-        };
-
-        // If cached then simply return
-        if self.modules.borrow().contains_key(&uid) {
-            return Ok((uid, Vec::new()))
-        }
-
-        let source = match importer.load_module(id) {
-            Some(source) => source,
-            None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
-        };
+    pub fn load_module_with_source(&mut self, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
+        -> Result<(ModuleUID, Vec<Arc<Module>>), LangError>
+    {
         let tokens = Tokenizer::tokenize(&source)?;
         let parsable_module = ModuleInitializer::create(tokens)?;
         let context = self.create_context(&parsable_module, importer)?;
@@ -74,6 +62,25 @@ impl ModuleLoader {
             .insert(uid, module);
 
         Ok((uid, modules))
+    }
+
+    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
+        let uid = match importer.get_unique_identifier(id) {
+            Some(uid) => uid,
+            None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string()))
+        };
+
+        // If cached then simply return
+        if self.modules.borrow().contains_key(&uid) {
+            return Ok((uid, Vec::new()))
+        }
+
+        let source = match importer.load_module(id) {
+            Some(source) => source,
+            None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
+        };
+
+        self.load_module_with_source(uid, &source, importer)
     }
 
     fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> Result<ModuleLoaderContext, LangError> {
