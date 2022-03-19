@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::errors::LangError;
-use common::module::ModuleUID;
+use common::module::{Module, ModuleUID};
 use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::ModuleLoader;
 
@@ -16,6 +17,8 @@ where
     type ExternalModule: ExternalModule<Engine = Self>;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
+
+    fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError>;
 
     fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;

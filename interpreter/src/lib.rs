@@ -99,6 +99,17 @@ impl Engine for InterpreterEngine {
         Ok(uid)
     }
 
+    fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
+        let uid = module.uid;
+        let eng_module = InterpreterModule::from_module(self, module)?;
+
+        (*self.module_store)
+            .borrow_mut()
+            .insert(uid, eng_module);
+
+        Ok(())
+    }
+
     fn global_types(&self) -> &Vec<(String, TypeKind)> {
         &self.global_types
     }
