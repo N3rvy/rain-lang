@@ -9,7 +9,6 @@ use core::module_store::ModuleStore;
 use core::{ExternalType, Engine, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use common::ast::types::TypeKind;
 use common::errors::LangError;
 use common::module::{Module, ModuleIdentifier, ModuleUID};
 use errors::CANT_CONVERT_VALUE;
@@ -31,7 +30,6 @@ mod module_scope;
 pub mod external_module;
 
 pub struct InterpreterEngine {
-    global_types: Vec<(String, TypeKind)>,
     module_loader: ModuleLoader,
     pub(crate) module_store: Arc<RefCell<ModuleStore<InterpreterModule>>>,
 }
@@ -110,10 +108,6 @@ impl Engine for InterpreterEngine {
         Ok(())
     }
 
-    fn global_types(&self) -> &Vec<(String, TypeKind)> {
-        &self.global_types
-    }
-
     fn module_loader(&mut self) -> &mut ModuleLoader {
         &mut self.module_loader
     }
@@ -129,7 +123,6 @@ impl Engine for InterpreterEngine {
 
     fn new() -> Self {
         Self {
-            global_types: Vec::new(),
             module_loader: ModuleLoader::new(),
             module_store: Arc::new(RefCell::new(ModuleStore::new())),
         }

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use common::ast::types::TypeKind;
 use common::errors::LangError;
 use common::module::{Module, ModuleUID};
 use parser::modules::module_importer::ModuleImporter;
@@ -20,7 +19,6 @@ where
 
     fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError>;
 
-    fn global_types(&self) -> &Vec<(String, TypeKind)>;
     fn module_loader(&mut self) -> &mut ModuleLoader;
     fn insert_external_module(&mut self, module: Self::ExternalModule);
 
