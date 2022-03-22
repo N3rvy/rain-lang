@@ -25,9 +25,9 @@ pub struct ModuleMetadata {
 
 pub struct Module {
     pub uid: ModuleUID,
-    pub imports: Vec<ModuleUID>,
     pub metadata: ModuleMetadata,
 
+    pub imports: Vec<ModuleUID>,
     pub functions: Vec<(String, Arc<Function>)>,
     pub variables: Vec<(String, ASTNode)>,
 }
