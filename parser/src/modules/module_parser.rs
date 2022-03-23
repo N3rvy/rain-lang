@@ -25,6 +25,7 @@ impl<'a> ModuleParser<'a> {
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
         let scope = self.create_scope(&module, uid, importer);
 
+        let mut definitions = Vec::new();
         let mut functions = Vec::new();
         let mut variables = Vec::new();
 
@@ -33,9 +34,10 @@ impl<'a> ModuleParser<'a> {
             let mut tokens = module.tokens.new_clone(decl.body);
 
             match &decl.kind {
-                DeclarationKind::Variable(_) => {
+                DeclarationKind::Variable(type_) => {
                     let value = Self::parse_variable_value(&mut tokens, &scope.new_child())?;
 
+                    definitions.push((name.clone(), type_.clone()));
                     variables.push((name.clone(), value));
                 },
                 DeclarationKind::Function(params, func_type) => {
@@ -51,6 +53,7 @@ impl<'a> ModuleParser<'a> {
                         return Err(LangError::new_parser(WRONG_TYPE.to_string()));
                     }
 
+                    definitions.push((name.clone(), TypeKind::Function(func_type.clone())));
                     functions.push((name.clone(), value));
                 },
             };
@@ -58,9 +61,9 @@ impl<'a> ModuleParser<'a> {
 
         let module = Module {
             uid,
-            imports: vec![],
-            metadata: ModuleMetadata { definitions: vec![] },
+            metadata: ModuleMetadata { definitions },
 
+            imports: Vec::new(),
             functions,
             variables,
         };
