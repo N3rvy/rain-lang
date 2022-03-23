@@ -75,3 +75,11 @@ version = "0.1.0"
 dependencies = [
  "common",
 ]
+
+[[package]]
+name = "wasm"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "core",
+]

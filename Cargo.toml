@@ -7,5 +7,6 @@ members = [
     "core",
     "repl",
     "interpreter",
+    "wasm",
     "tests"
 ]

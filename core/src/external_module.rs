@@ -10,6 +10,10 @@ pub trait ExternalModule {
     where Self: Sized;
 }
 
+pub trait ExternalModuleSetFunctionMetadata<Args, R: ExternalType> : ExternalModule {
+    fn set_function(&mut self, name: &str);
+}
+
 pub trait ExternalModuleSetFunction<Args, R: ExternalType> : ExternalModule {
     fn set_function<F>(&mut self, name: &str, func: F)
         where F: Fn<Args, Output = R> + Send + Sync + 'static;
