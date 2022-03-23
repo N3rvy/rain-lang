@@ -5,4 +5,6 @@ edition = "2021"
 
 [dependencies]
 core = { path="../core" }
+common = { path="../common" }
 interpreter = { path="../interpreter" }
+anyhow = "1.0.55"

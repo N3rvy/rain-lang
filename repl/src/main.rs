@@ -1,8 +1,14 @@
-use core::{AnyValue, Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
-use std::{io::Error, env::args, ops::Index, fs};
-use interpreter::{InterpreterEngine, InterpreterFunction};
+#![feature(explicit_generic_args_with_impl_trait)]
 
-fn main() -> Result<(), Error> {
+use core::{AnyValue, Engine, EngineGetFunction, InternalFunction};
+use std::{env, env::args, ops::Index};
+use common::module::{ModuleIdentifier, ModuleUID};
+use interpreter::{InterpreterEngine, InterpreterFunction};
+use core::parser::ModuleImporter;
+use core::external_module::{ExternalModule, ExternalModuleSetFunction, ExternalModuleSetValue};
+use interpreter::external_module::InterpreterExternalModule;
+
+fn main() -> anyhow::Result<()> {
     // *** ATTENTION ***
     // This is a temporary solution and this is not a real REPL
 
@@ -14,28 +20,31 @@ fn main() -> Result<(), Error> {
 
     // Obtaining the source file
     let source_path = args.index(1);
-    let source = fs::read_to_string(source_path)?;
 
     // Creating the engine
     let mut engine = InterpreterEngine::new();
-    engine.set_function("print", print);
-    engine.set_function("sum", |a: i32, b: i32| a + b);
+
+    // Creating the identifier of the definitions module
+    let std_identifier = ModuleIdentifier("std".to_string());
+
+    // Creating the external definitions module
+    let mut std_module = InterpreterExternalModule::new(
+        &mut engine,
+        &std_identifier,
+        &ReplImporter).unwrap();
+
+    std_module.set_function("times4", |x: i32| x * 4);
+    std_module.set_function("print", |value: AnyValue| println!("{}", value.to_string()));
+    std_module.set_value("extvalue", 10);
+
+    engine.insert_external_module(std_module);
 
     // Creating the module from the source file
     let module = engine
-        .build_module()
-        .with_source(source)
-        .build();
-
-    let module = match module {
-        Ok(module) => module,
-        Err(err) => {
-            panic!("{}", err);
-        },
-    };
+        .load_module(source_path.to_string(), &ReplImporter)?;
 
     // Obtaning the main function inside the module
-    let func: InterpreterFunction<(), AnyValue> = match engine.get_function(&module, "main") {
+    let func: InterpreterFunction<(), AnyValue> = match engine.get_function(module, "main") {
         Some(func) => func,
         None => panic!("Main function not found"),
     };
@@ -46,6 +55,25 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn print(val: AnyValue) {
-    println!("{}", val.to_string());
+struct ReplImporter;
+
+impl ModuleImporter for ReplImporter {
+    fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
+        Some(ModuleUID::from_string(identifier.0.clone()))
+    }
+
+    fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
+        let mod_path = match env::current_dir() {
+            Ok(path) => path,
+            Err(_) => return None,
+        };
+        let mod_path = mod_path.join(&identifier.0);
+
+        let source = std::fs::read_to_string(mod_path);
+        let source = match source {
+            Ok(source) => source,
+            Err(_) => return None,
+        };
+        Some(source)
+    }
 }

@@ -1,10 +1,18 @@
 #![feature(unboxed_closures)]
+#![feature(generic_associated_types)]
 
 pub use common::errors::LangError;
-pub use engine::{Engine, EngineSetFunction, EngineGetFunction, InternalFunction};
+pub use engine::{Engine, EngineGetFunction, InternalFunction};
 pub use externals::{ExternalType, AnyValue};
 
 mod engine;
 mod externals;
 pub mod module;
-pub mod module_builder;
+pub mod module_store;
+pub mod external_module;
+
+pub mod parser {
+    pub use parser::modules::module_importer::ModuleImporter;
+    pub use parser::modules::module_initializer::ParsableModule;
+    pub use parser::modules::module_loader::ModuleLoader;
+}

@@ -11,6 +11,8 @@ pub struct LangError {
     pub message: String,
 }
 
+impl std::error::Error for LangError {}
+
 impl Debug for LangError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt(f);

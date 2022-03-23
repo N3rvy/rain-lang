@@ -1,9 +1,9 @@
 use std::sync::Arc;
+use crate::module::ModuleUID;
 
 use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
 
 pub mod types;
-pub mod module;
 
 
 pub type ASTBody = Vec<ASTNode>;
@@ -27,7 +27,8 @@ pub enum NodeKind {
         name: String,
         value: ASTNode,
     },
-    VaraibleRef {
+    VariableRef {
+        module: ModuleUID,
         name: String,
     },
     VariableAsgn {
@@ -96,8 +97,8 @@ impl NodeKind {
         NodeKind::VariableDecl { name, value }
     }
     
-    pub fn new_variable_ref(name: String) -> NodeKind {
-        NodeKind::VaraibleRef { name }
+    pub fn new_variable_ref(module: ModuleUID, name: String) -> NodeKind {
+        NodeKind::VariableRef { module, name }
     }
     
     pub fn new_variable_asgn(name: String, value: ASTNode) -> NodeKind {

@@ -38,7 +38,7 @@ impl SymbolResolver {
 impl Resolver for SymbolResolver {
     fn add(&mut self, char: char) -> AddResult {
         match char {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-' => {
                 self.chars.push(char);
                 AddResult::Ok
             },

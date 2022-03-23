@@ -1,38 +1,39 @@
-use common::{ast::types::TypeKind, errors::LangError};
+use std::sync::Arc;
+use common::errors::LangError;
+use common::module::{Module, ModuleUID};
+use parser::modules::module_importer::ModuleImporter;
+use parser::modules::module_loader::ModuleLoader;
 
-use crate::{externals::ExternalType, module_builder::{ModuleBuilder, EngineModuleBuilder}, module::EngineModule};
+use crate::module::EngineModule;
+use crate::external_module::ExternalModule;
 
 
-pub trait Engine<'a>
+pub trait Engine
 where
-    Self: Sized
+    Self: Sized,
 {
-    type Module: EngineModule;
-    type ModuleBuilder: ModuleBuilder<'a, Engine = Self>;
+    type Module: EngineModule<Engine = Self>;
+    type ExternalModule: ExternalModule<Engine = Self>;
 
-    fn build_module(&'a self) -> EngineModuleBuilder<'a, Self> {
-        EngineModuleBuilder::new(&self)
-    }
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
 
-    fn global_types(&'a self) -> &'a Vec<(String, TypeKind)>;
+    fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError>;
+
+    fn module_loader(&mut self) -> &mut ModuleLoader;
+    fn insert_external_module(&mut self, module: Self::ExternalModule);
 
     fn new() -> Self;
 }
 
-pub trait EngineBuildSource<'a> : Engine<'a> {
-    fn build_source(&'a self) -> Result<Vec<u8>, LangError>;
+pub trait EngineBuildSource : Engine {
+    fn build_source(&self) -> Result<Vec<u8>, LangError>;
 }
 
-pub trait EngineGetFunction<'a, Args, R, Ret: InternalFunction<Args, R>> : Engine<'a> {
-    fn get_function(&'a self, module: &'a Self::Module, name: &str)
-        -> Option<Ret>;
+pub trait EngineGetFunction<Args, R, Ret: InternalFunction<Args, R>> : Engine {
+    fn get_function(&self, uid: ModuleUID, name: &str)
+                    -> Option<Ret>;
 }
 
 pub trait InternalFunction<Args, R> {
     fn call(&self, args: Args) -> R;
-}
-
-pub trait EngineSetFunction<'a, Args, R: ExternalType> : Engine<'a> {
-    fn set_function<F>(&mut self, name: &str, func: F)
-    where F: Fn<Args, Output = R> + Send + Sync + 'static;
 }
