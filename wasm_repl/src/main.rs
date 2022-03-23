@@ -1,6 +1,5 @@
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
 use std::{env::{self, args}, ops::Index};
-
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 
@@ -25,7 +24,17 @@ fn main() -> anyhow::Result<()> {
     let module = engine
         .load_module(source_path.to_string(), &ReplImporter)?;
 
-    engine.build_module_source(module)?;
+    let wasm = engine.build_module_source(module)?;
+
+    let engine = wasmtime::Engine::default();
+    let module = wasmtime::Module::from_binary(&engine, wasm.as_slice())?;
+    let linker = wasmtime::Linker::new(&engine);
+    let mut store = wasmtime::Store::new(&engine, ());
+    let instance = linker.instantiate(&mut store, &module)?;
+
+    let run = instance.get_typed_func::<i32, i32, _>(&mut store, "run")?;
+    let result = run.call(&mut store, 10)?;
+    println!("result: {}", result);
     
     Ok(())
 }
