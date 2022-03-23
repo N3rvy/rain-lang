@@ -26,7 +26,7 @@ where
 }
 
 pub trait EngineBuildSource : Engine {
-    fn build_source(&self) -> Result<Vec<u8>, LangError>;
+    fn build_module_source(&self, uid: ModuleUID) -> Result<Vec<u8>, LangError>;
 }
 
 pub trait EngineGetFunction<Args, R, Ret: InternalFunction<Args, R>> : Engine {
