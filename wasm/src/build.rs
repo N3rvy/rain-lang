@@ -1,7 +1,8 @@
 use core::LangError;
 use std::{sync::Arc, collections::HashMap};
-use common::ast::{ASTNode, NodeKind, types::{TypeKind, FunctionType}};
-use walrus::{ModuleConfig, Module, FunctionBuilder, ValType, LocalId, InstrSeqBuilder};
+use common::ast::{ASTNode, NodeKind, types::{TypeKind, FunctionType, MathOperatorKind, BoolOperatorKind}};
+use walrus::{ModuleConfig, Module, FunctionBuilder, ValType, LocalId, InstrSeqBuilder, ir::{BinaryOp, InstrSeqType}};
+use common::ast::types::LiteralKind;
 
 use crate::errors::UNEXPECTED_ERROR;
 
@@ -84,11 +85,51 @@ pub fn build_statement(scope: &FunctionBuilderScope, builder: &mut InstrSeqBuild
                 None => todo!(),
             }
         },
-        NodeKind::VariableAsgn { name, value } => todo!(),
+        NodeKind::VariableAsgn { name, value } => {
+            build_statement(scope, builder, value)?;
+
+            match scope.vars.get(name) {
+                Some(id) => builder.local_set(*id),
+                None => todo!(),
+            };
+        },
         NodeKind::FunctionInvok { variable, parameters } => todo!(),
-        NodeKind::Literal { value } => todo!(),
-        NodeKind::MathOperation { operation, left, right } => todo!(),
-        NodeKind::BoolOperation { operation, left, right } => todo!(),
+        NodeKind::Literal { value } => {
+            match value {
+                LiteralKind::Nothing => todo!(),
+                LiteralKind::Int(i) => builder.i32_const(*i),
+                LiteralKind::Float(f) => builder.f32_const(*f),
+                LiteralKind::String(_) => todo!(),
+            };
+        },
+        NodeKind::MathOperation { operation, left, right } => {
+            build_statement(scope, builder, left)?;
+            build_statement(scope, builder, right)?;
+
+            let op = match operation {
+                MathOperatorKind::Plus => BinaryOp::I32Add,
+                MathOperatorKind::Minus => BinaryOp::I32Sub,
+                MathOperatorKind::Multiply => BinaryOp::I32Mul,
+                MathOperatorKind::Divide => BinaryOp::I32DivS,
+                MathOperatorKind::Modulus => todo!(),
+                MathOperatorKind::Power => todo!(),
+            };
+
+            builder.binop(op);
+        },
+        NodeKind::BoolOperation { operation, left, right } => {
+            build_statement(scope, builder, left)?;
+            build_statement(scope, builder, right)?;
+
+            let op = match operation {
+                BoolOperatorKind::Equal => BinaryOp::I32Eq,
+                BoolOperatorKind::Different => BinaryOp::I32Ne,
+                BoolOperatorKind::Bigger => BinaryOp::I32GtS,
+                BoolOperatorKind::Smaller => BinaryOp::I32LtS,
+                BoolOperatorKind::BiggerEq => BinaryOp::I32GeS,
+                BoolOperatorKind::SmallerEq => BinaryOp::I32LeS,
+            };
+        },
         NodeKind::ReturnStatement { value, kind } => {
             match value {
                 Some(value) => {
@@ -97,7 +138,28 @@ pub fn build_statement(scope: &FunctionBuilderScope, builder: &mut InstrSeqBuild
                 None => todo!(),
             }
         }
-        NodeKind::IfStatement { condition, body } => todo!(),
+        NodeKind::IfStatement { condition, body } => {
+            build_statement(scope, builder, condition)?;
+            let mut result = Ok(());
+
+            builder.if_else(
+                InstrSeqType::Simple(None),
+                |then| {
+                    for node in body {
+                        match build_statement(scope, then, node) {
+                            Ok(_) => (),
+                            Err(err) => {
+                                result = Err(err);
+                                break;
+                            },
+                        }
+                    }
+                },
+                |else_| {})
+            .drop();
+
+            result?;
+        },
         NodeKind::ForStatement { left, right, body, iter_name } => todo!(),
         NodeKind::WhileStatement { condition, body } => todo!(),
         NodeKind::FieldAccess { variable, field_name } => todo!(),
