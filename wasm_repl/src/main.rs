@@ -1,5 +1,5 @@
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
-use std::{env::{self, args}, ops::Index};
+use std::{env::{self, args}, ops::Index, fs::File, io::Write};
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 
@@ -25,6 +25,10 @@ fn main() -> anyhow::Result<()> {
         .load_module(source_path.to_string(), &ReplImporter)?;
 
     let wasm = engine.build_module_source(module)?;
+
+    let path = env::current_dir()?.join("output.wasm");
+    let mut file = File::create(&path)?;
+    file.write_all(wasm.as_slice())?;
 
     let engine = wasmtime::Engine::default();
     let module = wasmtime::Module::from_binary(&engine, wasm.as_slice())?;
