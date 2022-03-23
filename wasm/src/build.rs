@@ -3,6 +3,8 @@ use std::{sync::Arc, collections::HashMap};
 use common::ast::{ASTNode, NodeKind, types::{TypeKind, FunctionType}};
 use walrus::{ModuleConfig, Module, FunctionBuilder, ValType, LocalId, InstrSeqBuilder};
 
+use crate::errors::UNEXPECTED_ERROR;
+
 pub struct FunctionBuilderScope {
     vars: HashMap<String, LocalId>,
 }
@@ -18,8 +20,12 @@ pub fn build_module(module: Arc<common::module::Module>) -> Result<Vec<u8>, Lang
             .and_then(|def| match &def.1 {
                 TypeKind::Function(func) => Some(func),
                 _ => None,
-            })
-            .unwrap();
+            });
+
+        let func_type = match func_type {
+            Some(t) => t,
+            None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+        };
 
         let builder = FunctionBuilder::new(&mut module_build.types, &[ValType::I32], &[ValType::I32]);
 
