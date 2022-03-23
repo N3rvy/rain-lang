@@ -29,15 +29,16 @@ pub fn build_module(module: Arc<common::module::Module>) -> Result<Vec<u8>, Lang
 
         let builder = FunctionBuilder::new(&mut module_build.types, &[ValType::I32], &[ValType::I32]);
 
-        build_function(&mut module_build, builder, func.clone(), func_type)?;
+        build_function(&mut module_build, builder, name, func.clone(), func_type)?;
     }
 
-    todo!()
+    Ok(module_build.emit_wasm())
 }
 
 pub fn build_function(
     module: &mut Module,
     mut builder: FunctionBuilder,
+    name: &str,
     func: Arc<common::ast::types::Function>,
     func_type: &FunctionType,
 ) -> Result<(), LangError> {
@@ -62,6 +63,10 @@ pub fn build_function(
     for node in &func.body {
         build_statement(&mut scope, &mut body, node)?;
     }
+
+    let func_id = builder.finish(Vec::new(), &mut module.funcs);
+
+    module.exports.add(name, func_id);
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError};
 use std::sync::Arc;
 use common::module::{Module, ModuleUID, ModuleIdentifier, ModuleMetadata};
-use crate::{module::WasmModule, external_module::WasmExternalModule, errors::{COULD_NOT_FIND_MODULE, UNEXPECTED_ERROR}, build};
+use crate::{module::WasmModule, external_module::WasmExternalModule, errors::UNEXPECTED_ERROR, build};
 
 pub struct WasmEngine {
     module_loader: ModuleLoader,
