@@ -21,7 +21,7 @@ pub fn build_module(module: Arc<common::module::Module>) -> Result<Vec<u8>, Lang
             })
             .unwrap();
 
-        let mut builder = FunctionBuilder::new(&mut module_build.types, &[ValType::I32], &[ValType::I32]);
+        let builder = FunctionBuilder::new(&mut module_build.types, &[ValType::I32], &[ValType::I32]);
 
         build_function(&mut module_build, builder, func.clone(), func_type)?;
     }

@@ -12,10 +12,9 @@ impl Engine for WasmEngine {
     type ExternalModule = WasmExternalModule;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
-        let uid = match importer.get_unique_identifier(&ModuleIdentifier(identifier.into())) {
-            Some(uid) => uid,
-            None => return Err(LangError::new_runtime(COULD_NOT_FIND_MODULE.to_string()))
-        };
+        let (uid, _) = self
+            .module_loader()
+            .load_module(&ModuleIdentifier(identifier.into()), importer)?;
 
         Ok(uid)
     }

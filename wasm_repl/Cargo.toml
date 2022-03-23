@@ -1,0 +1,11 @@
+[package]
+name = "wasm_repl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core = { path="../core" }
+common = { path="../common" }
+wasm = { path="../wasm" }
+anyhow = "1.0.55"
+wasmtime = "0.35.1"
