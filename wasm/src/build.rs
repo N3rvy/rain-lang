@@ -2,22 +2,27 @@ use std::sync::Arc;
 use wasm_encoder::{CodeSection, Export, ExportSection, Function, FunctionSection, Module, TypeSection, ValType};
 use common::ast::types::TypeKind;
 use common::errors::LangError;
+use core::parser::ModuleLoader;
 use crate::build_code::{FunctionBuilder, ModuleBuilder};
 use crate::errors::UNEXPECTED_ERROR;
 
-pub struct WasmBuilder {
+pub struct WasmBuilder<'a> {
+    module_loader: &'a ModuleLoader,
     module: Arc<common::module::Module>,
 }
 
-impl WasmBuilder {
-    pub fn from_module(module: Arc<common::module::Module>) -> Self {
+impl<'a> WasmBuilder<'a> {
+    pub fn new(module_loader: &'a ModuleLoader, main_module: Arc<common::module::Module>) -> Self {
         Self {
-            module,
+            module_loader,
+            module: main_module,
         }
     }
 
     pub fn build(self) -> Result<Vec<u8>, LangError> {
         let mut module = Module::new();
+
+        let module_builder = ModuleBuilder::new(&self.module_loader);
 
         module.section(&self.build_types()?);
         module.section(&self.build_functions()?);
@@ -80,31 +85,7 @@ impl WasmBuilder {
     fn build_code(&self) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
 
-        let func_names = self.module.functions
-            .iter()
-            .map(|(name, _)| {
-                let (_, type_kind) = self.module.metadata.definitions
-                    .iter()
-                    .find(|(n, _)| n == name)
-                    .unwrap();
-
-                let func_type = match type_kind {
-                    TypeKind::Function(func_type) => func_type,
-                    _ => panic!(),
-                };
-
-                (
-                    name.clone(),
-                    func_type.0
-                        .iter()
-                        .map(|type_| convert_type(type_))
-                        .collect(),
-                    convert_type(func_type.1.as_ref()),
-                )
-            })
-            .collect();
-
-        let mut module_builder = ModuleBuilder::new(func_names);
+        let mut module_builder = ModuleBuilder::new(&self.module_loader);
 
         for (name, func) in &self.module.functions {
             let (_, type_kind) = self.module.metadata.definitions
@@ -160,7 +141,7 @@ impl WasmBuilder {
     }
 }
 
-fn convert_type(type_: &TypeKind) -> ValType {
+pub(crate) fn convert_type(type_: &TypeKind) -> ValType {
     match type_ {
         TypeKind::Unknown => todo!(),
         TypeKind::Int => ValType::I32,

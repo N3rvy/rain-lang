@@ -1,41 +1,95 @@
 use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind};
+use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind, TypeKind};
 use common::errors::LangError;
-use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
+use common::module::ModuleUID;
+use core::parser::ModuleLoader;
+use crate::build::convert_type;
+use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
 
-pub struct ModuleBuilder {
+pub struct ModuleBuilder<'a> {
+    module_loader: &'a ModuleLoader,
     functions: Vec<(String, Vec<ValType>, ValType)>,
 }
 
-impl ModuleBuilder {
-    pub fn new(functions: Vec<(String, Vec<ValType>, ValType)>) -> Self {
+impl<'a> ModuleBuilder<'a> {
+    pub fn new(module_loader: &'a ModuleLoader) -> Self {
         Self {
-            functions,
+            module_loader,
+            functions: Vec::new(),
         }
     }
 
-    fn get_func(&self, name: &String) -> Result<(u32, &Vec<ValType>, &ValType), LangError> {
-        let func = self.functions
+    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<ValType>, &ValType), LangError> {
+        // This "code duplication" is done because otherwise it would complain
+        // that self.functions is already borrowed
+        let contains_func = self.functions
             .iter()
-            .enumerate()
-            .find_map(|(i, (n, params, type_))| {
-                if n == name {
-                    Some((i as u32, params, type_))
-                } else {
-                    None
-                }
-            });
+            .any(|(n, _, _)| n == name);
 
-        match func {
-            Some(func) => Ok(func),
-            None => Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
+        match contains_func {
+            true => {
+                self.functions
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, (n, params, type_))| {
+                        if n == name {
+                            Some((i as u32, params, type_))
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or(LangError::new_runtime(FUNC_NOT_FOUND.to_string()))
+            },
+            false => {
+                let module = self.module_loader
+                    .get_module(module_uid);
+
+                let module = match module {
+                    Some(m) => m,
+                    None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
+                };
+
+                let metadata = module.metadata.definitions
+                    .iter()
+                    .find_map(|(n, type_)| {
+                        if n == name {
+                            Some(type_)
+                        } else {
+                            None
+                        }
+                    });
+
+                let func_type = match metadata {
+                    Some(TypeKind::Function(ft)) => ft,
+                    _ => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
+                };
+
+                self.functions.push((
+                    name.clone(),
+                    func_type.0
+                        .iter()
+                        .map(|type_| convert_type(type_))
+                        .collect(),
+                    convert_type(func_type.1.as_ref()),
+                ));
+
+                let (_, params, ret) = self.functions
+                    .last()
+                    .unwrap();
+
+                Ok((
+                    self.functions.len() as u32 - 1,
+                    params,
+                    ret
+                ))
+            },
         }
     }
 }
 
-pub struct FunctionBuilder<'a> {
-    module_builder: &'a mut ModuleBuilder,
+pub struct FunctionBuilder<'a, 'b> {
+    module_builder: &'a mut ModuleBuilder<'b>,
     type_stack: Vec<ValType>,
 
     // Stores all the locals (never removes)
@@ -44,8 +98,8 @@ pub struct FunctionBuilder<'a> {
     instructions: Vec<Instruction<'a>>,
 }
 
-impl<'a> FunctionBuilder<'a> {
-    pub fn new(module_builder: &'a mut ModuleBuilder, locals: Vec<(String, ValType)>) -> Self {
+impl<'a, 'b> FunctionBuilder<'a, 'b> {
+    pub fn new(module_builder: &'a mut ModuleBuilder<'b>, locals: Vec<(String, ValType)>) -> Self {
         Self {
             module_builder,
             locals,
@@ -95,8 +149,8 @@ impl<'a> FunctionBuilder<'a> {
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 // TODO: Support for other kinds of invocations
-                let name = match variable.kind.as_ref() {
-                    NodeKind::VariableRef { name, module: _ } => name,
+                let (module, name) = match variable.kind.as_ref() {
+                    NodeKind::VariableRef { name, module } => (module, name),
                     _ => return Err(LangError::new_runtime(UNSUPPORTED_FUNC_INVOKE.to_string())),
                 };
 
@@ -104,7 +158,7 @@ impl<'a> FunctionBuilder<'a> {
                     self.build_statement(param)?;
                 }
 
-                let (func_id, param_types, ret_type) = self.module_builder.get_func(name)?;
+                let (func_id, param_types, ret_type) = self.module_builder.get_func(*module, name)?;
 
                 for param in param_types {
                     let type_ = self.type_stack.pop().unwrap();

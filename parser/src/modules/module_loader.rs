@@ -127,6 +127,14 @@ impl ModuleLoader {
         Ok(())
     }
 
+    pub fn modules(&self) -> Vec<Arc<Module>> {
+        self.modules
+            .borrow()
+            .iter()
+            .map(|(_, module)| module.clone())
+            .collect()
+    }
+
     pub fn get_module(&self, uid: ModuleUID) -> Option<Arc<Module>> {
         self.modules
             .borrow()

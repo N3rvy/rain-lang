@@ -55,7 +55,7 @@ impl EngineBuildSource for WasmEngine {
             None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string()))
         };
 
-        let builder = WasmBuilder::from_module(module);
+        let builder = WasmBuilder::new(&self.module_loader, module);
         builder.build()
     }
 }
