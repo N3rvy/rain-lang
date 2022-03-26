@@ -248,7 +248,39 @@ impl<'a> FunctionBuilder<'a> {
 
                 self.assert_stack_size(stack_size)?;
             },
-            NodeKind::WhileStatement { .. } => {}
+            NodeKind::WhileStatement { condition, body} => {
+
+                // Open loop
+                self.instructions.push(Instruction::Loop(BlockType::Empty));
+
+                let condition_stack_size = self.type_stack.len();
+
+                // Building condition
+                self.build_statement(condition)?;
+
+                self.assert_stack_size(condition_stack_size + 1)?;
+
+                let stack_size = self.type_stack.len();
+
+                // Open if
+                self.instructions.push(Instruction::If(BlockType::Empty));
+
+                // Building body
+                for node in body {
+                    self.build_statement(node)?;
+                }
+
+                // Goto block
+                self.instructions.push(Instruction::Br(1));
+
+                // Close if
+                self.instructions.push(Instruction::End);
+
+                self.assert_stack_size(stack_size)?;
+
+                // Close loop
+                self.instructions.push(Instruction::End);
+            }
             NodeKind::FieldAccess { .. } => {}
             NodeKind::VectorLiteral { .. } => {}
             NodeKind::ObjectLiteral { .. } => {}
