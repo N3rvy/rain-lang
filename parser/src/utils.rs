@@ -298,12 +298,6 @@ impl<'a> ParserScope<'a> {
 }
 
 pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
-    // :
-    match tokens.peek() {
-        Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
-        _ => return Err(LangError::new_parser_unexpected_token())
-    }
-
     // type
     match tokens.pop() {
         Some(Token::Type(tk)) => Ok(tk),
