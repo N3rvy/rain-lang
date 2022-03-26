@@ -18,6 +18,7 @@ macro_rules! expect_token {
 #[macro_export]
 macro_rules! expect_indent {
     ($token: expr) => {
+        expect_token!($token.pop(), Token::Operator(OperatorKind::Colon));
         expect_token!($token.pop(), Token::NewLine);
         expect_token!($token.pop(), Token::Indent);
     };

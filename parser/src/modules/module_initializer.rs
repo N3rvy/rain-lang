@@ -105,7 +105,7 @@ impl ModuleInitializer {
                 ))
             },
             Token::Function => {
-                // func <name>((<param_name> (type))*) (type) {body}
+                // func <name>((<param_name> (type))*) (type): {body}
 
                 // <name>
                 let name = match module.tokens.pop() {
