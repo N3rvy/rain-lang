@@ -182,12 +182,6 @@ impl<'a> ParserScope<'a> {
     }
 
     pub fn parse_type_option(&self, tokens: &mut Tokens) -> Result<Option<TypeKind>, LangError> {
-        // :
-        match tokens.peek() {
-            Some(Token::Operator(OperatorKind::Colon)) => { tokens.pop(); },
-            _ => return Ok(None)
-        }
-
         // type
         match tokens.pop() {
             Some(Token::Type(tk)) => Ok(Some(tk)),

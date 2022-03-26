@@ -77,7 +77,7 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Import(path))
             },
             Token::Variable => {
-                // var <name>: (type) = [value]
+                // var <name> (type) = [value]
 
                 // <name>
                 let name = match module.tokens.pop() {
@@ -86,7 +86,7 @@ impl ModuleInitializer {
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
-                // : (type)
+                // (type)
                 let type_kind = parse_type_error(&mut module.tokens)?;
 
                 // =
@@ -105,7 +105,7 @@ impl ModuleInitializer {
                 ))
             },
             Token::Function => {
-                // func <name>((<param_name>: (type))*): (type) {body}
+                // func <name>((<param_name> (type))*) (type) {body}
 
                 // <name>
                 let name = match module.tokens.pop() {
@@ -117,10 +117,10 @@ impl ModuleInitializer {
                 // (
                 expect_token!(module.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
-                // (<param_name>: (type))*)
+                // (<param_name> (type))*)
                 let (param_names, param_types) = parse_parameter_names(&mut module.tokens)?;
 
-                // : (type)
+                // (type)
                 let ret_type = parse_type_error(&mut module.tokens)?;
 
                 expect_indent!(module.tokens);

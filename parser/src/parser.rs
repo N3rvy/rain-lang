@@ -145,7 +145,7 @@ impl<'a> ParserScope<'a> {
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
-                // ?(: type)
+                // ?(type)
                 let assign_type = self.parse_type_option(tokens)?;
 
                 // =
