@@ -1,5 +1,5 @@
-use wasm_encoder::{BlockType, Function, Instruction};
-use common::ast::{ASTBody, ASTNode, NodeKind};
+use wasm_encoder::{BlockType, Instruction};
+use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind};
 use common::errors::LangError;
 use crate::errors::{FUNC_NOT_FOUND, LOCAL_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
@@ -29,21 +29,27 @@ impl ModuleBuilder {
 
 pub struct FunctionBuilder<'a> {
     module_builder: &'a mut ModuleBuilder,
-    func: &'a mut Function,
     locals: Vec<String>,
+
+    local_count: u32,
+    instructions: Vec<Instruction<'a>>,
 }
 
 impl<'a> FunctionBuilder<'a> {
-    pub fn new(module_builder: &'a mut ModuleBuilder, func: &'a mut Function, locals: Vec<String>) -> Self {
+    pub fn new(module_builder: &'a mut ModuleBuilder, locals: Vec<String>) -> Self {
         Self {
             module_builder,
-            func,
             locals,
+
+            local_count: 0,
+            instructions: Vec::new(),
         }
     }
 
-    pub fn end_build(self) {
-        self.func.instruction(&Instruction::End);
+    pub fn end_build(&mut self) -> (u32, &Vec<Instruction<'a>>) {
+        self.instructions.push(Instruction::End);
+
+        (self.local_count, &self.instructions)
     }
 
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
@@ -54,19 +60,20 @@ impl<'a> FunctionBuilder<'a> {
 
                 self.build_statement(value)?;
 
-                self.func.instruction(&Instruction::LocalSet(id));
+                self.instructions.push(Instruction::LocalSet(id));
+                self.local_count += 1;
             },
             NodeKind::VariableRef { module: _, name } => {
                 let local = self.get_local(name)?;
 
-                self.func.instruction(&Instruction::LocalGet(local));
+                self.instructions.push(Instruction::LocalGet(local));
             },
             NodeKind::VariableAsgn { name, value } => {
                 self.build_statement(value)?;
 
                 let local = self.get_local(name)?;
 
-                self.func.instruction(&Instruction::LocalSet(local));
+                self.instructions.push(Instruction::LocalSet(local));
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 // TODO: Support for other kinds of invocations
@@ -81,16 +88,16 @@ impl<'a> FunctionBuilder<'a> {
                     self.build_statement(param)?;
                 }
 
-                self.func.instruction(&Instruction::Call(func_id));
+                self.instructions.push(Instruction::Call(func_id));
             },
             NodeKind::Literal { value } => {
                 match value {
                     LiteralKind::Nothing => (),
                     LiteralKind::Int(i) => {
-                        self.func.instruction(&Instruction::I32Const(*i));
+                        self.instructions.push(Instruction::I32Const(*i));
                     },
                     LiteralKind::Float(f) => {
-                        self.func.instruction(&Instruction::F32Const(*f));
+                        self.instructions.push(Instruction::F32Const(*f));
                     },
                     LiteralKind::String(_) => todo!(),
                 };
@@ -108,7 +115,7 @@ impl<'a> FunctionBuilder<'a> {
                     MathOperatorKind::Power => todo!(),
                 };
 
-                self.func.instruction(&op);
+                self.instructions.push(op);
             },
             NodeKind::BoolOperation { operation, left, right } => {
                 self.build_statement(left)?;
@@ -123,7 +130,7 @@ impl<'a> FunctionBuilder<'a> {
                     BoolOperatorKind::SmallerEq => Instruction::I32LeS,
                 };
 
-                self.func.instruction(&op);
+                self.instructions.push(op);
             },
             NodeKind::ReturnStatement { kind: _ , value } => {
                 match value {
@@ -133,20 +140,22 @@ impl<'a> FunctionBuilder<'a> {
                     None => ()
                 }
 
-                self.func.instruction(&Instruction::Return);
+                self.instructions.push(Instruction::Return);
             },
             NodeKind::IfStatement { condition, body } => {
                 self.build_statement(condition)?;
 
-                self.func.instruction(&Instruction::If(BlockType::Empty));
+                self.instructions.push(Instruction::If(BlockType::Empty));
 
                 for node in body {
                     self.build_statement(node)?;
                 }
 
-                self.func.instruction(&Instruction::End);
+                self.instructions.push(Instruction::End);
             },
-            NodeKind::ForStatement { .. } => {}
+            NodeKind::ForStatement { .. } => {
+                self.local_count += 1;
+            }
             NodeKind::WhileStatement { .. } => {}
             NodeKind::FieldAccess { .. } => {}
             NodeKind::VectorLiteral { .. } => {}
@@ -156,52 +165,6 @@ impl<'a> FunctionBuilder<'a> {
         }
 
         Ok(())
-    }
-
-    pub fn get_local_count(body: &ASTBody) -> usize {
-        let mut res = 0;
-
-        for node in body {
-            Self::get_local_count_node(node, &mut res);
-        }
-
-        res
-    }
-
-    fn get_local_count_node(node: &ASTNode, res: &mut usize) {
-        match node.kind.as_ref() {
-            NodeKind::VariableDecl { .. } => *res += 1,
-            NodeKind::ForStatement { body, .. } => {
-                *res += 1;
-
-                for node in body {
-                    Self::get_local_count_node(node, res);
-                }
-            }
-            NodeKind::IfStatement { body, .. } => {
-                for node in body {
-                    Self::get_local_count_node(node, res);
-                }
-            }
-            NodeKind::WhileStatement { body, .. } => {
-                for node in body {
-                    Self::get_local_count_node(node, res);
-                }
-            }
-
-            NodeKind::Literal { .. } => {}
-            NodeKind::FunctionInvok { .. } => {}
-            NodeKind::MathOperation { .. } => {}
-            NodeKind::BoolOperation { .. } => {}
-            NodeKind::ReturnStatement { .. } => {}
-            NodeKind::FieldAccess { .. } => {}
-            NodeKind::VectorLiteral { .. } => {}
-            NodeKind::ObjectLiteral { .. } => {}
-            NodeKind::FunctionLiteral { .. } => {}
-            NodeKind::ValueFieldAccess { .. } => {}
-            NodeKind::VariableAsgn { .. } => {}
-            NodeKind::VariableRef { .. } => {}
-        }
     }
 
     fn get_local(&self, name: &String) -> Result<u32, LangError> {

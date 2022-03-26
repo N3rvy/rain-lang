@@ -88,24 +88,25 @@ impl WasmBuilder {
         let mut module_builder = ModuleBuilder::new(func_names);
 
         for (_, func) in &self.module.functions {
-            let mut locals = Vec::new();
-            let param_count = func.parameters.len();
-            for i in 0..FunctionBuilder::get_local_count(&func.body) {
-                locals.push(((param_count + i) as u32, ValType::I32));
-            }
-
-            let mut func_builder = Function::new(locals);
-
             let mut code_builder = FunctionBuilder::new(
                 &mut module_builder,
-                &mut func_builder,
                 func.parameters.clone());
 
             for node in &func.body {
                 code_builder.build_statement(&node)?;
             }
 
-            code_builder.end_build();
+            let (local_count, instructions) = code_builder.end_build();
+
+            let mut locals = Vec::with_capacity(local_count as usize);
+            for i in 0..local_count {
+                locals.push((i, ValType::I32));
+            }
+            let mut func_builder = Function::new(locals);
+
+            for inst in instructions {
+                func_builder.instruction(inst);
+            }
 
             codes.function(&func_builder);
         }
