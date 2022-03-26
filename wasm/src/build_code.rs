@@ -216,6 +216,16 @@ impl<'a> FunctionBuilder<'a> {
                 // Open loop
                 self.instructions.push(Instruction::Loop(BlockType::Empty));
 
+                // "iter_name" < "right"
+                self.instructions.push(Instruction::LocalGet(id));
+                self.build_statement(right)?;
+                self.instructions.push(Instruction::I32LtS);
+
+                let stack_size = self.type_stack.len();
+
+                // Open if
+                self.instructions.push(Instruction::If(BlockType::Empty));
+
                 // Building body
                 for node in body {
                     self.build_statement(node)?;
@@ -225,16 +235,7 @@ impl<'a> FunctionBuilder<'a> {
                 self.instructions.push(Instruction::LocalGet(id));
                 self.instructions.push(Instruction::I32Const(1));
                 self.instructions.push(Instruction::I32Add);
-                self.instructions.push(Instruction::LocalTee(id));
-
-                // "iter_name" < "right"
-                self.build_statement(right)?;
-                self.instructions.push(Instruction::I32LtS);
-
-                let stack_size = self.type_stack.len();
-
-                // Open if
-                self.instructions.push(Instruction::If(BlockType::Empty));
+                self.instructions.push(Instruction::LocalSet(id));
 
                 // Goto block
                 self.instructions.push(Instruction::Br(1));
