@@ -199,7 +199,54 @@ impl<'a> FunctionBuilder<'a> {
 
                 self.instructions.push(Instruction::End);
             },
-            NodeKind::ForStatement { .. } => {}
+            NodeKind::ForStatement { iter_name, left, right, body } => {
+                self.build_statement(left)?;
+
+                let type_ = self.type_stack.pop().unwrap();
+                Self::assert_type(type_, ValType::I32)?;
+
+                // Add "iter_name" to the locals
+                self.locals.push((iter_name.clone(), ValType::I32));
+                // Obtain the newly created local id
+                let id = self.locals.len() as u32 - 1;
+
+                // Setting "iter_name" to "left"
+                self.instructions.push(Instruction::LocalSet(id));
+
+                // Open loop
+                self.instructions.push(Instruction::Loop(BlockType::Empty));
+
+                // Building body
+                for node in body {
+                    self.build_statement(node)?;
+                }
+
+                // Add 1 to "iter_name"
+                self.instructions.push(Instruction::LocalGet(id));
+                self.instructions.push(Instruction::I32Const(1));
+                self.instructions.push(Instruction::I32Add);
+                self.instructions.push(Instruction::LocalTee(id));
+
+                // "iter_name" < "right"
+                self.build_statement(right)?;
+                self.instructions.push(Instruction::I32LtS);
+
+                let stack_size = self.type_stack.len();
+
+                // Open if
+                self.instructions.push(Instruction::If(BlockType::Empty));
+
+                // Goto block
+                self.instructions.push(Instruction::Br(1));
+
+                // Close if
+                self.instructions.push(Instruction::End);
+
+                // Close loop
+                self.instructions.push(Instruction::End);
+
+                self.assert_stack_size(stack_size)?;
+            },
             NodeKind::WhileStatement { .. } => {}
             NodeKind::FieldAccess { .. } => {}
             NodeKind::VectorLiteral { .. } => {}
