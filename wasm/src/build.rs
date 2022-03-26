@@ -79,7 +79,13 @@ impl WasmBuilder {
 
     fn build_code(&self) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
-        let mut module_builder = ModuleBuilder::new(Vec::new());
+
+        let func_names = self.module.functions
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        let mut module_builder = ModuleBuilder::new(func_names);
 
         for (_, func) in &self.module.functions {
             let mut func_builder = Function::new(Vec::new());

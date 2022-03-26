@@ -1,5 +1,5 @@
 use std::{collections::HashMap, cell::RefCell};
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, LiteralKind, Function, OperatorKind, ReturnKind, FunctionType}}, errors::LangError, constants::SCOPE_SIZE};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::module::ModuleUID;
 use tokenizer::{tokens::Token, iterator::Tokens};

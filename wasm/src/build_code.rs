@@ -2,7 +2,7 @@ use wasm_encoder::{BlockType, Function, Instruction};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind};
 use common::errors::LangError;
-use crate::errors::{LOCAL_NOT_FOUND, UNEXPECTED_ERROR};
+use crate::errors::{FUNC_NOT_FOUND, LOCAL_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
 
 pub struct ModuleBuilder {
     functions: Vec<String>,
@@ -12,6 +12,17 @@ impl ModuleBuilder {
     pub fn new(functions: Vec<String>) -> Self {
         Self {
             functions,
+        }
+    }
+
+    fn get_func(&self, name: &String) -> Result<u32, LangError> {
+        let func = self.functions
+            .iter()
+            .position(|l| l == name);
+
+        match func {
+            Some(func) => Ok(func as u32),
+            None => Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
         }
     }
 }
@@ -50,7 +61,21 @@ impl<'a> FunctionBuilder<'a> {
 
                 self.func.instruction(&Instruction::LocalSet(local));
             },
-            NodeKind::FunctionInvok { .. } => {}
+            NodeKind::FunctionInvok { variable, parameters } => {
+                // TODO: Support for other kinds of invocations
+                let name = match variable.kind.as_ref() {
+                    NodeKind::VariableRef { name, module: _ } => name,
+                    _ => return Err(LangError::new_runtime(UNSUPPORTED_FUNC_INVOKE.to_string())),
+                };
+
+                let func_id = self.module_builder.get_func(name)?;
+
+                for param in parameters {
+                    self.build_statement(param)?;
+                }
+
+                self.func.instruction(&Instruction::Call(func_id));
+            },
             NodeKind::Literal { value } => {
                 match value {
                     LiteralKind::Nothing => (),
