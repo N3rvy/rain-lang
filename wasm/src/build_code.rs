@@ -1,27 +1,34 @@
-use wasm_encoder::{BlockType, Instruction};
+use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind};
 use common::errors::LangError;
-use crate::errors::{FUNC_NOT_FOUND, LOCAL_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
+use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
 
 pub struct ModuleBuilder {
-    functions: Vec<String>,
+    functions: Vec<(String, Vec<ValType>, ValType)>,
 }
 
 impl ModuleBuilder {
-    pub fn new(functions: Vec<String>) -> Self {
+    pub fn new(functions: Vec<(String, Vec<ValType>, ValType)>) -> Self {
         Self {
             functions,
         }
     }
 
-    fn get_func(&self, name: &String) -> Result<u32, LangError> {
+    fn get_func(&self, name: &String) -> Result<(u32, &Vec<ValType>, &ValType), LangError> {
         let func = self.functions
             .iter()
-            .position(|l| l == name);
+            .enumerate()
+            .find_map(|(i, (n, params, type_))| {
+                if n == name {
+                    Some((i as u32, params, type_))
+                } else {
+                    None
+                }
+            });
 
         match func {
-            Some(func) => Ok(func as u32),
+            Some(func) => Ok(func),
             None => Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
         }
     }
@@ -29,51 +36,62 @@ impl ModuleBuilder {
 
 pub struct FunctionBuilder<'a> {
     module_builder: &'a mut ModuleBuilder,
-    locals: Vec<String>,
+    type_stack: Vec<ValType>,
 
-    local_count: u32,
+    // Stores all the locals (never removes)
+    locals: Vec<(String, ValType)>,
+    // Instructions of the function
     instructions: Vec<Instruction<'a>>,
 }
 
 impl<'a> FunctionBuilder<'a> {
-    pub fn new(module_builder: &'a mut ModuleBuilder, locals: Vec<String>) -> Self {
+    pub fn new(module_builder: &'a mut ModuleBuilder, locals: Vec<(String, ValType)>) -> Self {
         Self {
             module_builder,
             locals,
-
-            local_count: 0,
+            type_stack: Vec::new(),
             instructions: Vec::new(),
         }
     }
 
-    pub fn end_build(&mut self) -> (u32, &Vec<Instruction<'a>>) {
+    pub fn end_build(&mut self) -> (&Vec<(String, ValType)>, &Vec<Instruction<'a>>) {
         self.instructions.push(Instruction::End);
 
-        (self.local_count, &self.instructions)
+        (&self.locals, &self.instructions)
     }
 
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
         match node.kind.as_ref() {
             NodeKind::VariableDecl { name, value } => {
-                self.locals.push(name.clone());
-                let id = self.locals.len() as u32 - 1;
-
+                // Build value
                 self.build_statement(value)?;
 
+                // Remove "value" from the stack and add it's type to the locals
+                let type_ = self.type_stack.pop().unwrap();
+
+                // Add "name" to the locals
+                self.locals.push((name.clone(), type_));
+                // Obtain the newly created local id
+                let id = self.locals.len() as u32 - 1;
+
                 self.instructions.push(Instruction::LocalSet(id));
-                self.local_count += 1;
             },
             NodeKind::VariableRef { module: _, name } => {
-                let local = self.get_local(name)?;
+                let (id, type_) = self.get_local(name)?;
 
-                self.instructions.push(Instruction::LocalGet(local));
+                self.instructions.push(Instruction::LocalGet(id));
+                self.type_stack.push(type_);
             },
             NodeKind::VariableAsgn { name, value } => {
                 self.build_statement(value)?;
 
-                let local = self.get_local(name)?;
+                let type_ = self.type_stack.pop().unwrap();
 
-                self.instructions.push(Instruction::LocalSet(local));
+                let (id, local_type) = self.get_local(name)?;
+
+                Self::assert_type(type_, local_type)?;
+
+                self.instructions.push(Instruction::LocalSet(id));
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 // TODO: Support for other kinds of invocations
@@ -82,11 +100,19 @@ impl<'a> FunctionBuilder<'a> {
                     _ => return Err(LangError::new_runtime(UNSUPPORTED_FUNC_INVOKE.to_string())),
                 };
 
-                let func_id = self.module_builder.get_func(name)?;
-
                 for param in parameters {
                     self.build_statement(param)?;
                 }
+
+                let (func_id, param_types, ret_type) = self.module_builder.get_func(name)?;
+
+                for param in param_types {
+                    let type_ = self.type_stack.pop().unwrap();
+
+                    Self::assert_type(type_, param.clone())?;
+                }
+
+                self.type_stack.push(ret_type.clone());
 
                 self.instructions.push(Instruction::Call(func_id));
             },
@@ -95,9 +121,11 @@ impl<'a> FunctionBuilder<'a> {
                     LiteralKind::Nothing => (),
                     LiteralKind::Int(i) => {
                         self.instructions.push(Instruction::I32Const(*i));
+                        self.type_stack.push(ValType::I32);
                     },
                     LiteralKind::Float(f) => {
                         self.instructions.push(Instruction::F32Const(*f));
+                        self.type_stack.push(ValType::F32);
                     },
                     LiteralKind::String(_) => todo!(),
                 };
@@ -105,6 +133,11 @@ impl<'a> FunctionBuilder<'a> {
             NodeKind::MathOperation { operation, left, right } => {
                 self.build_statement(left)?;
                 self.build_statement(right)?;
+
+                self.type_stack.pop();
+                self.type_stack.pop();
+
+                self.type_stack.push(ValType::I32);
 
                 let op = match operation {
                     MathOperatorKind::Plus => Instruction::I32Add,
@@ -120,6 +153,11 @@ impl<'a> FunctionBuilder<'a> {
             NodeKind::BoolOperation { operation, left, right } => {
                 self.build_statement(left)?;
                 self.build_statement(right)?;
+
+                self.type_stack.pop();
+                self.type_stack.pop();
+
+                self.type_stack.push(ValType::I32);
 
                 let op = match operation {
                     BoolOperatorKind::Equal => Instruction::I32Eq,
@@ -140,10 +178,16 @@ impl<'a> FunctionBuilder<'a> {
                     None => ()
                 }
 
+                self.type_stack.pop();
+
                 self.instructions.push(Instruction::Return);
             },
             NodeKind::IfStatement { condition, body } => {
                 self.build_statement(condition)?;
+
+                self.type_stack.pop();
+
+                let stack_size = self.type_stack.len();
 
                 self.instructions.push(Instruction::If(BlockType::Empty));
 
@@ -151,11 +195,11 @@ impl<'a> FunctionBuilder<'a> {
                     self.build_statement(node)?;
                 }
 
+                self.assert_stack_size(stack_size)?;
+
                 self.instructions.push(Instruction::End);
             },
-            NodeKind::ForStatement { .. } => {
-                self.local_count += 1;
-            }
+            NodeKind::ForStatement { .. } => {}
             NodeKind::WhileStatement { .. } => {}
             NodeKind::FieldAccess { .. } => {}
             NodeKind::VectorLiteral { .. } => {}
@@ -167,14 +211,39 @@ impl<'a> FunctionBuilder<'a> {
         Ok(())
     }
 
-    fn get_local(&self, name: &String) -> Result<u32, LangError> {
+    fn get_local(&self, name: &String) -> Result<(u32, ValType), LangError> {
         let local = self.locals
             .iter()
-            .position(|l| l == name);
+            .enumerate()
+            .find_map(|(i, (n, type_))| {
+                if n == name {
+                    Some((i as u32, type_.clone()))
+                } else {
+                    None
+                }
+            });
 
         match local {
-            Some(local) => Ok(local as u32),
+            Some(local) => Ok(local),
             None => Err(LangError::new_runtime(LOCAL_NOT_FOUND.to_string())),
+        }
+    }
+
+    #[inline]
+    fn assert_type(a: ValType, b: ValType) -> Result<(), LangError> {
+        if a == b {
+            Ok(())
+        } else {
+            Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string()))
+        }
+    }
+
+    #[inline]
+    fn assert_stack_size(&self, size: usize) -> Result<(), LangError> {
+        if self.type_stack.len() == size {
+            Ok(())
+        } else {
+            Err(LangError::new_runtime(INVALID_STACK_SIZE.to_string()))
         }
     }
 }

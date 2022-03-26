@@ -82,26 +82,71 @@ impl WasmBuilder {
 
         let func_names = self.module.functions
             .iter()
-            .map(|(name, _)| name.clone())
+            .map(|(name, _)| {
+                let (_, type_kind) = self.module.metadata.definitions
+                    .iter()
+                    .find(|(n, _)| n == name)
+                    .unwrap();
+
+                let func_type = match type_kind {
+                    TypeKind::Function(func_type) => func_type,
+                    _ => panic!(),
+                };
+
+                (
+                    name.clone(),
+                    func_type.0
+                        .iter()
+                        .map(|type_| convert_type(type_))
+                        .collect(),
+                    convert_type(func_type.1.as_ref()),
+                )
+            })
             .collect();
 
         let mut module_builder = ModuleBuilder::new(func_names);
 
-        for (_, func) in &self.module.functions {
+        for (name, func) in &self.module.functions {
+            let (_, type_kind) = self.module.metadata.definitions
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap();
+
+            let func_type = match type_kind {
+                TypeKind::Function(func_type) => func_type,
+                _ => panic!(),
+            };
+
+            let param_types = func_type.0
+                    .iter()
+                    .enumerate()
+                    .map(|(i, type_)| {
+                        (
+                            func.parameters
+                                .get(i)
+                                .unwrap()
+                                .clone(),
+                            convert_type(type_),
+                        )
+                    })
+                    .collect();
+
             let mut code_builder = FunctionBuilder::new(
                 &mut module_builder,
-                func.parameters.clone());
+                param_types);
 
             for node in &func.body {
                 code_builder.build_statement(&node)?;
             }
 
-            let (local_count, instructions) = code_builder.end_build();
+            let (locals , instructions) = code_builder.end_build();
 
-            let mut locals = Vec::with_capacity(local_count as usize);
-            for i in 0..local_count {
-                locals.push((i, ValType::I32));
-            }
+            let locals = locals
+                .iter()
+                .enumerate()
+                .map(|(i, (_, type_))| (i as u32, type_.clone()))
+                .collect::<Vec<(u32, ValType)>>();
+
             let mut func_builder = Function::new(locals);
 
             for inst in instructions {
