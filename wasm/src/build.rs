@@ -88,7 +88,13 @@ impl WasmBuilder {
         let mut module_builder = ModuleBuilder::new(func_names);
 
         for (_, func) in &self.module.functions {
-            let mut func_builder = Function::new(Vec::new());
+            let mut locals = Vec::new();
+            let param_count = func.parameters.len();
+            for i in 0..FunctionBuilder::get_local_count(&func.body) {
+                locals.push(((param_count + i) as u32, ValType::I32));
+            }
+
+            let mut func_builder = Function::new(locals);
 
             let mut code_builder = FunctionBuilder::new(
                 &mut module_builder,
