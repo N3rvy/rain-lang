@@ -2,7 +2,7 @@ use std::sync::Arc;
 use wasm_encoder::{CodeSection, Export, ExportSection, Function, FunctionSection, Module, TypeSection, ValType};
 use common::ast::types::TypeKind;
 use common::errors::LangError;
-use crate::build_code::CodeBuilder;
+use crate::build_code::{FunctionBuilder, ModuleBuilder};
 use crate::errors::UNEXPECTED_ERROR;
 
 pub struct WasmBuilder {
@@ -79,12 +79,15 @@ impl WasmBuilder {
 
     fn build_code(&self) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
+        let mut module_builder = ModuleBuilder::new(Vec::new());
 
         for (_, func) in &self.module.functions {
-            let locals = Vec::new();
-            let mut func_builder = Function::new(locals);
+            let mut func_builder = Function::new(Vec::new());
 
-            let mut code_builder = CodeBuilder::new(&mut func_builder);
+            let mut code_builder = FunctionBuilder::new(
+                &mut module_builder,
+                &mut func_builder,
+                func.parameters.clone());
 
             for node in &func.body {
                 code_builder.build_statement(&node)?;

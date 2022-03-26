@@ -1,24 +1,34 @@
-use std::collections::HashMap;
 use wasm_encoder::{BlockType, Function, Instruction};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind};
 use common::errors::LangError;
+use crate::errors::{LOCAL_NOT_FOUND, UNEXPECTED_ERROR};
 
-pub struct CodeBuilder<'a> {
-    func: &'a mut Function,
-    locals: HashMap<String, u32>,
+pub struct ModuleBuilder {
+    functions: Vec<String>,
 }
 
-impl<'a> CodeBuilder<'a> {
-    pub fn new(func: &'a mut Function) -> Self {
+impl ModuleBuilder {
+    pub fn new(functions: Vec<String>) -> Self {
         Self {
-            func,
-            locals: HashMap::new(),
+            functions,
         }
     }
+}
 
-    pub fn register_local(&mut self, name: String, value: u32) {
-        self.locals.insert(name, value);
+pub struct FunctionBuilder<'a> {
+    module_builder: &'a mut ModuleBuilder,
+    func: &'a mut Function,
+    locals: Vec<String>,
+}
+
+impl<'a> FunctionBuilder<'a> {
+    pub fn new(module_builder: &'a mut ModuleBuilder, func: &'a mut Function, locals: Vec<String>) -> Self {
+        Self {
+            module_builder,
+            func,
+            locals,
+        }
     }
 
     pub fn end_build(self) {
@@ -28,8 +38,18 @@ impl<'a> CodeBuilder<'a> {
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
         match node.kind.as_ref() {
             NodeKind::VariableDecl { .. } => {}
-            NodeKind::VariableRef { .. } => {}
-            NodeKind::VariableAsgn { .. } => {}
+            NodeKind::VariableRef { module: _, name } => {
+                let local = self.get_local(name)?;
+
+                self.func.instruction(&Instruction::LocalGet(local));
+            },
+            NodeKind::VariableAsgn { name, value } => {
+                self.build_statement(value)?;
+
+                let local = self.get_local(name)?;
+
+                self.func.instruction(&Instruction::LocalSet(local));
+            },
             NodeKind::FunctionInvok { .. } => {}
             NodeKind::Literal { value } => {
                 match value {
@@ -105,5 +125,16 @@ impl<'a> CodeBuilder<'a> {
         }
 
         Ok(())
+    }
+
+    fn get_local(&self, name: &String) -> Result<u32, LangError> {
+        let local = self.locals
+            .iter()
+            .position(|l| l == name);
+
+        match local {
+            Some(local) => Ok(local as u32),
+            None => Err(LangError::new_runtime(LOCAL_NOT_FOUND.to_string())),
+        }
     }
 }

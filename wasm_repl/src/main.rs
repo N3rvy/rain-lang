@@ -36,8 +36,8 @@ fn main() -> anyhow::Result<()> {
     let mut store = wasmtime::Store::new(&engine, ());
     let instance = linker.instantiate(&mut store, &module)?;
 
-    let run = instance.get_typed_func::<(), i32, _>(&mut store, "run")?;
-    let result = run.call(&mut store, ())?;
+    let run = instance.get_typed_func::<i32, i32, _>(&mut store, "run")?;
+    let result = run.call(&mut store, 5)?;
     println!("result: {}", result);
     
     Ok(())
