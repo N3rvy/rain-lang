@@ -93,7 +93,7 @@ impl<'a> ParserScope<'a> {
                 let (param_names, param_types) = parse_parameter_names(tokens)?;
 
                 // return type?
-                let ret_type = self.parse_type_option(tokens)?.unwrap_or(TypeKind::Nothing);
+                let ret_type = self.parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
                 
                 // Indentation
                 expect_indent!(tokens);
@@ -146,7 +146,7 @@ impl<'a> ParserScope<'a> {
                 };
 
                 // ?(type)
-                let assign_type = self.parse_type_option(tokens)?;
+                let assign_type = self.parse_type_option(tokens);
 
                 // =
                 expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
@@ -215,13 +215,12 @@ impl<'a> ParserScope<'a> {
             },
             Token::Return | Token::Break => {
                 let value = match tokens.peek() {
-                    Some(Token::Dedent) => { // TODO: This is not even close to being a good way to handle return not having a value
+                    Some(Token::NewLine) | None => {
                         None
                     },
                     Some(_) => {
                         Some(self.parse_statement(tokens)?)
                     },
-                    None => return Err(LangError::new_parser_end_of_file()),
                 };
                 
                 let kind = match &token {

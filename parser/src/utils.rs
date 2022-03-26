@@ -182,11 +182,14 @@ impl<'a> ParserScope<'a> {
         Ok(body)
     }
 
-    pub fn parse_type_option(&self, tokens: &mut Tokens) -> Result<Option<TypeKind>, LangError> {
+    pub fn parse_type_option(&self, tokens: &mut Tokens) -> Option<TypeKind> {
         // type
-        match tokens.pop() {
-            Some(Token::Type(tk)) => Ok(Some(tk)),
-            _ => Err(LangError::new_parser_unexpected_token())
+        match tokens.peek() {
+            Some(Token::Type(tk)) => {
+                tokens.pop();
+                Some(tk)
+            },
+            _ => None
         }
     }
     
