@@ -121,7 +121,6 @@ impl<'a> FunctionBuilder<'a> {
             NodeKind::ObjectLiteral { .. } => {}
             NodeKind::FunctionLiteral { .. } => {}
             NodeKind::ValueFieldAccess { .. } => {}
-            NodeKind::Import { .. } => {}
         }
 
         Ok(())

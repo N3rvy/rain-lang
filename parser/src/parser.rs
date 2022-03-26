@@ -287,22 +287,13 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
             },
-            Token::Import => {
-                // identifier
-                let identifier = match tokens.pop() {
-                    Some(Token::Literal(LiteralKind::String(ident))) => ident,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
-                };
-                
-                ASTNode::new(NodeKind::new_import(identifier), TypeKind::Nothing)
-            },
             Token::NewLine => self.parse_statement(tokens)?,
             Token::Operator(_) |
             Token::BoolOperator(_) |
             Token::MathOperator(_) |
             Token::Type(_) |
             Token::Indent |
+            Token::Import |
             Token::Dedent => return Err(LangError::new_parser_unexpected_token()),
         };
         

@@ -87,9 +87,6 @@ pub enum NodeKind {
         variable: ASTNode,
         value: ASTNode,
     },
-    Import {
-        identifier: String,
-    }
 }
 
 impl NodeKind {
@@ -155,9 +152,5 @@ impl NodeKind {
  
     pub fn new_value_field_access(variable: ASTNode, value: ASTNode) -> NodeKind {
         NodeKind::ValueFieldAccess { variable, value }
-    }
-
-    pub fn new_import(identifier: String) -> NodeKind {
-        NodeKind::Import { identifier }
     }
 }
