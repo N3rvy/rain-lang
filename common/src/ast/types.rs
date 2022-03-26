@@ -9,6 +9,7 @@ pub enum LiteralKind {
     Nothing,
     Int(i32),
     Float(f32),
+    Bool(bool),
     String(String),
 }
 
@@ -100,6 +101,7 @@ impl From<LiteralKind> for TypeKind {
             LiteralKind::Nothing => Self::Nothing,
             LiteralKind::Int(_) => Self::Int,
             LiteralKind::Float(_) => Self::Float,
+            LiteralKind::Bool(_) => Self::Bool,
             LiteralKind::String(_) => Self::String,
         }
     }

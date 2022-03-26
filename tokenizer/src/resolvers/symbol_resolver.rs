@@ -1,4 +1,4 @@
-use common::ast::types::{OperatorKind, TypeKind};
+use common::ast::types::{LiteralKind, OperatorKind, TypeKind};
 use crate::tokens::Token;
 use super::resolver::{Resolver, AddResult};
 
@@ -30,6 +30,9 @@ impl SymbolResolver {
             "bool" => Token::Type(TypeKind::Bool),
             "str" => Token::Type(TypeKind::String),
             "any" => Token::Type(TypeKind::Unknown),
+
+            "true" => Token::Literal(LiteralKind::Bool(true)),
+            "false" => Token::Literal(LiteralKind::Bool(false)),
 
             _ => Token::Symbol(self.chars.clone()),
         }

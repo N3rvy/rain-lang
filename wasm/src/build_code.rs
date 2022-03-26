@@ -127,6 +127,12 @@ impl<'a> FunctionBuilder<'a> {
                         self.instructions.push(Instruction::F32Const(*f));
                         self.type_stack.push(ValType::F32);
                     },
+                    LiteralKind::Bool(b) => {
+                        let value = if *b { 1 } else { 0 };
+
+                        self.instructions.push(Instruction::I32Const(value));
+                        self.type_stack.push(ValType::I32);
+                    },
                     LiteralKind::String(_) => todo!(),
                 };
             },
