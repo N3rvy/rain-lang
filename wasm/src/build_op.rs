@@ -1,15 +1,10 @@
-use common::ast::types::MathOperatorKind;
+use common::ast::types::{MathOperatorKind, BoolOperatorKind};
 use wasm_encoder::{ValType, Instruction};
 use crate::build_code::FunctionBuilder;
 
 impl<'a, 'b> FunctionBuilder<'a, 'b> {
     pub fn build_math_op(&mut self, op: &MathOperatorKind, left: ValType, right: ValType) {
-        if left != right {
-            match Self::convert_op(left, right) {
-                Some(op) => self.instructions.push(op),
-                None => (),
-            }
-        }
+        self.check_type_convert(left, right);
 
         let inst = match op {
             MathOperatorKind::Plus => Self::build_add_op(left),
@@ -23,7 +18,103 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         self.instructions.push(inst);
     }
 
-    pub fn convert_op(left: ValType, right: ValType) -> Option<Instruction<'static>> {
+    pub fn build_bool_op(&mut self, op: &BoolOperatorKind, left: ValType, right: ValType) {
+        self.check_type_convert(left, right);
+
+        let inst = match op {
+            BoolOperatorKind::Equal => Self::build_eq_op(left),
+            BoolOperatorKind::Different => Self::build_ne_op(left),
+            BoolOperatorKind::Bigger => Self::build_gt_op(left),
+            BoolOperatorKind::Smaller => Self::build_lt_op(left),
+            BoolOperatorKind::BiggerEq => Self::build_ge_op(left),
+            BoolOperatorKind::SmallerEq => Self::build_le_op(left),
+        };
+
+        self.instructions.push(inst);
+    }
+
+    fn build_le_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32LeS,
+            ValType::I64 => Instruction::I64LeS,
+            ValType::F32 => Instruction::F32Le,
+            ValType::F64 => Instruction::F64Le,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn build_ge_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32GeS,
+            ValType::I64 => Instruction::I64GeS,
+            ValType::F32 => Instruction::F32Ge,
+            ValType::F64 => Instruction::F64Ge,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn build_lt_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32LtS,
+            ValType::I64 => Instruction::I64LtS,
+            ValType::F32 => Instruction::F32Lt,
+            ValType::F64 => Instruction::F64Lt,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn build_gt_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32GtS,
+            ValType::I64 => Instruction::I64GtS,
+            ValType::F32 => Instruction::F32Gt,
+            ValType::F64 => Instruction::F64Gt,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn build_ne_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32Ne,
+            ValType::I64 => Instruction::I64Ne,
+            ValType::F32 => Instruction::F32Ne,
+            ValType::F64 => Instruction::F64Ne,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn build_eq_op(type_: ValType) -> Instruction<'static> {
+        match type_ {
+            ValType::I32 => Instruction::I32Eq,
+            ValType::I64 => Instruction::I64Eq,
+            ValType::F32 => Instruction::F32Eq,
+            ValType::F64 => Instruction::F64Eq,
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        }
+    }
+
+    fn check_type_convert(&mut self, left: ValType, right: ValType) {
+        if left != right {
+            match Self::convert_op(left, right) {
+                Some(op) => self.instructions.push(op),
+                None => (),
+            }
+        }
+    }
+
+    fn convert_op(left: ValType, right: ValType) -> Option<Instruction<'static>> {
         match left {
             ValType::I32 => {
                 match right {

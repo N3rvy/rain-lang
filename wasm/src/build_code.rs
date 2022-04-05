@@ -205,21 +205,12 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 self.build_statement(left)?;
                 self.build_statement(right)?;
 
-                self.type_stack.pop();
-                self.type_stack.pop();
+                let right = self.type_stack.pop().unwrap();
+                let left = self.type_stack.pop().unwrap();
 
                 self.type_stack.push(ValType::I32);
 
-                let op = match operation {
-                    BoolOperatorKind::Equal => Instruction::I32Eq,
-                    BoolOperatorKind::Different => Instruction::I32Ne,
-                    BoolOperatorKind::Bigger => Instruction::I32GtS,
-                    BoolOperatorKind::Smaller => Instruction::I32LtS,
-                    BoolOperatorKind::BiggerEq => Instruction::I32GeS,
-                    BoolOperatorKind::SmallerEq => Instruction::I32LeS,
-                };
-
-                self.instructions.push(op);
+                self.build_bool_op(operation, left, right);
             },
             NodeKind::ReturnStatement { kind: _ , value } => {
                 match value {
