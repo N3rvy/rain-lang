@@ -89,13 +89,13 @@ impl<'a> ModuleBuilder<'a> {
 }
 
 pub struct FunctionBuilder<'a, 'b> {
-    module_builder: &'a mut ModuleBuilder<'b>,
-    type_stack: Vec<ValType>,
+    pub(crate) module_builder: &'a mut ModuleBuilder<'b>,
+    pub(crate) type_stack: Vec<ValType>,
 
     // Stores all the locals (never removes)
-    locals: Vec<(String, ValType)>,
+    pub(crate) locals: Vec<(String, ValType)>,
     // Instructions of the function
-    instructions: Vec<Instruction<'a>>,
+    pub(crate) instructions: Vec<Instruction<'a>>,
 }
 
 impl<'a, 'b> FunctionBuilder<'a, 'b> {
@@ -194,21 +194,12 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 self.build_statement(left)?;
                 self.build_statement(right)?;
 
-                self.type_stack.pop();
-                self.type_stack.pop();
+                let right = self.type_stack.pop().unwrap();
+                let left = self.type_stack.pop().unwrap();
 
                 self.type_stack.push(ValType::I32);
 
-                let op = match operation {
-                    MathOperatorKind::Plus => Instruction::I32Add,
-                    MathOperatorKind::Minus => Instruction::I32Sub,
-                    MathOperatorKind::Multiply => Instruction::I32Mul,
-                    MathOperatorKind::Divide => Instruction::I32DivS,
-                    MathOperatorKind::Modulus => todo!(),
-                    MathOperatorKind::Power => todo!(),
-                };
-
-                self.instructions.push(op);
+                self.build_math_op(operation, left, right);
             },
             NodeKind::BoolOperation { operation, left, right } => {
                 self.build_statement(left)?;
