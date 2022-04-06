@@ -22,8 +22,6 @@ impl<'a> WasmBuilder<'a> {
     pub fn build(self) -> Result<Vec<u8>, LangError> {
         let mut module = Module::new();
 
-        let module_builder = ModuleBuilder::new(&self.module_loader);
-
         module.section(&self.build_types()?);
         module.section(&self.build_functions()?);
         module.section(&self.build_exports()?);
