@@ -1,6 +1,6 @@
 use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{BoolOperatorKind, LiteralKind, MathOperatorKind, TypeKind};
+use common::ast::types::{LiteralKind, TypeKind};
 use common::errors::LangError;
 use common::module::ModuleUID;
 use core::parser::ModuleLoader;
@@ -197,7 +197,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let right = self.type_stack.pop().unwrap();
                 let left = self.type_stack.pop().unwrap();
 
-                self.type_stack.push(ValType::I32);
+                self.type_stack.push(left);
 
                 self.build_math_op(operation, left, right);
             },
@@ -208,7 +208,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let right = self.type_stack.pop().unwrap();
                 let left = self.type_stack.pop().unwrap();
 
-                self.type_stack.push(ValType::I32);
+                self.type_stack.push(left);
 
                 self.build_bool_op(operation, left, right);
             },
