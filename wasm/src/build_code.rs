@@ -1,15 +1,32 @@
 use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{LiteralKind, TypeKind};
+use common::ast::types::{LiteralKind, TypeKind, FunctionType, Function};
 use common::errors::LangError;
-use common::module::ModuleUID;
+use common::module::{ModuleUID, Module};
 use core::parser::ModuleLoader;
+use std::sync::Arc;
 use crate::build::convert_type;
-use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE};
+use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
+
+pub struct FunctionBuilderResult {
+    pub name: String,
+
+    pub params: Vec<ValType>,
+    pub ret: ValType,
+
+    pub locals: Vec<(String, ValType)>,
+    pub instructions: Vec<Instruction<'static>>,
+}
+
+pub struct ModuleBuilderResult {
+    pub functions: Vec<FunctionBuilderResult>,
+}
 
 pub struct ModuleBuilder<'a> {
     module_loader: &'a ModuleLoader,
     functions: Vec<(String, Vec<ValType>, ValType)>,
+
+    result_funcs: Vec<FunctionBuilderResult>,
 }
 
 impl<'a> ModuleBuilder<'a> {
@@ -17,6 +34,69 @@ impl<'a> ModuleBuilder<'a> {
         Self {
             module_loader,
             functions: Vec::new(),
+            result_funcs: Vec::new(),
+        }
+    }
+
+    pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
+        for (name, func) in &module.functions {
+            let (_, type_kind) = module.metadata.definitions
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap();
+
+            let func_type = match type_kind {
+                TypeKind::Function(func_type) => func_type,
+                _ => panic!(),
+            };
+
+            self.insert_func(name, func_type, func)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn insert_func(&mut self, name: &str, func_type: &FunctionType, func: &Arc<Function>) -> Result<(), LangError> {
+        let locals = func_type.0
+                .iter()
+                .enumerate()
+                .map(|(i, type_)| {
+                    (
+                        func.parameters
+                            .get(i)
+                            .unwrap()
+                            .clone(),
+                        convert_type(type_),
+                    )
+                })
+                .collect();
+
+        let params = func_type.0
+                .iter()
+                .map(|type_| convert_type(type_))
+                .collect();
+
+        let mut code_builder = FunctionBuilder::new(
+            self,
+            name.to_string(),
+            locals,
+            params,
+            convert_type(&func_type.1));
+
+        for node in &func.body {
+            code_builder.build_statement(&node)?;
+        }
+
+        let result = code_builder.build();
+
+        self.result_funcs.push(result);
+
+        Ok(())
+    }
+
+    pub fn build(self) -> ModuleBuilderResult {
+        ModuleBuilderResult {
+            functions: self.result_funcs,
         }
     }
 
@@ -65,6 +145,17 @@ impl<'a> ModuleBuilder<'a> {
                     _ => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
                 };
 
+                let func = module.functions
+                    .iter()
+                    .find(|(n, _)| n == name);
+
+                let func = match func {
+                    Some(f) => &f.1,
+                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                };
+                
+                self.insert_func(name.as_ref(), func_type, func)?;
+
                 self.functions.push((
                     name.clone(),
                     func_type.0
@@ -92,26 +183,51 @@ pub struct FunctionBuilder<'a, 'b> {
     pub(crate) module_builder: &'a mut ModuleBuilder<'b>,
     pub(crate) type_stack: Vec<ValType>,
 
+    pub(crate) name: String,
+
+    pub(crate) params: Vec<ValType>,
+    pub(crate) ret: ValType,
+
     // Stores all the locals (never removes)
     pub(crate) locals: Vec<(String, ValType)>,
     // Instructions of the function
-    pub(crate) instructions: Vec<Instruction<'a>>,
+    pub(crate) instructions: Vec<Instruction<'static>>,
 }
 
 impl<'a, 'b> FunctionBuilder<'a, 'b> {
-    pub fn new(module_builder: &'a mut ModuleBuilder<'b>, locals: Vec<(String, ValType)>) -> Self {
+    pub fn new(
+        module_builder: &'a mut ModuleBuilder<'b>,
+        name: String,
+        locals: Vec<(String, ValType)>,
+        params: Vec<ValType>,
+        ret: ValType,
+    ) -> Self {
         Self {
+            name,
+
             module_builder,
             locals,
+
+            params,
+            ret,
+
             type_stack: Vec::new(),
             instructions: Vec::new(),
         }
     }
 
-    pub fn end_build(&mut self) -> (&Vec<(String, ValType)>, &Vec<Instruction<'a>>) {
+    pub fn build(mut self) -> FunctionBuilderResult {
         self.instructions.push(Instruction::End);
 
-        (&self.locals, &self.instructions)
+        FunctionBuilderResult {
+            name: self.name,
+
+            params: self.params,
+            ret: self.ret,
+
+            locals: self.locals,
+            instructions: self.instructions,
+        }
     }
 
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
