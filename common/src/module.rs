@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use crate::ast::ASTNode;
-use crate::ast::types::{Function, TypeKind};
+use crate::ast::types::{Function, FunctionType, TypeKind};
 
 pub struct ModuleIdentifier(pub String);
 
@@ -18,16 +18,36 @@ impl ModuleUID {
     }
 }
 
-#[derive(Clone)]
-pub struct ModuleMetadata {
-    pub definitions: Vec<(String, TypeKind)>,
+pub struct FunctionDefinition {
+    pub data: Arc<Function>,
+    pub metadata: FunctionType,
+}
+
+pub struct VariableDefinition {
+    pub data: ASTNode,
+    pub metadata: TypeKind,
 }
 
 pub struct Module {
     pub uid: ModuleUID,
-    pub metadata: ModuleMetadata,
 
     pub imports: Vec<ModuleUID>,
-    pub functions: Vec<(String, Arc<Function>)>,
-    pub variables: Vec<(String, ASTNode)>,
+    pub functions: Vec<(String, FunctionDefinition)>,
+    pub variables: Vec<(String, VariableDefinition)>,
+}
+
+impl Module {
+    pub fn get_func_def(&self, name: &String) -> Option<&FunctionDefinition> {
+        self.functions
+            .iter()
+            .find(|(n, _)| n == name)
+            .and_then(|(_, def)| Some(def))
+    }
+
+    pub fn get_var_def(&self, name: &String) -> Option<&VariableDefinition> {
+        self.variables
+            .iter()
+            .find(|(n, _)| n == name)
+            .and_then(|(_, def)| Some(def))
+    }
 }

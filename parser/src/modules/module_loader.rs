@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::TypeKind;
-use common::module::{Module, ModuleMetadata, ModuleUID};
+use common::module::{Module, ModuleUID};
 use common::errors::LangError;
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
@@ -149,31 +149,39 @@ pub struct ModuleLoaderContext<'a> {
 }
 
 impl<'a> ModuleLoaderContext<'a> {
-    pub fn get_metadata(&self, module: ModuleUID) -> Option<ModuleMetadata> {
-        match self.modules
+    pub fn get_definitions(&self, module_uid: ModuleUID) -> Vec<(String, TypeKind)> {
+        let module = self.modules
             .iter()
-            .find(|(uid, _)| *uid == module)
-        {
+            .find(|(uid, _)| *uid == module_uid);
+
+        match module {
             Some((_, module)) => {
-                Some(ModuleMetadata {
-                    definitions: module.declarations
-                        .iter()
-                        .map(|(name, decl)| {
-                            (
-                                name.clone(),
-                                match &decl.kind {
-                                    DeclarationKind::Variable(tk) => tk.clone(),
-                                    DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
-                                }
-                            )
-                        })
-                        .collect(),
-                })
+                module.declarations
+                    .iter()
+                    .map(|(name, decl)| {
+                        let kind = match &decl.kind {
+                            DeclarationKind::Variable(type_) => type_.clone(),
+                            DeclarationKind::Function(_, type_) => TypeKind::Function(type_.clone()),
+                        };
+
+                        (name.clone(), kind)
+                    })
+                    .collect()
             },
-            None => self.module_loader
-                .get_module(module)
-                .and_then(|module|
-                    Some(module.metadata.clone())),
+            None => {
+                self.module_loader
+                    .get_module(module_uid)
+                    .and_then(|module| {
+                        Some(module.functions
+                            .iter()
+                            .map(|(name, func)| (name.clone(), TypeKind::Function(func.metadata.clone())))
+                            .chain(module.variables
+                                .iter()
+                                .map(|(name, var)| (name.clone(), var.metadata.clone())))
+                            .collect())
+                    })
+                    .unwrap_or_else(|| Vec::new())
+            }
         }
     }
 }

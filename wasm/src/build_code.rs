@@ -1,6 +1,6 @@
 use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{LiteralKind, TypeKind, FunctionType, Function};
+use common::ast::types::{LiteralKind, FunctionType, Function};
 use common::errors::LangError;
 use common::module::{ModuleUID, Module};
 use core::parser::ModuleLoader;
@@ -48,17 +48,7 @@ impl<'a> ModuleBuilder<'a> {
                 continue
             }
 
-            let (_, type_kind) = module.metadata.definitions
-                .iter()
-                .find(|(n, _)| n == name)
-                .unwrap();
-
-            let func_type = match type_kind {
-                TypeKind::Function(func_type) => func_type,
-                _ => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
-            };
-
-            self.insert_func(name, func_type, func)?;
+            self.insert_func(name, &func.metadata, &func.data)?;
         }
 
         Ok(())
@@ -141,39 +131,20 @@ impl<'a> ModuleBuilder<'a> {
                     None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
                 };
 
-                let metadata = module.metadata.definitions
-                    .iter()
-                    .find_map(|(n, type_)| {
-                        if n == name {
-                            Some(type_)
-                        } else {
-                            None
-                        }
-                    });
-
-                let func_type = match metadata {
-                    Some(TypeKind::Function(ft)) => ft,
-                    _ => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
-                };
-
-                let func = module.functions
-                    .iter()
-                    .find(|(n, _)| n == name);
-
-                let func = match func {
-                    Some(f) => &f.1,
+                let func = match module.get_func_def(name) {
+                    Some(f) => f,
                     None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
                 };
                 
-                self.insert_func(name.as_ref(), func_type, func)?;
+                self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
 
                 self.functions.push((
                     name.clone(),
-                    func_type.0
+                    func.metadata.0
                         .iter()
                         .filter_map(|type_| convert_type(type_))
                         .collect(),
-                    convert_type(func_type.1.as_ref()),
+                    convert_type(func.metadata.1.as_ref()),
                 ));
 
                 let (_, params, ret) = self.functions

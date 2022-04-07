@@ -1,6 +1,6 @@
 use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError, EngineExternalModule};
 use std::sync::Arc;
-use common::module::{Module, ModuleUID, ModuleIdentifier, ModuleMetadata};
+use common::module::{Module, ModuleUID, ModuleIdentifier};
 use crate::{module::WasmModule, external_module::WasmExternalModule, errors::UNEXPECTED_ERROR};
 use crate::build::WasmBuilder;
 
@@ -41,9 +41,7 @@ impl EngineExternalModule for WasmEngine {
         self.module_loader
             .insert_module(module.uid, Module {
                 uid: module.uid,
-                metadata: ModuleMetadata {
-                    definitions: module.definitions,
-                },
+
                 imports: Vec::new(),
                 functions: Vec::new(),
                 variables: Vec::new(),

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use common::ast::ASTNode;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
-use common::module::{Module, ModuleMetadata, ModuleUID};
+use common::module::{FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use tokenizer::iterator::Tokens;
 use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::modules::module_importer::ModuleImporter;
@@ -25,7 +25,6 @@ impl<'a> ModuleParser<'a> {
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
         let scope = self.create_scope(&module, uid, importer);
 
-        let mut definitions = Vec::new();
         let mut functions = Vec::new();
         let mut variables = Vec::new();
 
@@ -37,8 +36,13 @@ impl<'a> ModuleParser<'a> {
                 DeclarationKind::Variable(type_) => {
                     let value = Self::parse_variable_value(&mut tokens, &scope.new_child())?;
 
-                    definitions.push((name.clone(), type_.clone()));
-                    variables.push((name.clone(), value));
+                    variables.push((
+                        name.clone(),
+                        VariableDefinition {
+                            data: value,
+                            metadata: type_.clone(),
+                        },
+                    ));
                 },
                 DeclarationKind::Function(params, func_type) => {
                     let scope = scope.new_child();
@@ -53,15 +57,19 @@ impl<'a> ModuleParser<'a> {
                         return Err(LangError::new_parser(WRONG_TYPE.to_string()));
                     }
 
-                    definitions.push((name.clone(), TypeKind::Function(func_type.clone())));
-                    functions.push((name.clone(), value));
+                    functions.push((
+                        name.clone(),
+                        FunctionDefinition {
+                            data: value,
+                            metadata: func_type.clone(),
+                        },
+                    ));
                 },
             };
         }
 
         let module = Module {
             uid,
-            metadata: ModuleMetadata { definitions },
 
             imports: Vec::new(),
             functions,
@@ -90,12 +98,9 @@ impl<'a> ModuleParser<'a> {
                 None => continue,
             };
 
-            let metadata = match self.loader_context.get_metadata(uid) {
-                Some(uid) => uid,
-                None => continue,
-            };
+            let definitions = self.loader_context.get_definitions(uid);
 
-            for (name, decl) in metadata.definitions {
+            for (name, decl) in definitions {
                 scope.declare_external(name, uid, decl);
             }
         }
