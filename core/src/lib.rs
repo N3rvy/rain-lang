@@ -2,7 +2,7 @@
 #![feature(generic_associated_types)]
 
 pub use common::errors::LangError;
-pub use engine::{Engine, EngineGetFunction, InternalFunction, EngineBuildSource};
+pub use engine::{Engine, EngineGetFunction, InternalFunction, EngineBuildSource, EngineExternalModule};
 pub use externals::{ExternalType, AnyValue};
 
 mod engine;

@@ -13,20 +13,23 @@ where
     Self: Sized,
 {
     type Module: EngineModule<Engine = Self>;
-    type ExternalModule: ExternalModule<Engine = Self>;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
-
     fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError>;
 
     fn module_loader(&mut self) -> &mut ModuleLoader;
-    fn insert_external_module(&mut self, module: Self::ExternalModule);
 
     fn new() -> Self;
 }
 
 pub trait EngineBuildSource : Engine {
     fn build_module_source(&self, uid: ModuleUID) -> Result<Vec<u8>, LangError>;
+}
+
+pub trait EngineExternalModule : Engine {
+    type ExternalModule: ExternalModule<Engine = Self>;
+
+    fn insert_external_module(&mut self, module: Self::ExternalModule);
 }
 
 pub trait EngineGetFunction<Args, R, Ret: InternalFunction<Args, R>> : Engine {

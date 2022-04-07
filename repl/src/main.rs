@@ -1,6 +1,6 @@
 #![feature(explicit_generic_args_with_impl_trait)]
 
-use core::{AnyValue, Engine, EngineGetFunction, InternalFunction};
+use core::{AnyValue, Engine, EngineGetFunction, InternalFunction, EngineExternalModule};
 use std::{env, env::args, ops::Index};
 use common::module::{ModuleIdentifier, ModuleUID};
 use interpreter::{InterpreterEngine, InterpreterFunction};

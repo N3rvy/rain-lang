@@ -1,6 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(try_trait_v2)]
 
+use core::EngineExternalModule;
 use std::cell::RefCell;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
@@ -79,7 +80,6 @@ impl EngineModule for InterpreterModule {
 
 impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
-    type ExternalModule = InterpreterExternalModule;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
         let (uid, modules) = self
@@ -112,6 +112,17 @@ impl Engine for InterpreterEngine {
         &mut self.module_loader
     }
 
+    fn new() -> Self {
+        Self {
+            module_loader: ModuleLoader::new(),
+            module_store: Arc::new(RefCell::new(ModuleStore::new())),
+        }
+    }
+}
+
+impl EngineExternalModule for InterpreterEngine {
+    type ExternalModule = InterpreterExternalModule;
+
     fn insert_external_module(&mut self, module: Self::ExternalModule) {
         self.module_loader()
             .insert_module(module.uid, module.module);
@@ -119,13 +130,6 @@ impl Engine for InterpreterEngine {
         (*self.module_store)
             .borrow_mut()
             .insert(module.uid, module.engine_module);
-    }
-
-    fn new() -> Self {
-        Self {
-            module_loader: ModuleLoader::new(),
-            module_store: Arc::new(RefCell::new(ModuleStore::new())),
-        }
     }
 }
 

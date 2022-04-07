@@ -1,4 +1,4 @@
-use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError};
+use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError, EngineExternalModule};
 use std::sync::Arc;
 use common::module::{Module, ModuleUID, ModuleIdentifier, ModuleMetadata};
 use crate::{module::WasmModule, external_module::WasmExternalModule, errors::UNEXPECTED_ERROR};
@@ -10,7 +10,6 @@ pub struct WasmEngine {
 
 impl Engine for WasmEngine {
     type Module = WasmModule;
-    type ExternalModule = WasmExternalModule;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
         let (uid, _) = self
@@ -28,6 +27,16 @@ impl Engine for WasmEngine {
         &mut self.module_loader
     }
 
+    fn new() -> Self {
+        Self {
+            module_loader: ModuleLoader::new(),
+        }
+    }
+}
+
+impl EngineExternalModule for WasmEngine {
+    type ExternalModule = WasmExternalModule;
+
     fn insert_external_module(&mut self, module: Self::ExternalModule) {
         self.module_loader
             .insert_module(module.uid, Module {
@@ -39,12 +48,6 @@ impl Engine for WasmEngine {
                 functions: Vec::new(),
                 variables: Vec::new(),
             });
-    }
-
-    fn new() -> Self {
-        Self {
-            module_loader: ModuleLoader::new(),
-        }
     }
 }
 
