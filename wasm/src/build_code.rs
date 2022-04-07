@@ -40,6 +40,14 @@ impl<'a> ModuleBuilder<'a> {
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
         for (name, func) in &module.functions {
+            let contains_func = self.functions
+                .iter()
+                .any(|(n, _, _)| n == name);
+            
+            if contains_func {
+                continue
+            }
+
             let (_, type_kind) = module.metadata.definitions
                 .iter()
                 .find(|(n, _)| n == name)
