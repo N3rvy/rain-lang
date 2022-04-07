@@ -55,7 +55,7 @@ impl<'a> ModuleBuilder<'a> {
 
             let func_type = match type_kind {
                 TypeKind::Function(func_type) => func_type,
-                _ => panic!(),
+                _ => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
             };
 
             self.insert_func(name, func_type, func)?;
