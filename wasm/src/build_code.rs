@@ -12,7 +12,7 @@ pub struct FunctionBuilderResult {
     pub name: String,
 
     pub params: Vec<ValType>,
-    pub ret: ValType,
+    pub ret: Option<ValType>,
 
     pub locals: Vec<(String, ValType)>,
     pub instructions: Vec<Instruction<'static>>,
@@ -24,7 +24,7 @@ pub struct ModuleBuilderResult {
 
 pub struct ModuleBuilder<'a> {
     module_loader: &'a ModuleLoader,
-    functions: Vec<(String, Vec<ValType>, ValType)>,
+    functions: Vec<(String, Vec<ValType>, Option<ValType>)>,
 
     result_funcs: Vec<FunctionBuilderResult>,
 }
@@ -68,20 +68,23 @@ impl<'a> ModuleBuilder<'a> {
         let locals = func_type.0
                 .iter()
                 .enumerate()
-                .map(|(i, type_)| {
-                    (
-                        func.parameters
-                            .get(i)
-                            .unwrap()
-                            .clone(),
-                        convert_type(type_),
-                    )
+                .filter_map(|(i, type_)| {
+                    match convert_type(type_) {
+                        Some(type_) => Some((
+                            func.parameters
+                                .get(i)
+                                .unwrap()
+                                .clone(),
+                            type_,
+                        )),
+                        None => None,
+                    }
                 })
                 .collect();
 
         let params = func_type.0
                 .iter()
-                .map(|type_| convert_type(type_))
+                .filter_map(|type_| convert_type(type_))
                 .collect();
 
         let mut code_builder = FunctionBuilder::new(
@@ -108,7 +111,7 @@ impl<'a> ModuleBuilder<'a> {
         }
     }
 
-    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<ValType>, &ValType), LangError> {
+    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<ValType>, &Option<ValType>), LangError> {
         // This "code duplication" is done because otherwise it would complain
         // that self.functions is already borrowed
         let contains_func = self.functions
@@ -168,7 +171,7 @@ impl<'a> ModuleBuilder<'a> {
                     name.clone(),
                     func_type.0
                         .iter()
-                        .map(|type_| convert_type(type_))
+                        .filter_map(|type_| convert_type(type_))
                         .collect(),
                     convert_type(func_type.1.as_ref()),
                 ));
@@ -194,7 +197,7 @@ pub struct FunctionBuilder<'a, 'b> {
     pub(crate) name: String,
 
     pub(crate) params: Vec<ValType>,
-    pub(crate) ret: ValType,
+    pub(crate) ret: Option<ValType>,
 
     // Stores all the locals (never removes)
     pub(crate) locals: Vec<(String, ValType)>,
@@ -208,7 +211,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         name: String,
         locals: Vec<(String, ValType)>,
         params: Vec<ValType>,
-        ret: ValType,
+        ret: Option<ValType>,
     ) -> Self {
         Self {
             name,
@@ -290,7 +293,9 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     Self::assert_type(type_, param.clone())?;
                 }
 
-                self.type_stack.push(ret_type.clone());
+                if let Some(ret_type) = ret_type {
+                    self.type_stack.push(ret_type.clone());
+                }
 
                 self.instructions.push(Instruction::Call(func_id));
             },

@@ -38,9 +38,15 @@ impl<'a> WasmBuilder<'a> {
         let mut types = TypeSection::new();
 
         for func in &result.functions {
+            let ret_type = if let Some(ret) = func.ret {
+                vec![ret]
+            } else {
+                vec![]
+            };
+
             types.function(
                 func.params.clone(),
-                [func.ret],
+                ret_type,
             );
         }
 
@@ -90,14 +96,14 @@ impl<'a> WasmBuilder<'a> {
     }
 }
 
-pub(crate) fn convert_type(type_: &TypeKind) -> ValType {
+pub(crate) fn convert_type(type_: &TypeKind) -> Option<ValType> {
     match type_ {
-        TypeKind::Unknown => todo!(),
-        TypeKind::Int => ValType::I32,
-        TypeKind::Float => ValType::F32,
-        TypeKind::String => ValType::I32,
-        TypeKind::Bool => ValType::I32,
-        TypeKind::Nothing => todo!(),
+        TypeKind::Int => Some(ValType::I32),
+        TypeKind::Float => Some(ValType::F32),
+        TypeKind::String => Some(ValType::I32),
+        TypeKind::Bool => Some(ValType::I32),
+        TypeKind::Unknown |
+        TypeKind::Nothing => None,
         TypeKind::Vector(_) => todo!(),
         TypeKind::Function(_) => todo!(),
         TypeKind::Object(_) => todo!(),
