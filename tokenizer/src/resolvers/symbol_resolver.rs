@@ -29,6 +29,7 @@ impl SymbolResolver {
             "float" => Token::Type(TypeKind::Float),
             "bool" => Token::Type(TypeKind::Bool),
             "str" => Token::Type(TypeKind::String),
+            "none" => Token::Type(TypeKind::Nothing),
             "any" => Token::Type(TypeKind::Unknown),
 
             "true" => Token::Literal(LiteralKind::Bool(true)),

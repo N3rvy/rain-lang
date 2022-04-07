@@ -1,5 +1,5 @@
 use std::{collections::HashMap, cell::RefCell};
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType}}, errors::LangError, constants::SCOPE_SIZE};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::module::ModuleUID;
 use tokenizer::{tokens::Token, iterator::Tokens};
@@ -286,6 +286,7 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
             },
+            Token::Type(TypeKind::Nothing) => ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing),
             Token::NewLine => self.parse_statement(tokens)?,
             Token::Operator(_) |
             Token::BoolOperator(_) |

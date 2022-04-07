@@ -6,7 +6,7 @@ use common::module::{ModuleUID, Module};
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::convert_type;
-use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, LOCAL_NOT_FOUND, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
+use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
 
 pub struct FunctionBuilderResult {
     pub name: String,
@@ -244,35 +244,51 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
         match node.kind.as_ref() {
             NodeKind::VariableDecl { name, value } => {
+                // Save the stack size
+                let stack_size = self.type_stack.len();
+
                 // Build value
                 self.build_statement(value)?;
 
-                // Remove "value" from the stack and add it's type to the locals
-                let type_ = self.type_stack.pop().unwrap();
+                // This check is here to make sure that the value assigned
+                // is present (basically is not Nothing)
+                if self.type_stack.len() != stack_size {
+                    // Remove "value" from the stack and add it's type to the locals
+                    let type_ = self.type_stack.pop().unwrap();
 
-                // Add "name" to the locals
-                self.locals.push((name.clone(), type_));
-                // Obtain the newly created local id
-                let id = self.locals.len() as u32 - 1;
+                    // Add "name" to the locals
+                    self.locals.push((name.clone(), type_));
+                    // Obtain the newly created local id
+                    let id = self.locals.len() as u32 - 1;
 
-                self.instructions.push(Instruction::LocalSet(id));
+                    self.instructions.push(Instruction::LocalSet(id));
+                }
             },
             NodeKind::VariableRef { module: _, name } => {
-                let (id, type_) = self.get_local(name)?;
+                let local = self.get_local(name);
 
-                self.instructions.push(Instruction::LocalGet(id));
-                self.type_stack.push(type_);
+                if let Some((id, type_)) = local {
+                    self.instructions.push(Instruction::LocalGet(id));
+                    self.type_stack.push(type_);
+                }
             },
             NodeKind::VariableAsgn { name, value } => {
                 self.build_statement(value)?;
 
-                let type_ = self.type_stack.pop().unwrap();
+                let type_ = self.type_stack.pop();
 
-                let (id, local_type) = self.get_local(name)?;
+                let local = self.get_local(name);
 
-                Self::assert_type(type_, local_type)?;
+                if let Some((id, local_type)) = local {
+                    match type_ {
+                        Some(type_) => {
+                            Self::assert_type(type_, local_type)?;
+                        },
+                        None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                    }
 
-                self.instructions.push(Instruction::LocalSet(id));
+                    self.instructions.push(Instruction::LocalSet(id));
+                }
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 // TODO: Support for other kinds of invocations
@@ -462,8 +478,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         Ok(())
     }
 
-    fn get_local(&self, name: &String) -> Result<(u32, ValType), LangError> {
-        let local = self.locals
+    fn get_local(&self, name: &String) -> Option<(u32, ValType)> {
+        self.locals
             .iter()
             .enumerate()
             .find_map(|(i, (n, type_))| {
@@ -472,12 +488,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 } else {
                     None
                 }
-            });
-
-        match local {
-            Some(local) => Ok(local),
-            None => Err(LangError::new_runtime(LOCAL_NOT_FOUND.to_string())),
-        }
+            })
     }
 
     #[inline]
