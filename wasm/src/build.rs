@@ -29,7 +29,7 @@ impl<'a> WasmBuilder<'a> {
         module.section(&Self::build_types(&result)?);
         module.section(&Self::build_functions(&result)?);
         module.section(&Self::build_exports(&result)?);
-        module.section(&self.build_code(&result)?);
+        module.section(&self.build_code(result)?);
 
         Ok(module.finish())
     }
@@ -38,15 +38,9 @@ impl<'a> WasmBuilder<'a> {
         let mut types = TypeSection::new();
 
         for func in &result.functions {
-            let ret_type = if let Some(ret) = func.ret {
-                vec![ret]
-            } else {
-                vec![]
-            };
-
             types.function(
-                func.params.clone(),
-                ret_type,
+                func.locals.clone(),
+                func.ret.clone(),
             );
         }
 
@@ -73,15 +67,15 @@ impl<'a> WasmBuilder<'a> {
         Ok(exports)
     }
 
-    fn build_code(&self, result: &ModuleBuilderResult) -> Result<CodeSection, LangError> {
+    fn build_code(&self, result: ModuleBuilderResult) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
 
-        for func in &result.functions {
-            let locals = func.locals
-                .iter()
+        for func in result.functions {
+            let locals: Vec<(u32, ValType)> = func.locals
+                .into_iter()
                 .enumerate()
-                .map(|(i, (_, type_))| (i as u32, *type_))
-                .collect::<Vec<(u32, ValType)>>();
+                .map(|(i, local)| (i as u32, local))
+                .collect();
 
             let mut func_builder = Function::new(locals);
 
@@ -96,14 +90,23 @@ impl<'a> WasmBuilder<'a> {
     }
 }
 
-pub(crate) fn convert_type(type_: &TypeKind) -> Option<ValType> {
+pub(crate) fn convert_types(types: &Vec<TypeKind>) -> Vec<ValType> {
+    let mut result = Vec::with_capacity(types.len() + 1);
+    for type_ in types {
+        result.append(&mut convert_type(type_));
+    }
+
+    result
+}
+
+pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
     match type_ {
-        TypeKind::Int => Some(ValType::I32),
-        TypeKind::Float => Some(ValType::F32),
-        TypeKind::String => Some(ValType::I32),
-        TypeKind::Bool => Some(ValType::I32),
+        TypeKind::Int => vec![ValType::I32],
+        TypeKind::Float => vec![ValType::F32],
+        TypeKind::String => vec![ValType::I32],
+        TypeKind::Bool => vec![ValType::I32],
         TypeKind::Unknown |
-        TypeKind::Nothing => None,
+        TypeKind::Nothing => vec![],
         TypeKind::Vector(_) => todo!(),
         TypeKind::Function(_) => todo!(),
         TypeKind::Object(_) => todo!(),

@@ -1,20 +1,19 @@
+use std::ops::Index;
 use wasm_encoder::{BlockType, Instruction, ValType};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{LiteralKind, FunctionType, Function};
+use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
 use common::errors::LangError;
 use common::module::{ModuleUID, Module};
 use core::parser::ModuleLoader;
 use std::sync::Arc;
-use crate::build::convert_type;
+use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
 
 pub struct FunctionBuilderResult {
     pub name: String,
 
-    pub params: Vec<ValType>,
-    pub ret: Option<ValType>,
-
-    pub locals: Vec<(String, ValType)>,
+    pub locals: Vec<ValType>,
+    pub ret: Vec<ValType>,
     pub instructions: Vec<Instruction<'static>>,
 }
 
@@ -24,7 +23,8 @@ pub struct ModuleBuilderResult {
 
 pub struct ModuleBuilder<'a> {
     module_loader: &'a ModuleLoader,
-    functions: Vec<(String, Vec<ValType>, Option<ValType>)>,
+    function_names: Vec<String>,
+    functions: Vec<(Vec<TypeKind>, TypeKind)>,
 
     result_funcs: Vec<FunctionBuilderResult>,
 }
@@ -33,6 +33,7 @@ impl<'a> ModuleBuilder<'a> {
     pub fn new(module_loader: &'a ModuleLoader) -> Self {
         Self {
             module_loader,
+            function_names: Vec::new(),
             functions: Vec::new(),
             result_funcs: Vec::new(),
         }
@@ -40,9 +41,9 @@ impl<'a> ModuleBuilder<'a> {
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
         for (name, func) in &module.functions {
-            let contains_func = self.functions
+            let contains_func = self.function_names
                 .iter()
-                .any(|(n, _, _)| n == name);
+                .any(|n| n == name);
             
             if contains_func {
                 continue
@@ -55,34 +56,12 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     pub fn insert_func(&mut self, name: &str, func_type: &FunctionType, func: &Arc<Function>) -> Result<(), LangError> {
-        let locals = func_type.0
-                .iter()
-                .enumerate()
-                .filter_map(|(i, type_)| {
-                    match convert_type(type_) {
-                        Some(type_) => Some((
-                            func.parameters
-                                .get(i)
-                                .unwrap()
-                                .clone(),
-                            type_,
-                        )),
-                        None => None,
-                    }
-                })
-                .collect();
-
-        let params = func_type.0
-                .iter()
-                .filter_map(|type_| convert_type(type_))
-                .collect();
-
         let mut code_builder = FunctionBuilder::new(
             self,
             name.to_string(),
-            locals,
-            params,
-            convert_type(&func_type.1));
+            func_type.0.clone(),
+            func.parameters.clone(),
+            *func_type.1.clone());
 
         for node in &func.body {
             code_builder.build_statement(&node)?;
@@ -101,28 +80,23 @@ impl<'a> ModuleBuilder<'a> {
         }
     }
 
-    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<ValType>, &Option<ValType>), LangError> {
+    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
         // This "code duplication" is done because otherwise it would complain
         // that self.functions is already borrowed
-        let contains_func = self.functions
+        let func_id = self.function_names
             .iter()
-            .any(|(n, _, _)| n == name);
+            .position(|n| n == name);
 
-        match contains_func {
-            true => {
-                self.functions
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, (n, params, type_))| {
-                        if n == name {
-                            Some((i as u32, params, type_))
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or(LangError::new_runtime(FUNC_NOT_FOUND.to_string()))
+        match func_id {
+            Some(func_id) => {
+                let (params, ret) = self.functions.index(func_id);
+                Ok((
+                    func_id as u32,
+                    params,
+                    ret,
+                ))
             },
-            false => {
+            None => {
                 let module = self.module_loader
                     .get_module(module_uid);
 
@@ -133,21 +107,18 @@ impl<'a> ModuleBuilder<'a> {
 
                 let func = match module.get_func_def(name) {
                     Some(f) => f,
-                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                    None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
                 };
                 
                 self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
 
+                self.function_names.push(name.clone());
                 self.functions.push((
-                    name.clone(),
-                    func.metadata.0
-                        .iter()
-                        .filter_map(|type_| convert_type(type_))
-                        .collect(),
-                    convert_type(func.metadata.1.as_ref()),
+                    func.metadata.0.clone(),
+                    *func.metadata.1.clone(),
                 ));
 
-                let (_, params, ret) = self.functions
+                let (params, ret) = self.functions
                     .last()
                     .unwrap();
 
@@ -162,17 +133,16 @@ impl<'a> ModuleBuilder<'a> {
 }
 
 pub struct FunctionBuilder<'a, 'b> {
-    pub(crate) module_builder: &'a mut ModuleBuilder<'b>,
-    pub(crate) type_stack: Vec<ValType>,
+    module_builder: &'a mut ModuleBuilder<'b>,
 
-    pub(crate) name: String,
+    name: String,
+    id_accumulator: u32,
+    locals: Vec<TypeKind>,
+    local_names: Vec<String>,
+    local_ids: Vec<Vec<u32>>,
+    ret: TypeKind,
 
-    pub(crate) params: Vec<ValType>,
-    pub(crate) ret: Option<ValType>,
-
-    // Stores all the locals (never removes)
-    pub(crate) locals: Vec<(String, ValType)>,
-    // Instructions of the function
+    type_stack: Vec<TypeKind>,
     pub(crate) instructions: Vec<Instruction<'static>>,
 }
 
@@ -180,17 +150,28 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
     pub fn new(
         module_builder: &'a mut ModuleBuilder<'b>,
         name: String,
-        locals: Vec<(String, ValType)>,
-        params: Vec<ValType>,
-        ret: Option<ValType>,
+        params: Vec<TypeKind>,
+        param_names: Vec<String>,
+        ret: TypeKind,
     ) -> Self {
+        let mut id_accumulator = 0u32;
+        let mut local_ids = Vec::with_capacity(params.len());
+        for param in &params {
+            let len = convert_type(param).len() as u32;
+            let ids = (id_accumulator..id_accumulator + len).collect();
+            local_ids.push(ids);
+
+            id_accumulator += len;
+        }
+
         Self {
-            name,
-
             module_builder,
-            locals,
 
-            params,
+            name,
+            id_accumulator,
+            locals: params,
+            local_names: param_names,
+            local_ids,
             ret,
 
             type_stack: Vec::new(),
@@ -204,60 +185,65 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         FunctionBuilderResult {
             name: self.name,
 
-            params: self.params,
-            ret: self.ret,
+            locals: convert_types(&self.locals),
+            ret: convert_type(&self.ret),
 
-            locals: self.locals,
             instructions: self.instructions,
         }
+    }
+
+    pub fn push_local(&mut self, name: String, type_: TypeKind) -> &Vec<u32> {
+        let len = convert_type(&type_).len() as u32;
+        let ids = (self.id_accumulator..self.id_accumulator + len).collect();
+        self.local_ids.push(ids);
+        self.id_accumulator += len;
+
+        self.locals.push(type_);
+        self.local_names.push(name);
+
+        &self.local_ids.last().unwrap()
     }
 
     pub fn build_statement(&mut self, node: &ASTNode) -> Result<(), LangError> {
         match node.kind.as_ref() {
             NodeKind::VariableDecl { name, value } => {
-                // Save the stack size
-                let stack_size = self.type_stack.len();
-
                 // Build value
                 self.build_statement(value)?;
 
-                // This check is here to make sure that the value assigned
-                // is present (basically is not Nothing)
-                if self.type_stack.len() != stack_size {
-                    // Remove "value" from the stack and add it's type to the locals
-                    let type_ = self.type_stack.pop().unwrap();
+                // Remove "value" from the stack and add it's type to the locals
+                let type_ = self.type_stack.pop().unwrap();
 
-                    // Add "name" to the locals
-                    self.locals.push((name.clone(), type_));
-                    // Obtain the newly created local id
-                    let id = self.locals.len() as u32 - 1;
+                let ids = self.push_local(name.clone(), type_).clone();
 
+                for id in ids {
                     self.instructions.push(Instruction::LocalSet(id));
                 }
             },
             NodeKind::VariableRef { module: _, name } => {
-                let local = self.get_local(name);
+                let (local_type, ids) = match self.get_local(name) {
+                    Some((lt, ids)) => (lt.clone(), ids.clone()),
+                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                };
 
-                if let Some((id, type_)) = local {
+                self.type_stack.push(local_type);
+
+                for id in ids {
                     self.instructions.push(Instruction::LocalGet(id));
-                    self.type_stack.push(type_);
                 }
             },
             NodeKind::VariableAsgn { name, value } => {
                 self.build_statement(value)?;
 
-                let type_ = self.type_stack.pop();
+                let type_ = self.type_stack.pop().unwrap();
 
-                let local = self.get_local(name);
+                let (local_type, ids) = match self.get_local(name) {
+                    Some((lt, ids)) => (lt, ids.clone()),
+                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                };
 
-                if let Some((id, local_type)) = local {
-                    match type_ {
-                        Some(type_) => {
-                            Self::assert_type(type_, local_type)?;
-                        },
-                        None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
-                    }
+                Self::assert_type(&type_, local_type)?;
 
+                for id in ids {
                     self.instructions.push(Instruction::LocalSet(id));
                 }
             },
@@ -277,12 +263,10 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 for param in param_types {
                     let type_ = self.type_stack.pop().unwrap();
 
-                    Self::assert_type(type_, param.clone())?;
+                    Self::assert_type(&type_, &param)?;
                 }
 
-                if let Some(ret_type) = ret_type {
-                    self.type_stack.push(ret_type.clone());
-                }
+                self.type_stack.push(ret_type.clone());
 
                 self.instructions.push(Instruction::Call(func_id));
             },
@@ -291,17 +275,17 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     LiteralKind::Nothing => (),
                     LiteralKind::Int(i) => {
                         self.instructions.push(Instruction::I32Const(*i));
-                        self.type_stack.push(ValType::I32);
+                        self.type_stack.push(TypeKind::Int);
                     },
                     LiteralKind::Float(f) => {
                         self.instructions.push(Instruction::F32Const(*f));
-                        self.type_stack.push(ValType::F32);
+                        self.type_stack.push(TypeKind::Float);
                     },
                     LiteralKind::Bool(b) => {
                         let value = if *b { 1 } else { 0 };
 
                         self.instructions.push(Instruction::I32Const(value));
-                        self.type_stack.push(ValType::I32);
+                        self.type_stack.push(TypeKind::Bool);
                     },
                     LiteralKind::String(_) => todo!(),
                 };
@@ -313,9 +297,17 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let right = self.type_stack.pop().unwrap();
                 let left = self.type_stack.pop().unwrap();
 
+                let left_convert = convert_type(&left);
+                let right_convert = convert_type(&right);
+
                 self.type_stack.push(left);
 
-                self.build_math_op(operation, left, right);
+                match (left_convert.as_slice(), right_convert.as_slice()) {
+                    ([left], [right]) => {
+                        self.build_math_op(operation, left.clone(), right.clone());
+                    }
+                    _ => return Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string())),
+                }
             },
             NodeKind::BoolOperation { operation, left, right } => {
                 self.build_statement(left)?;
@@ -324,9 +316,17 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let right = self.type_stack.pop().unwrap();
                 let left = self.type_stack.pop().unwrap();
 
+                let left_convert = convert_type(&left);
+                let right_convert = convert_type(&right);
+
                 self.type_stack.push(left);
 
-                self.build_bool_op(operation, left, right);
+                match (left_convert.as_slice(), right_convert.as_slice()) {
+                    ([left], [right]) => {
+                        self.build_bool_op(operation, left.clone(), right.clone());
+                    }
+                    _ => return Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string())),
+                }
             },
             NodeKind::ReturnStatement { kind: _ , value } => {
                 match value {
@@ -361,12 +361,13 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 self.build_statement(left)?;
 
                 let type_ = self.type_stack.pop().unwrap();
-                Self::assert_type(type_, ValType::I32)?;
+                Self::assert_type(&type_, &TypeKind::Int)?;
 
                 // Add "iter_name" to the locals
-                self.locals.push((iter_name.clone(), ValType::I32));
-                // Obtain the newly created local id
-                let id = self.locals.len() as u32 - 1;
+                let ids = self.push_local(iter_name.clone(), TypeKind::Int);
+
+                // Ids should always be 1 long
+                let id = ids.first().unwrap().clone();
 
                 // Setting "iter_name" to "left"
                 self.instructions.push(Instruction::LocalSet(id));
@@ -449,21 +450,19 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         Ok(())
     }
 
-    fn get_local(&self, name: &String) -> Option<(u32, ValType)> {
-        self.locals
+    fn get_local(&self, name: &String) -> Option<(&TypeKind, &Vec<u32>)> {
+        let id = self.local_names
             .iter()
-            .enumerate()
-            .find_map(|(i, (n, type_))| {
-                if n == name {
-                    Some((i as u32, type_.clone()))
-                } else {
-                    None
-                }
-            })
+            .position(|n| n == name)?;
+
+        Some((
+            self.locals.index(id),
+            self.local_ids.index(id),
+        ))
     }
 
     #[inline]
-    fn assert_type(a: ValType, b: ValType) -> Result<(), LangError> {
+    fn assert_type(a: &TypeKind, b: &TypeKind) -> Result<(), LangError> {
         if a == b {
             Ok(())
         } else {
