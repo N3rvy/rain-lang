@@ -1,6 +1,7 @@
 use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError, EngineExternalModule};
 use std::sync::Arc;
-use common::module::{Module, ModuleUID, ModuleIdentifier};
+use common::module::{Module, ModuleUID, ModuleIdentifier, DefinitionModule};
+use core::parser::ModuleKind;
 use crate::{module::WasmModule, external_module::WasmExternalModule, errors::UNEXPECTED_ERROR};
 use crate::build::WasmBuilder;
 
@@ -39,13 +40,12 @@ impl EngineExternalModule for WasmEngine {
 
     fn insert_external_module(&mut self, module: Self::ExternalModule) {
         self.module_loader
-            .insert_module(module.uid, Module {
+            .insert_module(module.uid, ModuleKind::Definition(Arc::new(DefinitionModule {
                 uid: module.uid,
 
                 imports: Vec::new(),
                 functions: Vec::new(),
-                variables: Vec::new(),
-            });
+            })));
     }
 }
 
@@ -56,7 +56,12 @@ impl EngineBuildSource for WasmEngine {
             None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string()))
         };
 
-        let builder = WasmBuilder::new(&self.module_loader, module);
-        builder.build()
+        match module {
+            ModuleKind::Data(module) => {
+                let builder = WasmBuilder::new(&self.module_loader, module);
+                builder.build()
+            },
+            _ => Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+        }
     }
 }

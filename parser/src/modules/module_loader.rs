@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::TypeKind;
-use common::module::{Module, ModuleUID};
+use common::module::{DefinitionModule, Module, ModuleUID};
 use common::errors::LangError;
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
@@ -11,8 +11,14 @@ use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, Decl
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
 
+#[derive(Clone)]
+pub enum ModuleKind {
+    Data(Arc<Module>),
+    Definition(Arc<DefinitionModule>),
+}
+
 pub struct ModuleLoader {
-    modules: RefCell<HashMap<ModuleUID, Arc<Module>>>,
+    modules: RefCell<HashMap<ModuleUID, ModuleKind>>,
 }
 
 impl ModuleLoader {
@@ -22,10 +28,10 @@ impl ModuleLoader {
         }
     }
 
-    pub fn insert_module(&mut self, uid: ModuleUID, module: Module) {
+    pub fn insert_module(&mut self, uid: ModuleUID, module: ModuleKind) {
         self.modules
             .borrow_mut()
-            .insert(uid, Arc::new(module));
+            .insert(uid, module);
     }
 
     pub fn load_module_with_source(&mut self, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
@@ -48,7 +54,7 @@ impl ModuleLoader {
 
             self.modules
                 .borrow_mut()
-                .insert(*uid, module);
+                .insert(*uid, ModuleKind::Data(module));
         }
 
         // Loading the main module
@@ -59,7 +65,7 @@ impl ModuleLoader {
 
         self.modules
             .borrow_mut()
-            .insert(uid, module);
+            .insert(uid, ModuleKind::Data(module));
 
         Ok((uid, modules))
     }
@@ -127,7 +133,7 @@ impl ModuleLoader {
         Ok(())
     }
 
-    pub fn modules(&self) -> Vec<Arc<Module>> {
+    pub fn modules(&self) -> Vec<ModuleKind> {
         self.modules
             .borrow()
             .iter()
@@ -135,7 +141,7 @@ impl ModuleLoader {
             .collect()
     }
 
-    pub fn get_module(&self, uid: ModuleUID) -> Option<Arc<Module>> {
+    pub fn get_module(&self, uid: ModuleUID) -> Option<ModuleKind> {
         self.modules
             .borrow()
             .get(&uid)
@@ -172,13 +178,23 @@ impl<'a> ModuleLoaderContext<'a> {
                 self.module_loader
                     .get_module(module_uid)
                     .and_then(|module| {
-                        Some(module.functions
-                            .iter()
-                            .map(|(name, func)| (name.clone(), TypeKind::Function(func.metadata.clone())))
-                            .chain(module.variables
-                                .iter()
-                                .map(|(name, var)| (name.clone(), var.metadata.clone())))
-                            .collect())
+                        match module {
+                            ModuleKind::Data(module) => {
+                                Some(module.functions
+                                    .iter()
+                                    .map(|(name, func)| (name.clone(), TypeKind::Function(func.metadata.clone())))
+                                    .chain(module.variables
+                                        .iter()
+                                        .map(|(name, var)| (name.clone(), var.metadata.clone())))
+                                    .collect())
+                            },
+                            ModuleKind::Definition(module) => {
+                                Some(module.functions
+                                    .iter()
+                                    .map(|(name, func_type)| (name.clone(), TypeKind::Function(func_type.clone())))
+                                    .collect())
+                            }
+                        }
                     })
                     .unwrap_or_else(|| Vec::new())
             }

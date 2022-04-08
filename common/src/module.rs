@@ -51,3 +51,19 @@ impl Module {
             .and_then(|(_, def)| Some(def))
     }
 }
+
+pub struct DefinitionModule {
+    pub uid: ModuleUID,
+
+    pub imports: Vec<ModuleUID>,
+    pub functions: Vec<(String, FunctionType)>,
+}
+
+impl DefinitionModule {
+    pub fn get_func_type(&self, name: &String) -> Option<&FunctionType> {
+        self.functions
+            .iter()
+            .find(|(n, _)| n == name)
+            .and_then(|(_, type_)| Some(type_))
+    }
+}

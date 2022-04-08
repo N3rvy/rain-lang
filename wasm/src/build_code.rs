@@ -4,7 +4,7 @@ use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
 use common::errors::LangError;
 use common::module::{ModuleUID, Module};
-use core::parser::ModuleLoader;
+use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
@@ -130,8 +130,8 @@ impl<'a> ModuleBuilder<'a> {
                     .get_module(module_uid);
 
                 let module = match module {
-                    Some(m) => m,
-                    None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
+                    Some(ModuleKind::Data(module)) => module,
+                    _ => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
                 };
 
                 let func = match module.get_func_def(name) {

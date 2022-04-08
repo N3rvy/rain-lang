@@ -14,5 +14,5 @@ pub mod external_module;
 pub mod parser {
     pub use parser::modules::module_importer::ModuleImporter;
     pub use parser::modules::module_initializer::ParsableModule;
-    pub use parser::modules::module_loader::ModuleLoader;
+    pub use parser::modules::module_loader::{ModuleLoader, ModuleKind};
 }
