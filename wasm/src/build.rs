@@ -88,8 +88,8 @@ impl<'a> WasmBuilder<'a> {
         for func in functions {
             let locals: Vec<(u32, ValType)> = func.locals
                 .into_iter()
-                .enumerate()
-                .map(|(i, local)| (i as u32, local))
+                .skip(func.params.len())
+                .map(|local| (1u32, local))
                 .collect();
 
             let mut func_builder = Function::new(locals);
