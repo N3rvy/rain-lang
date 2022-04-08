@@ -90,7 +90,7 @@ impl<'a> ParserScope<'a> {
                 };
 
                 // ...)
-                let params = parse_parameter_names(tokens)?;
+                let (param_names, param_types) = parse_parameter_names(tokens)?;
 
                 // return type?
                 let ret_type = self.parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
@@ -101,8 +101,8 @@ impl<'a> ParserScope<'a> {
                 // creating the child scope
                 let body_scope = self.new_child();
                 // declaring the argument types
-                for (name, type_) in &params {
-                    body_scope.declare(name.clone(), type_.clone());
+                for i in 0..param_names.len() {
+                    body_scope.declare(param_names[i].clone(), param_types[i].clone());
                 }
 
                 // ...}
@@ -112,11 +112,11 @@ impl<'a> ParserScope<'a> {
                     return Err(LangError::new_parser(WRONG_TYPE.to_string()));
                 }
                 
-                let eval_type = TypeKind::Function(FunctionType(params, Box::new(ret_type)));
+                let eval_type = TypeKind::Function(FunctionType(param_types.clone(), Box::new(ret_type)));
 
                 let func_literal = ASTNode::new(
                     NodeKind::new_function_literal(
-                        Function::new(body)),
+                        Function::new(body, param_names)),
                     eval_type.clone(),
                 );
 
@@ -381,7 +381,7 @@ impl<'a> ParserScope<'a> {
                 }
                 
                 for i in 0..parameters.len() {
-                    if !parameters[i].eval_type.is_compatible(&arg_types[i].1) {
+                    if !parameters[i].eval_type.is_compatible(&arg_types[i]) {
                         return Err(LangError::new_parser(INVALID_ARGS.to_string()))
                     }
                 }

@@ -4,7 +4,7 @@ use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::LangError;
 use common::module::{FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use tokenizer::iterator::Tokens;
-use crate::errors::WRONG_TYPE;
+use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
 use crate::modules::module_loader::ModuleLoaderContext;
@@ -44,12 +44,13 @@ impl<'a> ModuleParser<'a> {
                         },
                     ));
                 },
-                DeclarationKind::Function(func_type) => {
+                DeclarationKind::Function(params, func_type) => {
                     let scope = scope.new_child();
 
                     let value = Self::parse_function_value(
                         &mut tokens,
                         &scope,
+                        params,
                         func_type.clone())?;
 
                     if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
@@ -85,7 +86,7 @@ impl<'a> ModuleParser<'a> {
         for (name, def) in &module.declarations {
             let type_kind = match &def.kind {
                 DeclarationKind::Variable(t) => t.clone(),
-                DeclarationKind::Function(ft) => TypeKind::Function(ft.clone()),
+                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
             };
 
             scope.declare(name.clone(), type_kind);
@@ -111,14 +112,18 @@ impl<'a> ModuleParser<'a> {
         scope.parse_statement(tokens)
     }
 
-    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
-        for (name, type_) in func_type.0 {
-            scope.declare(name, type_);
+    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: &Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
+        if params.len() != func_type.0.len() {
+            return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
+        }
+
+        for i in 0..params.len() {
+            scope.declare(params[i].clone(), func_type.0[i].clone());
         }
 
         let body = scope.parse_body(tokens)?;
 
-        Ok(Function::new(body))
+        Ok(Function::new(body, params.clone()))
     }
 
 }

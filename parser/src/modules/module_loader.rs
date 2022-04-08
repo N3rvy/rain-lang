@@ -161,7 +161,7 @@ impl<'a> ModuleLoaderContext<'a> {
                     .map(|(name, decl)| {
                         let kind = match &decl.kind {
                             DeclarationKind::Variable(type_) => type_.clone(),
-                            DeclarationKind::Function(type_) => TypeKind::Function(type_.clone()),
+                            DeclarationKind::Function(_, type_) => TypeKind::Function(type_.clone()),
                         };
 
                         (name.clone(), kind)

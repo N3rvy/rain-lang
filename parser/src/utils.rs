@@ -307,8 +307,9 @@ pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
  * It consumes only the last parenthesis and expectes the first token to be the first argument,
      in this case it will be "arg0"
     */ 
-pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<Vec<(String, TypeKind)>, LangError> {
-    let mut params = Vec::new();
+pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
+    let mut names = Vec::new();
+    let mut types = Vec::new();
     let mut next_is_argument = true;
     
     loop {
@@ -322,7 +323,8 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<Vec<(String, TypeKin
 
                     let t = parse_type_error(tokens)?;
 
-                    params.push((name.clone(), t));
+                    names.push(name.clone());
+                    types.push(t);
                 } else {
                     return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                 }
@@ -339,5 +341,5 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<Vec<(String, TypeKin
         };
     }
 
-    Ok(params)
+    Ok((names, types))
 }

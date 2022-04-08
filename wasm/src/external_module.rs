@@ -51,7 +51,7 @@ where
         let func_type = TypeKind::Function(
             FunctionType(
                 vec![
-                    ("".to_string(), A0::type_kind()),
+                    A0::type_kind(),
                 ],
                 Box::new(R::type_kind())
             )
@@ -72,8 +72,8 @@ where
         let func_type = TypeKind::Function(
             FunctionType(
                 vec![
-                    ("".to_string(), A0::type_kind()),
-                    ("".to_string(), A1::type_kind()),
+                    A0::type_kind(),
+                    A1::type_kind(),
                 ],
                 Box::new(R::type_kind())
             )
@@ -95,9 +95,9 @@ where
         let func_type = TypeKind::Function(
             FunctionType(
                 vec![
-                    ("".to_string(), A0::type_kind()),
-                    ("".to_string(), A1::type_kind()),
-                    ("".to_string(), A2::type_kind()),
+                    A0::type_kind(),
+                    A1::type_kind(),
+                    A2::type_kind(),
                 ],
                 Box::new(R::type_kind())
             )
@@ -120,10 +120,10 @@ where
         let func_type = TypeKind::Function(
             FunctionType(
                 vec![
-                    ("".to_string(), A0::type_kind()),
-                    ("".to_string(), A1::type_kind()),
-                    ("".to_string(), A2::type_kind()),
-                    ("".to_string(), A3::type_kind()),
+                    A0::type_kind(),
+                    A1::type_kind(),
+                    A2::type_kind(),
+                    A3::type_kind(),
                 ],
                 Box::new(R::type_kind())
             )
