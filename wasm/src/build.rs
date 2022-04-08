@@ -1,9 +1,9 @@
 use std::sync::Arc;
-use wasm_encoder::{CodeSection, Export, ExportSection, Function, FunctionSection, Module, TypeSection, ValType};
+use wasm_encoder::{CodeSection, DataSection, Export, ExportSection, Function, FunctionSection, Instruction, MemorySection, MemoryType, Module, TypeSection, ValType};
 use common::ast::types::TypeKind;
 use common::errors::LangError;
 use core::parser::ModuleLoader;
-use crate::build_code::{ModuleBuilder, ModuleBuilderResult};
+use crate::build_code::{FunctionBuilderResult, ModuleBuilder, ModuleBuilderResult, ModuleData};
 
 pub struct WasmBuilder<'a> {
     module_loader: &'a ModuleLoader,
@@ -26,10 +26,13 @@ impl<'a> WasmBuilder<'a> {
 
         let mut module = Module::new();
 
-        module.section(&Self::build_types(&result)?);
-        module.section(&Self::build_functions(&result)?);
-        module.section(&Self::build_exports(&result)?);
-        module.section(&self.build_code(result)?);
+        module
+            .section(&Self::build_types(&result)?)
+            .section(&Self::build_functions(&result)?)
+            .section(&Self::build_memory(64))
+            .section(&Self::build_exports(&result)?)
+            .section(&self.build_code(result.functions)?)
+            .section(&Self::build_data(result.data));
 
         Ok(module.finish())
     }
@@ -39,7 +42,7 @@ impl<'a> WasmBuilder<'a> {
 
         for func in &result.functions {
             types.function(
-                func.locals.clone(),
+                func.params.clone(),
                 func.ret.clone(),
             );
         }
@@ -57,6 +60,16 @@ impl<'a> WasmBuilder<'a> {
         Ok(functions)
     }
 
+    fn build_memory(size: u64) -> MemorySection {
+        let mut memory = MemorySection::new();
+        memory.memory(MemoryType {
+            minimum: size,
+            maximum: None,
+            memory64: false,
+        });
+        memory
+    }
+
     fn build_exports(result: &ModuleBuilderResult) -> Result<ExportSection, LangError> {
         let mut exports = ExportSection::new();
 
@@ -64,13 +77,15 @@ impl<'a> WasmBuilder<'a> {
             exports.export(func.name.as_ref(), Export::Function(i as u32));
         }
 
+        exports.export("mem", Export::Memory(0));
+
         Ok(exports)
     }
 
-    fn build_code(&self, result: ModuleBuilderResult) -> Result<CodeSection, LangError> {
+    fn build_code(&self, functions: Vec<FunctionBuilderResult>) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
 
-        for func in result.functions {
+        for func in functions {
             let locals: Vec<(u32, ValType)> = func.locals
                 .into_iter()
                 .enumerate()
@@ -87,6 +102,16 @@ impl<'a> WasmBuilder<'a> {
         }
 
         Ok(codes)
+    }
+
+    fn build_data(result: Vec<ModuleData>) -> DataSection {
+        let mut data_sec = DataSection::new();
+
+        for data in result {
+            data_sec.active(0, &Instruction::I32Const(data.offset as i32), data.bytes);
+        }
+
+        data_sec
     }
 }
 

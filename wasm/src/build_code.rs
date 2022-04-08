@@ -12,13 +12,21 @@ use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODU
 pub struct FunctionBuilderResult {
     pub name: String,
 
-    pub locals: Vec<ValType>,
+    pub params: Vec<ValType>,
     pub ret: Vec<ValType>,
+
+    pub locals: Vec<ValType>,
     pub instructions: Vec<Instruction<'static>>,
+}
+
+pub struct ModuleData {
+    pub offset: u32,
+    pub bytes: Vec<u8>,
 }
 
 pub struct ModuleBuilderResult {
     pub functions: Vec<FunctionBuilderResult>,
+    pub data: Vec<ModuleData>
 }
 
 pub struct ModuleBuilder<'a> {
@@ -26,6 +34,8 @@ pub struct ModuleBuilder<'a> {
     function_names: Vec<String>,
     functions: Vec<(Vec<TypeKind>, TypeKind)>,
 
+    data_offset_accumulator: u32,
+    data: Vec<ModuleData>,
     result_funcs: Vec<FunctionBuilderResult>,
 }
 
@@ -35,6 +45,9 @@ impl<'a> ModuleBuilder<'a> {
             module_loader,
             function_names: Vec::new(),
             functions: Vec::new(),
+
+            data_offset_accumulator: 0,
+            data: Vec::new(),
             result_funcs: Vec::new(),
         }
     }
@@ -77,7 +90,23 @@ impl<'a> ModuleBuilder<'a> {
     pub fn build(self) -> ModuleBuilderResult {
         ModuleBuilderResult {
             functions: self.result_funcs,
+            data: self.data,
         }
+    }
+
+    fn push_data(&mut self, data: Vec<u8>) -> u32 {
+        let data_len = data.len() as u32;
+
+        let offset = self.data_offset_accumulator;
+
+        self.data.push(ModuleData {
+            bytes: data,
+            offset: self.data_offset_accumulator,
+        });
+
+        self.data_offset_accumulator += data_len;
+
+        offset
     }
 
     fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
@@ -135,12 +164,15 @@ impl<'a> ModuleBuilder<'a> {
 pub struct FunctionBuilder<'a, 'b> {
     module_builder: &'a mut ModuleBuilder<'b>,
 
+    /// This is like locals but is kept untouched
+    params: Vec<TypeKind>,
+    ret: TypeKind,
+
     name: String,
     id_accumulator: u32,
     locals: Vec<TypeKind>,
     local_names: Vec<String>,
     local_ids: Vec<Vec<u32>>,
-    ret: TypeKind,
 
     type_stack: Vec<TypeKind>,
     pub(crate) instructions: Vec<Instruction<'static>>,
@@ -167,12 +199,14 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         Self {
             module_builder,
 
+            params: params.clone(),
+            ret,
+
             name,
             id_accumulator,
             locals: params,
             local_names: param_names,
             local_ids,
-            ret,
 
             type_stack: Vec::new(),
             instructions: Vec::new(),
@@ -185,9 +219,10 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         FunctionBuilderResult {
             name: self.name,
 
-            locals: convert_types(&self.locals),
+            params: convert_types(&self.params),
             ret: convert_type(&self.ret),
 
+            locals: convert_types(&self.locals),
             instructions: self.instructions,
         }
     }
@@ -287,7 +322,17 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         self.instructions.push(Instruction::I32Const(value));
                         self.type_stack.push(TypeKind::Bool);
                     },
-                    LiteralKind::String(_) => todo!(),
+                    LiteralKind::String(string) => {
+                        let string_len = string.len() as u32;
+
+                        let mut data = string_len.to_be_bytes().to_vec();
+                        data.append(&mut string.clone().into_bytes());
+
+                        let offset = self.module_builder.push_data(data);
+
+                        self.instructions.push(Instruction::I32Const(offset as i32));
+                        self.type_stack.push(TypeKind::String);
+                    },
                 };
             },
             NodeKind::MathOperation { operation, left, right } => {

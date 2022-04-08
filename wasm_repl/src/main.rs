@@ -36,9 +36,17 @@ fn main() -> anyhow::Result<()> {
     let mut store = wasmtime::Store::new(&engine, ());
     let instance = linker.instantiate(&mut store, &module)?;
 
-    let run = instance.get_typed_func::<f32, f32, _>(&mut store, "run")?;
-    let result = run.call(&mut store, 5.0)?;
-    println!("result: {}", result);
+    let memory = instance.get_memory(&mut store, "mem").unwrap();
+
+    let run = instance.get_typed_func::<(), i32, _>(&mut store, "run")?;
+    let result = run.call(&mut store, ())? as usize;
+
+    let data = memory.data(&mut store);
+
+    let str_len = u32::from_be_bytes([data[result], data[result+1], data[result+2], data[result+3]]) as usize;
+    let str = String::from_utf8(data[result+4..result+4+str_len].to_vec()).unwrap();
+
+    println!("result: {}", str);
     
     Ok(())
 }
