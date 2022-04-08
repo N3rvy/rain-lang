@@ -32,7 +32,7 @@ pub struct ModuleBuilderResult {
 pub struct ModuleBuilder<'a> {
     module_loader: &'a ModuleLoader,
     function_names: Vec<String>,
-    functions: Vec<(Vec<TypeKind>, TypeKind)>,
+    functions: Vec<FunctionType>,
 
     data_offset_accumulator: u32,
     data: Vec<ModuleData>,
@@ -73,7 +73,6 @@ impl<'a> ModuleBuilder<'a> {
             self,
             name.to_string(),
             func_type.0.clone(),
-            func.parameters.clone(),
             *func_type.1.clone());
 
         for node in &func.body {
@@ -109,7 +108,7 @@ impl<'a> ModuleBuilder<'a> {
         offset
     }
 
-    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
+    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<(String, TypeKind)>, &TypeKind), LangError> {
         // This "code duplication" is done because otherwise it would complain
         // that self.functions is already borrowed
         let func_id = self.function_names
@@ -118,7 +117,7 @@ impl<'a> ModuleBuilder<'a> {
 
         match func_id {
             Some(func_id) => {
-                let (params, ret) = self.functions.index(func_id);
+                let FunctionType(params, ret) = self.functions.index(func_id);
                 Ok((
                     func_id as u32,
                     params,
@@ -142,12 +141,9 @@ impl<'a> ModuleBuilder<'a> {
                 self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
 
                 self.function_names.push(name.clone());
-                self.functions.push((
-                    func.metadata.0.clone(),
-                    *func.metadata.1.clone(),
-                ));
+                self.functions.push(func.metadata.clone());
 
-                let (params, ret) = self.functions
+                let FunctionType(params, ret) = self.functions
                     .last()
                     .unwrap();
 
@@ -182,16 +178,19 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
     pub fn new(
         module_builder: &'a mut ModuleBuilder<'b>,
         name: String,
-        params: Vec<TypeKind>,
-        param_names: Vec<String>,
+        params: Vec<(String, TypeKind)>,
         ret: TypeKind,
     ) -> Self {
         let mut id_accumulator = 0u32;
         let mut local_ids = Vec::with_capacity(params.len());
-        for param in &params {
-            let len = convert_type(param).len() as u32;
+        let mut param_types = Vec::with_capacity(params.len());
+        let mut param_names = Vec::with_capacity(params.len());
+        for (name, param) in params {
+            let len = convert_type(&param).len() as u32;
             let ids = (id_accumulator..id_accumulator + len).collect();
             local_ids.push(ids);
+            param_types.push(param);
+            param_names.push(name);
 
             id_accumulator += len;
         }
@@ -199,12 +198,12 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         Self {
             module_builder,
 
-            params: params.clone(),
+            params: param_types.clone(),
             ret,
 
             name,
             id_accumulator,
-            locals: params,
+            locals: param_types,
             local_names: param_names,
             local_ids,
 
@@ -295,7 +294,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 let (func_id, param_types, ret_type) = self.module_builder.get_func(*module, name)?;
 
-                for param in param_types {
+                for (_name, param) in param_types {
                     let type_ = self.type_stack.pop().unwrap();
 
                     Self::assert_type(&type_, &param)?;

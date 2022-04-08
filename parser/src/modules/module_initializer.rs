@@ -9,7 +9,7 @@ use crate::utils::{parse_parameter_names, parse_type_error};
 
 pub enum DeclarationKind {
     Variable(TypeKind),
-    Function(Vec<String>, FunctionType),
+    Function(FunctionType),
 }
 
 pub struct Declaration {
@@ -118,7 +118,7 @@ impl ModuleInitializer {
                 expect_token!(module.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
                 // (<param_name> (type))*)
-                let (param_names, param_types) = parse_parameter_names(&mut module.tokens)?;
+                let params = parse_parameter_names(&mut module.tokens)?;
 
                 // (type)
                 let ret_type = parse_type_error(&mut module.tokens)?;
@@ -129,12 +129,12 @@ impl ModuleInitializer {
                 let body = module.tokens.snapshot();
                 Self::pop_until_dedent(&mut module.tokens);
 
-                let func_type = FunctionType(param_types, Box::new(ret_type));
+                let func_type = FunctionType(params, Box::new(ret_type));
 
                 Ok(DeclarationParseAction::Declaration(
                     name,
                     Declaration {
-                        kind: DeclarationKind::Function(param_names, func_type),
+                        kind: DeclarationKind::Function(func_type),
                         body,
                     }
                 ))

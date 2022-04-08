@@ -1,8 +1,20 @@
 use std::{collections::HashMap, sync::Arc, fmt::Debug};
 use super::ASTBody;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
+#[derive(Clone, Debug)]
+pub struct FunctionType(pub Vec<(String, TypeKind)>, pub Box<TypeKind>);
+
+impl PartialEq for FunctionType {
+    fn eq(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .map(|(_, type_)| type_)
+            .eq(other.0
+                .iter()
+                .map(|(_, type_)| type_))
+        && self.1 == other.1
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
@@ -109,7 +121,6 @@ impl From<LiteralKind> for TypeKind {
 
 pub struct Function {
     pub body: ASTBody,
-    pub parameters: Vec<String>,
 }
 
 impl Debug for Function {
@@ -119,7 +130,7 @@ impl Debug for Function {
 }
 
 impl Function {
-    pub fn new(body: ASTBody, parameters: Vec<String>) -> Arc<Function> {
-        Arc::new(Self { body, parameters })
+    pub fn new(body: ASTBody) -> Arc<Function> {
+        Arc::new(Self { body })
     }
 }

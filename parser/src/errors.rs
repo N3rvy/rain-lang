@@ -1,6 +1,5 @@
 use common::errors::LangError;
 
-pub const UNEXPECTED_ERROR: &str = "Unexpected error";
 pub const UNEXPECTED_TOKEN: &str = "Unexpected token";
 pub const UNEXPECTED_END_OF_FILE: &str = "Unexpected end of file";
 pub const WRONG_TYPE: &str = "Wrong typing";
