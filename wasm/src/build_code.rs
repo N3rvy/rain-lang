@@ -9,23 +9,22 @@ use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
 
-pub enum FunctionData {
-    Data {
-        locals: Vec<ValType>,
-        instructions: Vec<Instruction<'static>>,
-    },
-    Import {
-        module_name: String,
-    },
-}
-
-pub struct FunctionBuilderResult {
+pub struct FunctionData {
     pub name: String,
 
     pub params: Vec<ValType>,
     pub ret: Vec<ValType>,
 
-    pub data: FunctionData,
+    pub locals: Vec<ValType>,
+    pub instructions: Vec<Instruction<'static>>,
+}
+
+pub struct FunctionImport {
+    pub module_name: String,
+    pub name: String,
+
+    pub params: Vec<ValType>,
+    pub ret: Vec<ValType>,
 }
 
 pub struct ModuleData {
@@ -34,7 +33,8 @@ pub struct ModuleData {
 }
 
 pub struct ModuleBuilderResult {
-    pub functions: Vec<FunctionBuilderResult>,
+    pub function_data: Vec<FunctionData>,
+    pub function_imports: Vec<FunctionImport>,
     pub data: Vec<ModuleData>
 }
 
@@ -45,20 +45,33 @@ pub struct ModuleBuilder<'a> {
 
     data_offset_accumulator: u32,
     data: Vec<ModuleData>,
-    result_funcs: Vec<FunctionBuilderResult>,
+    function_data: Vec<FunctionData>,
+    function_imports: Vec<FunctionImport>,
 }
 
 impl<'a> ModuleBuilder<'a> {
-    pub fn new(module_loader: &'a ModuleLoader) -> Self {
-        Self {
+    pub fn new(module_loader: &'a ModuleLoader) -> Result<Self, LangError> {
+        let mut builder = Self {
             module_loader,
             function_names: Vec::new(),
             functions: Vec::new(),
 
             data_offset_accumulator: 0,
             data: Vec::new(),
-            result_funcs: Vec::new(),
+            function_data: Vec::new(),
+            function_imports: Vec::new(),
+        };
+
+        for def_module in module_loader.def_modules() {
+            for (name, type_) in &def_module.functions {
+                builder.function_names.push(name.clone());
+                builder.functions.push((type_.0.clone(), *type_.1.clone()));
+
+                builder.insert_imported_func(def_module.id.0.as_ref(), name.as_ref(), type_)?;
+            }
         }
+
+        Ok(builder)
     }
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
@@ -78,13 +91,12 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     pub fn insert_imported_func(&mut self, module_name: &str, name: &str, func_type: &FunctionType) -> Result<(), LangError> {
-        self.result_funcs.push(FunctionBuilderResult {
+        self.function_imports.push(FunctionImport {
+            module_name: module_name.to_string(),
             name: name.to_string(),
+
             params: convert_types(&func_type.0),
             ret: convert_type(func_type.1.as_ref()),
-            data: FunctionData::Import {
-                module_name: module_name.to_string(),
-            },
         });
 
         Ok(())
@@ -104,14 +116,15 @@ impl<'a> ModuleBuilder<'a> {
 
         let result = code_builder.build();
 
-        self.result_funcs.push(result);
+        self.function_data.push(result);
 
         Ok(())
     }
 
     pub fn build(self) -> ModuleBuilderResult {
         ModuleBuilderResult {
-            functions: self.result_funcs,
+            function_data: self.function_data,
+            function_imports: self.function_imports,
             data: self.data,
         }
     }
@@ -176,29 +189,6 @@ impl<'a> ModuleBuilder<'a> {
                             ret
                         ))
                     },
-                    Some(ModuleKind::Definition(module)) => {
-                        let func = match module.get_func_type(name) {
-                            Some(f) => f,
-                            None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
-                        };
-
-                        self.insert_imported_func(module.id.0.as_ref(), name.as_ref(), func)?;
-                        self.function_names.push(name.clone());
-                        self.functions.push((
-                            func.0.clone(),
-                            *func.1.clone(),
-                        ));
-
-                        let (params, ret) = self.functions
-                            .last()
-                            .unwrap();
-
-                        Ok((
-                            self.functions.len() as u32 - 1,
-                            params,
-                            ret,
-                        ))
-                    }
                     _ => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
                 }
             },
@@ -258,19 +248,17 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         }
     }
 
-    pub fn build(mut self) -> FunctionBuilderResult {
+    pub fn build(mut self) -> FunctionData {
         self.instructions.push(Instruction::End);
 
-        FunctionBuilderResult {
+        FunctionData {
             name: self.name,
 
             params: convert_types(&self.params),
             ret: convert_type(&self.ret),
 
-            data: FunctionData::Data {
-                locals: convert_types(&self.locals),
-                instructions: self.instructions,
-            },
+            locals: convert_types(&self.locals),
+            instructions: self.instructions,
         }
     }
 

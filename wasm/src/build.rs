@@ -3,7 +3,7 @@ use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, 
 use common::ast::types::TypeKind;
 use common::errors::LangError;
 use core::parser::ModuleLoader;
-use crate::build_code::{FunctionBuilderResult, FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData};
+use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData};
 
 pub struct WasmBuilder<'a> {
     module_loader: &'a ModuleLoader,
@@ -19,7 +19,7 @@ impl<'a> WasmBuilder<'a> {
     }
 
     pub fn build(self) -> Result<Vec<u8>, LangError> {
-        let mut module_builder = ModuleBuilder::new(&self.module_loader);
+        let mut module_builder = ModuleBuilder::new(&self.module_loader)?;
         module_builder.insert_module(self.module.clone())?;
 
         let result = module_builder.build();
@@ -29,10 +29,10 @@ impl<'a> WasmBuilder<'a> {
         module
             .section(&Self::build_types(&result)?)
             .section(&Self::build_imports(&result)?)
-            .section(&Self::build_functions(&result)?)
+            .section(&Self::build_functions(result.function_imports.len() as u32, &result)?)
             .section(&Self::build_memory(64))
             .section(&Self::build_exports(&result)?)
-            .section(&self.build_code(result.functions)?)
+            .section(&self.build_code(result.function_data)?)
             .section(&Self::build_data(result.data));
 
         Ok(module.finish())
@@ -41,7 +41,14 @@ impl<'a> WasmBuilder<'a> {
     fn build_types(result: &ModuleBuilderResult) -> Result<TypeSection, LangError> {
         let mut types = TypeSection::new();
 
-        for func in &result.functions {
+        for func in &result.function_imports {
+            types.function(
+                func.params.clone(),
+                func.ret.clone(),
+            );
+        }
+
+        for func in &result.function_data {
             types.function(
                 func.params.clone(),
                 func.ret.clone(),
@@ -54,28 +61,22 @@ impl<'a> WasmBuilder<'a> {
     fn build_imports(result: &ModuleBuilderResult) -> Result<ImportSection, LangError> {
         let mut imports = ImportSection::new();
 
-        for (i, func) in result.functions.iter().enumerate() {
-            if let FunctionData::Import { module_name } = &func.data {
-                imports.import(
-                    module_name.as_ref(),
-                    Some(func.name.as_ref()),
-                    EntityType::Function(i as u32),
-                );
-            }
+        for (i, func) in result.function_imports.iter().enumerate() {
+            imports.import(
+                func.module_name.as_ref(),
+                Some(func.name.as_ref()),
+                EntityType::Function(i as u32),
+            );
         }
 
         Ok(imports)
     }
 
-    fn build_functions(result: &ModuleBuilderResult) -> Result<FunctionSection, LangError> {
+    fn build_functions(offset: u32, result: &ModuleBuilderResult) -> Result<FunctionSection, LangError> {
         let mut functions = FunctionSection::new();
 
-        for (i, func) in result.functions.iter().enumerate() {
-            if let FunctionData::Import { module_name: _ } = func.data {
-                continue
-            }
-
-            functions.function(i as u32);
+        for (i, _) in result.function_data.iter().enumerate() {
+            functions.function(offset + i as u32);
         }
 
         Ok(functions)
@@ -94,8 +95,10 @@ impl<'a> WasmBuilder<'a> {
     fn build_exports(result: &ModuleBuilderResult) -> Result<ExportSection, LangError> {
         let mut exports = ExportSection::new();
 
-        for (i, func) in result.functions.iter().enumerate() {
-            exports.export(func.name.as_ref(), Export::Function(i as u32));
+        let offset = result.function_imports.len() as u32;
+
+        for (i, func) in result.function_data.iter().enumerate() {
+            exports.export(func.name.as_ref(), Export::Function(offset + i as u32));
         }
 
         exports.export("mem", Export::Memory(0));
@@ -103,16 +106,11 @@ impl<'a> WasmBuilder<'a> {
         Ok(exports)
     }
 
-    fn build_code(&self, functions: Vec<FunctionBuilderResult>) -> Result<CodeSection, LangError> {
+    fn build_code(&self, functions: Vec<FunctionData>) -> Result<CodeSection, LangError> {
         let mut codes = CodeSection::new();
 
         for func in functions {
-            let (locals, instructions) = match func.data {
-                FunctionData::Data { locals, instructions } => (locals, instructions),
-                _ => continue,
-            };
-
-            let locals: Vec<(u32, ValType)> = locals
+            let locals: Vec<(u32, ValType)> = func.locals
                 .into_iter()
                 .skip(func.params.len())
                 .map(|local| (1u32, local))
@@ -120,7 +118,7 @@ impl<'a> WasmBuilder<'a> {
 
             let mut func_builder = Function::new(locals);
 
-            for inst in &instructions {
+            for inst in &func.instructions {
                 func_builder.instruction(inst);
             }
 

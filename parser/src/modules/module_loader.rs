@@ -162,6 +162,19 @@ impl ModuleLoader {
         Ok(())
     }
 
+    pub fn def_modules(&self) -> Vec<Arc<DefinitionModule>> {
+        self.modules
+            .borrow()
+            .iter()
+            .filter_map(|(_, module)| {
+                match module {
+                    ModuleKind::Definition(def_module) => Some(def_module.clone()),
+                    ModuleKind::Data(_) => None,
+                }
+            })
+            .collect()
+    }
+
     pub fn modules(&self) -> Vec<ModuleKind> {
         self.modules
             .borrow()
