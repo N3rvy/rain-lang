@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use wasm_encoder::{CodeSection, DataSection, Export, ExportSection, Function, FunctionSection, Instruction, MemorySection, MemoryType, Module, TypeSection, ValType};
+use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, Function, FunctionSection, ImportSection, Instruction, MemorySection, MemoryType, Module, TypeSection, ValType};
 use common::ast::types::TypeKind;
 use common::errors::LangError;
 use core::parser::ModuleLoader;
@@ -28,6 +28,7 @@ impl<'a> WasmBuilder<'a> {
 
         module
             .section(&Self::build_types(&result)?)
+            .section(&Self::build_imports(&result)?)
             .section(&Self::build_functions(&result)?)
             .section(&Self::build_memory(64))
             .section(&Self::build_exports(&result)?)
@@ -50,10 +51,32 @@ impl<'a> WasmBuilder<'a> {
         Ok(types)
     }
 
+    fn build_imports(result: &ModuleBuilderResult) -> Result<ImportSection, LangError> {
+        let mut imports = ImportSection::new();
+
+        for (i, func) in result.functions.iter().enumerate() {
+            if let Some(_) = func.data {
+                continue
+            }
+
+            imports.import(
+                "repl.d.vrs",
+                Some(func.name.as_ref()),
+                EntityType::Function(i as u32),
+            );
+        }
+
+        Ok(imports)
+    }
+
     fn build_functions(result: &ModuleBuilderResult) -> Result<FunctionSection, LangError> {
         let mut functions = FunctionSection::new();
 
-        for i in 0..result.functions.len() {
+        for (i, func) in result.functions.iter().enumerate() {
+            if let None = func.data {
+                continue
+            }
+
             functions.function(i as u32);
         }
 
@@ -86,7 +109,12 @@ impl<'a> WasmBuilder<'a> {
         let mut codes = CodeSection::new();
 
         for func in functions {
-            let locals: Vec<(u32, ValType)> = func.locals
+            let func_data = match func.data {
+                Some(data) => data,
+                None => continue,
+            };
+
+            let locals: Vec<(u32, ValType)> = func_data.locals
                 .into_iter()
                 .skip(func.params.len())
                 .map(|local| (1u32, local))
@@ -94,7 +122,7 @@ impl<'a> WasmBuilder<'a> {
 
             let mut func_builder = Function::new(locals);
 
-            for inst in &func.instructions {
+            for inst in &func_data.instructions {
                 func_builder.instruction(inst);
             }
 

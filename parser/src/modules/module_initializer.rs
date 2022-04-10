@@ -1,9 +1,9 @@
 use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::LangError;
-use common::module::ModuleIdentifier;
+use common::module::{DefinitionModule, ModuleIdentifier, ModuleUID};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use tokenizer::tokens::Token;
-use crate::errors::ParsingErrorHelper;
+use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, VAR_INSIDE_DEF_MODULE};
 use crate::{expect_indent, expect_token};
 use crate::utils::{parse_parameter_names, parse_type_error};
 
@@ -38,7 +38,7 @@ impl ModuleInitializer {
                 break
             }
 
-            let result = Self::parse_declaration(&mut module);
+            let result = Self::parse_declaration(&mut module.tokens, false);
             match result {
                 Ok(DeclarationParseAction::Import(path)) => {
                     module.imports.push(ModuleIdentifier(path));
@@ -46,6 +46,7 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Declaration(name, declaration)) => {
                     module.declarations.push((name, declaration));
                 },
+                Ok(DeclarationParseAction::FunctionDefinition(_, _)) => return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string())),
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -54,8 +55,39 @@ impl ModuleInitializer {
         Ok(module)
     }
 
-    fn parse_declaration(module: &mut ParsableModule) -> Result<DeclarationParseAction, LangError> {
-        let token = match module.tokens.pop() {
+    pub fn create_definition(mut tokens: Tokens, uid: ModuleUID) -> Result<DefinitionModule, LangError> {
+        let imports = Vec::new();
+        let mut functions = Vec::new();
+
+        loop {
+            if !tokens.has_next() {
+                break
+            }
+
+            let result = Self::parse_declaration(&mut tokens, true);
+            match result {
+                Ok(DeclarationParseAction::Import(_path)) => {
+                    todo!()
+                },
+                Ok(DeclarationParseAction::Declaration(_, _)) => return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string())),
+                Ok(DeclarationParseAction::FunctionDefinition(name, func_type)) => {
+                    functions.push((name, func_type));
+                },
+                Ok(DeclarationParseAction::Nothing) => (),
+                Err(err) => return Err(err),
+            }
+        }
+
+        Ok(DefinitionModule {
+            uid,
+
+            imports,
+            functions,
+        })
+    }
+
+    fn parse_declaration(tokens: &mut Tokens, is_definition: bool) -> Result<DeclarationParseAction, LangError> {
+        let token = match tokens.pop() {
             Some(t) => t,
             None => return Err(LangError::new_parser_end_of_file()),
         };
@@ -65,36 +97,40 @@ impl ModuleInitializer {
                 // import [path]
 
                 // [path]
-                let path = match module.tokens.pop() {
+                let path = match tokens.pop() {
                     Some(Token::Literal(LiteralKind::String(path))) => path,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // new line
-                expect_token!(module.tokens.pop(), Token::NewLine);
+                expect_token!(tokens.pop(), Token::NewLine);
 
                 Ok(DeclarationParseAction::Import(path))
             },
             Token::Variable => {
                 // var <name> (type) = [value]
 
+                if is_definition {
+                    return Err(LangError::new_parser(VAR_INSIDE_DEF_MODULE.to_string()));
+                }
+
                 // <name>
-                let name = match module.tokens.pop() {
+                let name = match tokens.pop() {
                     Some(Token::Symbol(name)) => name,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // (type)
-                let type_kind = parse_type_error(&mut module.tokens)?;
+                let type_kind = parse_type_error(tokens)?;
 
                 // =
-                expect_token!(module.tokens.pop(), Token::Operator(OperatorKind::Assign));
+                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
 
                 // [value]
-                let body = module.tokens.snapshot();
-                Self::pop_until_newline(&mut module.tokens);
+                let body = tokens.snapshot();
+                Self::pop_until_newline(tokens);
 
                 Ok(DeclarationParseAction::Declaration(
                     name,
@@ -108,28 +144,32 @@ impl ModuleInitializer {
                 // func <name>((<param_name> (type))*) (type): {body}
 
                 // <name>
-                let name = match module.tokens.pop() {
+                let name = match tokens.pop() {
                     Some(Token::Symbol(name)) => name,
                     Some(_) => return Err(LangError::new_parser_unexpected_token()),
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
                 // (
-                expect_token!(module.tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
                 // (<param_name> (type))*)
-                let (param_names, param_types) = parse_parameter_names(&mut module.tokens)?;
+                let (param_names, param_types) = parse_parameter_names(tokens)?;
 
                 // (type)
-                let ret_type = parse_type_error(&mut module.tokens)?;
-
-                expect_indent!(module.tokens);
-
-                // {body}
-                let body = module.tokens.snapshot();
-                Self::pop_until_dedent(&mut module.tokens);
+                let ret_type = parse_type_error(tokens)?;
 
                 let func_type = FunctionType(param_types, Box::new(ret_type));
+
+                if is_definition {
+                    return Ok(DeclarationParseAction::FunctionDefinition(name, func_type))
+                }
+
+                expect_indent!(tokens);
+
+                // {body}
+                let body = tokens.snapshot();
+                Self::pop_until_dedent(tokens);
 
                 Ok(DeclarationParseAction::Declaration(
                     name,
@@ -176,5 +216,6 @@ impl ModuleInitializer {
 enum DeclarationParseAction {
     Import(String),
     Declaration(String, Declaration),
+    FunctionDefinition(String, FunctionType),
     Nothing,
 }

@@ -97,6 +97,10 @@ impl Engine for InterpreterEngine {
         Ok(uid)
     }
 
+    fn load_def_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+        todo!()
+    }
+
     fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
         let uid = module.uid;
         let eng_module = InterpreterModule::from_module(self, module)?;

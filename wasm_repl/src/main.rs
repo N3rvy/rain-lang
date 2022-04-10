@@ -1,5 +1,6 @@
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
 use std::{env::{self, args}, ops::Index, fs::File, io::Write};
+use wasmtime::{Caller, Extern, FuncType, Trap, Val, ValType};
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 
@@ -20,6 +21,8 @@ fn main() -> anyhow::Result<()> {
     // Creating the engine
     let mut engine = WasmEngine::new();
 
+    engine.load_def_module("repl.d.vrs", &ReplImporter)?;
+
     // Creating the module from the source file
     let module = engine
         .load_module(source_path.to_string(), &ReplImporter)?;
@@ -32,22 +35,55 @@ fn main() -> anyhow::Result<()> {
 
     let engine = wasmtime::Engine::default();
     let module = wasmtime::Module::from_binary(&engine, wasm.as_slice())?;
-    let linker = wasmtime::Linker::new(&engine);
+    let mut linker = wasmtime::Linker::new(&engine);
     let mut store = wasmtime::Store::new(&engine, ());
+
+    linker.func_new(
+        "repl.d.vrs",
+        "printI",
+        FuncType::new([ValType::I32], []),
+        |_, params, _| {
+            match params {
+                [Val::I32(i)] => println!("LOG: {}", i),
+                _ => (),
+            };
+            Ok(())
+        },
+    )?;
+
+    linker.func_new(
+        "repl.d.vrs",
+        "print",
+        FuncType::new([ValType::I32], []),
+        print_str)?;
+
     let instance = linker.instantiate(&mut store, &module)?;
+    let run = instance.get_typed_func::<(), (), _>(&mut store, "run")?;
+    run.call(&mut store, ())?;
 
-    let memory = instance.get_memory(&mut store, "mem").unwrap();
+    Ok(())
+}
 
-    let run = instance.get_typed_func::<(), i32, _>(&mut store, "run")?;
-    let result = run.call(&mut store, ())? as usize;
+fn print_str(mut caller: Caller<()>, params: &[Val], _ret: &mut [Val]) -> Result<(), Trap> {
+    match params {
+        [Val::I32(i)] => {
+            let i = *i as usize;
 
-    let data = memory.data(&mut store);
+            let mem = match caller.get_export("mem") {
+                Some(Extern::Memory(mem)) => mem,
+                _ => return Ok(()),
+            };
 
-    let str_len = u32::from_be_bytes([data[result], data[result+1], data[result+2], data[result+3]]) as usize;
-    let str = String::from_utf8(data[result+4..result+4+str_len].to_vec()).unwrap();
+            let data = mem.data(&mut caller);
 
-    println!("result: {}", str);
-    
+            let str_len = u32::from_be_bytes([data[i], data[i+1], data[i+2], data[i+3]]) as usize;
+            let str = String::from_utf8(data[i+4..i+4+str_len].to_vec()).unwrap();
+
+            println!("LOG: {}", str);
+        },
+        _ => (),
+    }
+
     Ok(())
 }
 

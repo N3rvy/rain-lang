@@ -20,6 +20,14 @@ impl Engine for WasmEngine {
         Ok(uid)
     }
 
+    fn load_def_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+        let (uid, _) = self
+            .module_loader()
+            .load_def_module(&ModuleIdentifier(identifier.into()), importer)?;
+
+        Ok(uid)
+    }
+
     fn insert_module(&mut self, _module: Arc<Module>) -> Result<(), LangError> {
         Ok(())
     }

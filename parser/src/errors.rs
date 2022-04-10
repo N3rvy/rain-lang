@@ -16,6 +16,7 @@ pub const INVALID_ARGS_COUNT: &str = "Tried invoking a function with an incorrec
 pub const INVALID_ARGS: &str = "Tried invoking a function with an incorrect parameter type";
 pub const MODULE_NOT_FOUND: &str = "Could not find the module";
 pub const LOAD_MODULE_ERROR: &str = "Could not load the module";
+pub const VAR_INSIDE_DEF_MODULE: &str = "Cannot define a variable inside a definition module";
 
 
 pub trait ParsingErrorHelper {

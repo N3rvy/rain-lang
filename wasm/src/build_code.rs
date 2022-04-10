@@ -9,14 +9,18 @@ use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
 
+pub struct FunctionData {
+    pub locals: Vec<ValType>,
+    pub instructions: Vec<Instruction<'static>>,
+}
+
 pub struct FunctionBuilderResult {
     pub name: String,
 
     pub params: Vec<ValType>,
     pub ret: Vec<ValType>,
 
-    pub locals: Vec<ValType>,
-    pub instructions: Vec<Instruction<'static>>,
+    pub data: Option<FunctionData>,
 }
 
 pub struct ModuleData {
@@ -64,6 +68,17 @@ impl<'a> ModuleBuilder<'a> {
 
             self.insert_func(name, &func.metadata, &func.data)?;
         }
+
+        Ok(())
+    }
+
+    pub fn insert_imported_func(&mut self, name: &str, func_type: &FunctionType) -> Result<(), LangError> {
+        self.result_funcs.push(FunctionBuilderResult {
+            name: name.to_string(),
+            params: convert_types(&func_type.0),
+            ret: convert_type(func_type.1.as_ref()),
+            data: None,
+        });
 
         Ok(())
     }
@@ -129,33 +144,56 @@ impl<'a> ModuleBuilder<'a> {
                 let module = self.module_loader
                     .get_module(module_uid);
 
-                let module = match module {
-                    Some(ModuleKind::Data(module)) => module,
+                match module {
+                    Some(ModuleKind::Data(module)) => {
+                        let func = match module.get_func_def(name) {
+                            Some(f) => f,
+                            None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
+                        };
+
+                        self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
+
+                        self.function_names.push(name.clone());
+                        self.functions.push((
+                            func.metadata.0.clone(),
+                            *func.metadata.1.clone(),
+                        ));
+
+                        let (params, ret) = self.functions
+                            .last()
+                            .unwrap();
+
+                        Ok((
+                            self.functions.len() as u32 - 1,
+                            params,
+                            ret
+                        ))
+                    },
+                    Some(ModuleKind::Definition(module)) => {
+                        let func = match module.get_func_type(name) {
+                            Some(f) => f,
+                            None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
+                        };
+
+                        self.insert_imported_func(name.as_ref(), func)?;
+                        self.function_names.push(name.clone());
+                        self.functions.push((
+                            func.0.clone(),
+                            *func.1.clone(),
+                        ));
+
+                        let (params, ret) = self.functions
+                            .last()
+                            .unwrap();
+
+                        Ok((
+                            self.functions.len() as u32 - 1,
+                            params,
+                            ret,
+                        ))
+                    }
                     _ => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
-                };
-
-                let func = match module.get_func_def(name) {
-                    Some(f) => f,
-                    None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
-                };
-                
-                self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
-
-                self.function_names.push(name.clone());
-                self.functions.push((
-                    func.metadata.0.clone(),
-                    *func.metadata.1.clone(),
-                ));
-
-                let (params, ret) = self.functions
-                    .last()
-                    .unwrap();
-
-                Ok((
-                    self.functions.len() as u32 - 1,
-                    params,
-                    ret
-                ))
+                }
             },
         }
     }
@@ -222,8 +260,10 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             params: convert_types(&self.params),
             ret: convert_type(&self.ret),
 
-            locals: convert_types(&self.locals),
-            instructions: self.instructions,
+            data: Some(FunctionData {
+                locals: convert_types(&self.locals),
+                instructions: self.instructions,
+            }),
         }
     }
 
