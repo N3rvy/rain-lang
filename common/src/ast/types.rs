@@ -73,7 +73,7 @@ pub enum TypeKind {
     Nothing,
     Vector(Box<TypeKind>),
     Function(FunctionType),
-    Object(HashMap<String, TypeKind>),
+    Object(Arc<HashMap<String, TypeKind>>),
 }
 
 impl TypeKind {

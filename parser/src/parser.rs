@@ -1,4 +1,5 @@
 use std::{collections::HashMap, cell::RefCell};
+use std::sync::Arc;
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::module::ModuleUID;
@@ -208,7 +209,7 @@ impl<'a> ParserScope<'a> {
                             field_map.insert(field_name.clone(), field.eval_type.clone());
                         }
                         
-                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(field_map))
+                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(Arc::new(field_map)))
                     },
                     _ => return Err(LangError::new_parser_unexpected_token())
                 }
