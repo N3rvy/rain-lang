@@ -360,7 +360,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     LiteralKind::String(string) => {
                         let string_len = string.len() as u32;
 
-                        let mut data = string_len.to_be_bytes().to_vec();
+                        let mut data = string_len.to_le_bytes().to_vec();
                         data.append(&mut string.clone().into_bytes());
 
                         let offset = self.module_builder.push_data(data);

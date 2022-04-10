@@ -76,7 +76,7 @@ fn print_str(mut caller: Caller<()>, params: &[Val], _ret: &mut [Val]) -> Result
 
             let data = mem.data(&mut caller);
 
-            let str_len = u32::from_be_bytes([data[i], data[i+1], data[i+2], data[i+3]]) as usize;
+            let str_len = u32::from_le_bytes([data[i], data[i+1], data[i+2], data[i+3]]) as usize;
             let str = String::from_utf8(data[i+4..i+4+str_len].to_vec()).unwrap();
 
             println!("LOG: {}", str);
