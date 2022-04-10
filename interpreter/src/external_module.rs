@@ -1,5 +1,7 @@
-use common::ast::types::{FunctionType, TypeKind};
-use common::module::{Module, ModuleIdentifier, ModuleMetadata, ModuleUID};
+use std::sync::Arc;
+use common::ast::ASTNode;
+use common::ast::types::{Function, FunctionType};
+use common::module::{FunctionDefinition, Module, ModuleIdentifier, ModuleUID, VariableDefinition};
 use core::external_module::{ExternalModule, ExternalModuleSetFunction, ExternalModuleSetValue};
 use crate::{ExternalType, InterpreterEngine, InterpreterModule, IntoExternalFunctionRunner, LangValue, ModuleImporter, ModuleScope};
 
@@ -20,9 +22,6 @@ impl ExternalModule for InterpreterExternalModule {
             module: Module {
                 uid,
                 imports: Vec::new(),
-                metadata: ModuleMetadata {
-                    definitions: Vec::new(),
-                },
                 functions: Vec::new(),
                 variables: Vec::new(),
             },
@@ -38,8 +37,14 @@ impl<R: ExternalType> ExternalModuleSetValue<R> for InterpreterExternalModule {
         self.engine_module.scope
             .set_var(name.to_string(), R::generilize(value).into());
 
-        self.module.metadata.definitions
-            .push((name.to_string(), R::type_kind()));
+        self.module.variables
+            .push((
+                name.to_string(),
+                VariableDefinition {
+                    data: ASTNode::new_empty(),
+                    metadata: R::type_kind(),
+                }
+            ));
     }
 }
 
@@ -54,15 +59,19 @@ impl<R> ExternalModuleSetFunction<(), R> for InterpreterExternalModule
         self.engine_module.scope
             .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
-        let func_type = TypeKind::Function(
-            FunctionType(
-                vec![],
-                Box::new(R::type_kind())
-            )
+        let func_type = FunctionType(
+            vec![],
+            Box::new(R::type_kind())
         );
 
-        self.module.metadata.definitions
-            .push((name.to_string(), func_type));
+        self.module.functions
+            .push((
+                name.to_string(),
+                FunctionDefinition {
+                    data: Arc::new(Function { body: vec![], parameters: vec![] }),
+                    metadata: func_type,
+                }
+            ));
     }
 }
 
@@ -78,15 +87,19 @@ impl<A0, R> ExternalModuleSetFunction<(A0,), R> for InterpreterExternalModule
         self.engine_module.scope
             .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
-        let func_type = TypeKind::Function(
-            FunctionType(
-                vec![A0::type_kind()],
-                Box::new(R::type_kind())
-            )
+        let func_type = FunctionType(
+            vec![A0::type_kind()],
+            Box::new(R::type_kind())
         );
 
-        self.module.metadata.definitions
-            .push((name.to_string(), func_type));
+        self.module.functions
+            .push((
+                name.to_string(),
+                FunctionDefinition {
+                    data: Arc::new(Function { body: vec![], parameters: vec![] }),
+                    metadata: func_type,
+                }
+            ));
     }
 }
 
@@ -103,18 +116,22 @@ impl<A0, A1, R> ExternalModuleSetFunction<(A0, A1), R> for InterpreterExternalMo
         self.engine_module.scope
             .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
-        let func_type = TypeKind::Function(
-            FunctionType(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                ],
-                Box::new(R::type_kind())
-            )
+        let func_type = FunctionType(
+            vec![
+                A0::type_kind(),
+                A1::type_kind(),
+            ],
+            Box::new(R::type_kind())
         );
 
-        self.module.metadata.definitions
-            .push((name.to_string(), func_type));
+        self.module.functions
+            .push((
+                name.to_string(),
+                FunctionDefinition {
+                    data: Arc::new(Function { body: vec![], parameters: vec![] }),
+                    metadata: func_type,
+                }
+            ));
     }
 }
 
@@ -132,19 +149,23 @@ impl<A0, A1, A2, R> ExternalModuleSetFunction<(A0, A1, A2), R> for InterpreterEx
         self.engine_module.scope
             .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
-        let func_type = TypeKind::Function(
-            FunctionType(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                    A2::type_kind(),
-                ],
-                Box::new(R::type_kind())
-            )
+        let func_type = FunctionType(
+            vec![
+                A0::type_kind(),
+                A1::type_kind(),
+                A2::type_kind(),
+            ],
+            Box::new(R::type_kind())
         );
 
-        self.module.metadata.definitions
-            .push((name.to_string(), func_type));
+        self.module.functions
+            .push((
+                name.to_string(),
+                FunctionDefinition {
+                    data: Arc::new(Function { body: vec![], parameters: vec![] }),
+                    metadata: func_type,
+                }
+            ));
     }
 }
 
@@ -163,19 +184,23 @@ impl<A0, A1, A2, A3, R> ExternalModuleSetFunction<(A0, A1, A2, A3), R> for Inter
         self.engine_module.scope
             .set_var(name.to_string(), LangValue::ExtFunction(ext_func));
 
-        let func_type = TypeKind::Function(
-            FunctionType(
-                vec![
-                    A0::type_kind(),
-                    A1::type_kind(),
-                    A2::type_kind(),
-                    A3::type_kind(),
-                ],
-                Box::new(R::type_kind())
-            )
+        let func_type = FunctionType(
+            vec![
+                A0::type_kind(),
+                A1::type_kind(),
+                A2::type_kind(),
+                A3::type_kind(),
+            ],
+            Box::new(R::type_kind())
         );
 
-        self.module.metadata.definitions
-            .push((name.to_string(), func_type));
+        self.module.functions
+            .push((
+                name.to_string(),
+                FunctionDefinition {
+                    data: Arc::new(Function { body: vec![], parameters: vec![] }),
+                    metadata: func_type,
+                }
+            ));
     }
 }

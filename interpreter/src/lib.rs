@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
 use core::parser::ModuleLoader;
+use core::parser::ModuleKind;
 use core::module_store::ModuleStore;
 use core::{ExternalType, Engine, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
@@ -57,13 +58,13 @@ impl EngineModule for InterpreterModule {
         let scope = ModuleScope::new(module.uid, engine);
 
         for (func_name, func) in &module.functions {
-            scope.set_var(func_name.clone(), LangValue::Function(func.clone()));
+            scope.set_var(func_name.clone(), LangValue::Function(func.data.clone()));
         }
 
         for (var_name, var) in &module.variables {
             let func_scope = Scope::new_module_child(scope.clone());
 
-            let value = match func_scope.evaluate_ast(&var) {
+            let value = match func_scope.evaluate_ast(&var.data) {
                 EvalResult::Ok(value) => value,
                 EvalResult::Ret(value, _) => value,
                 EvalResult::Err(err) => return Err(err),
@@ -97,7 +98,7 @@ impl Engine for InterpreterEngine {
         Ok(uid)
     }
 
-    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_def_module(&mut self, _import_identifier: impl Into<String>, _module_id: impl Into<String>, _importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
         todo!()
     }
 
@@ -129,7 +130,7 @@ impl EngineExternalModule for InterpreterEngine {
 
     fn insert_external_module(&mut self, module: Self::ExternalModule) {
         self.module_loader()
-            .insert_module(module.uid, module.module);
+            .insert_module(module.uid, ModuleKind::Data(Arc::new(module.module)));
 
         (*self.module_store)
             .borrow_mut()

@@ -20,6 +20,15 @@ impl ASTNode {
             eval_type,
         }
     }
+
+    pub fn new_empty() -> Self {
+        Self {
+            kind: Box::new(NodeKind::Literal {
+                value: LiteralKind::Nothing,
+            }),
+            eval_type: TypeKind::Nothing,
+        }
+    }
 }
 
 pub enum NodeKind {
