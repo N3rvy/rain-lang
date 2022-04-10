@@ -9,9 +9,14 @@ use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
 
-pub struct FunctionData {
-    pub locals: Vec<ValType>,
-    pub instructions: Vec<Instruction<'static>>,
+pub enum FunctionData {
+    Data {
+        locals: Vec<ValType>,
+        instructions: Vec<Instruction<'static>>,
+    },
+    Import {
+        module_name: String,
+    },
 }
 
 pub struct FunctionBuilderResult {
@@ -20,7 +25,7 @@ pub struct FunctionBuilderResult {
     pub params: Vec<ValType>,
     pub ret: Vec<ValType>,
 
-    pub data: Option<FunctionData>,
+    pub data: FunctionData,
 }
 
 pub struct ModuleData {
@@ -72,12 +77,14 @@ impl<'a> ModuleBuilder<'a> {
         Ok(())
     }
 
-    pub fn insert_imported_func(&mut self, name: &str, func_type: &FunctionType) -> Result<(), LangError> {
+    pub fn insert_imported_func(&mut self, module_name: &str, name: &str, func_type: &FunctionType) -> Result<(), LangError> {
         self.result_funcs.push(FunctionBuilderResult {
             name: name.to_string(),
             params: convert_types(&func_type.0),
             ret: convert_type(func_type.1.as_ref()),
-            data: None,
+            data: FunctionData::Import {
+                module_name: module_name.to_string(),
+            },
         });
 
         Ok(())
@@ -175,7 +182,7 @@ impl<'a> ModuleBuilder<'a> {
                             None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
                         };
 
-                        self.insert_imported_func(name.as_ref(), func)?;
+                        self.insert_imported_func(module.id.0.as_ref(), name.as_ref(), func)?;
                         self.function_names.push(name.clone());
                         self.functions.push((
                             func.0.clone(),
@@ -260,10 +267,10 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             params: convert_types(&self.params),
             ret: convert_type(&self.ret),
 
-            data: Some(FunctionData {
+            data: FunctionData::Data {
                 locals: convert_types(&self.locals),
                 instructions: self.instructions,
-            }),
+            },
         }
     }
 

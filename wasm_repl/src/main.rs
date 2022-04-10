@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     // Creating the engine
     let mut engine = WasmEngine::new();
 
-    engine.load_def_module("repl.d.vrs", &ReplImporter)?;
+    engine.load_def_module("repl.d.vrs", "repl", &ReplImporter)?;
 
     // Creating the module from the source file
     let module = engine
@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     let mut store = wasmtime::Store::new(&engine, ());
 
     linker.func_new(
-        "repl.d.vrs",
+        "repl",
         "printI",
         FuncType::new([ValType::I32], []),
         |_, params, _| {
@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     linker.func_new(
-        "repl.d.vrs",
+        "repl",
         "print",
         FuncType::new([ValType::I32], []),
         print_str)?;

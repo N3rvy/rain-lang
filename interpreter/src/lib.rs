@@ -97,7 +97,7 @@ impl Engine for InterpreterEngine {
         Ok(uid)
     }
 
-    fn load_def_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
         todo!()
     }
 

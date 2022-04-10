@@ -1,6 +1,6 @@
 use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::LangError;
-use common::module::{DefinitionModule, ModuleIdentifier, ModuleUID};
+use common::module::{DefinitionModule, ModuleIdentifier};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use tokenizer::tokens::Token;
 use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, VAR_INSIDE_DEF_MODULE};
@@ -55,7 +55,7 @@ impl ModuleInitializer {
         Ok(module)
     }
 
-    pub fn create_definition(mut tokens: Tokens, uid: ModuleUID) -> Result<DefinitionModule, LangError> {
+    pub fn create_definition(mut tokens: Tokens, id: ModuleIdentifier) -> Result<DefinitionModule, LangError> {
         let imports = Vec::new();
         let mut functions = Vec::new();
 
@@ -79,7 +79,7 @@ impl ModuleInitializer {
         }
 
         Ok(DefinitionModule {
-            uid,
+            id,
 
             imports,
             functions,

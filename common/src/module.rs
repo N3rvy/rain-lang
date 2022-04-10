@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::ast::ASTNode;
 use crate::ast::types::{Function, FunctionType, TypeKind};
 
+#[derive(Clone)]
 pub struct ModuleIdentifier(pub String);
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
@@ -53,7 +54,7 @@ impl Module {
 }
 
 pub struct DefinitionModule {
-    pub uid: ModuleUID,
+    pub id: ModuleIdentifier,
 
     pub imports: Vec<ModuleUID>,
     pub functions: Vec<(String, FunctionType)>,

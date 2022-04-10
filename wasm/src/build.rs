@@ -3,7 +3,7 @@ use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, 
 use common::ast::types::TypeKind;
 use common::errors::LangError;
 use core::parser::ModuleLoader;
-use crate::build_code::{FunctionBuilderResult, ModuleBuilder, ModuleBuilderResult, ModuleData};
+use crate::build_code::{FunctionBuilderResult, FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData};
 
 pub struct WasmBuilder<'a> {
     module_loader: &'a ModuleLoader,
@@ -55,15 +55,13 @@ impl<'a> WasmBuilder<'a> {
         let mut imports = ImportSection::new();
 
         for (i, func) in result.functions.iter().enumerate() {
-            if let Some(_) = func.data {
-                continue
+            if let FunctionData::Import { module_name } = &func.data {
+                imports.import(
+                    module_name.as_ref(),
+                    Some(func.name.as_ref()),
+                    EntityType::Function(i as u32),
+                );
             }
-
-            imports.import(
-                "repl.d.vrs",
-                Some(func.name.as_ref()),
-                EntityType::Function(i as u32),
-            );
         }
 
         Ok(imports)
@@ -73,7 +71,7 @@ impl<'a> WasmBuilder<'a> {
         let mut functions = FunctionSection::new();
 
         for (i, func) in result.functions.iter().enumerate() {
-            if let None = func.data {
+            if let FunctionData::Import { module_name: _ } = func.data {
                 continue
             }
 
@@ -109,12 +107,12 @@ impl<'a> WasmBuilder<'a> {
         let mut codes = CodeSection::new();
 
         for func in functions {
-            let func_data = match func.data {
-                Some(data) => data,
-                None => continue,
+            let (locals, instructions) = match func.data {
+                FunctionData::Data { locals, instructions } => (locals, instructions),
+                _ => continue,
             };
 
-            let locals: Vec<(u32, ValType)> = func_data.locals
+            let locals: Vec<(u32, ValType)> = locals
                 .into_iter()
                 .skip(func.params.len())
                 .map(|local| (1u32, local))
@@ -122,7 +120,7 @@ impl<'a> WasmBuilder<'a> {
 
             let mut func_builder = Function::new(locals);
 
-            for inst in &func_data.instructions {
+            for inst in &instructions {
                 func_builder.instruction(inst);
             }
 
