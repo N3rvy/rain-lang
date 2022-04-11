@@ -18,8 +18,8 @@ pub fn init(args: Args) -> anyhow::Result<()> {
     let main_path = PathBuf::from_str(src_dir.as_str())?.join(config.main);
     let mut main_file = File::create(main_path.to_str().unwrap())?;
     main_file.write_all(br#"
-    func main() none:
-        return
+func main() none:
+    return
     "#)?;
 
     let mut config_file = File::create(args.module)?;
