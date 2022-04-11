@@ -1,5 +1,5 @@
 [package]
-name = "wasm_repl"
+name = "portal"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,4 @@ core = { path="../core" }
 common = { path="../common" }
 wasm = { path="../wasm" }
 anyhow = "1.0.55"
-wasmtime = "0.35.1"
+clap = { version="3.1.8", features=["derive"] }

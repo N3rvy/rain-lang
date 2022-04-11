@@ -6,7 +6,7 @@ members = [
     "tokenizer",
     "core",
     "repl",
-    "wasm_repl",
+    "portal",
     "interpreter",
     "wasm",
     "tests"
