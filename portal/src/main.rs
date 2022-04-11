@@ -1,9 +1,11 @@
 mod args;
 mod config;
 mod build;
+mod init;
 
 use std::env;
 use build::build;
+use init::init;
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
 use clap::Parser;
 use common::module::{ModuleIdentifier, ModuleUID};
@@ -13,7 +15,9 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.task {
-        Task::Init => todo!(),
+        Task::Init => {
+            init(args)
+        },
         Task::Build => {
             build(args)
         },
