@@ -1,23 +1,10 @@
+mod args;
+
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
 use std::{env, ops::Index, fs::File, io::Write};
-use clap::Parser;
+use std::env::Args;
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-struct Args {
-    /// Path to the main module
-    main: String,
-
-    /// Path and name of the definition module (ex. engine.d.vrs:engine)
-    #[clap(long)]
-    def: Option<String>,
-
-    // Path where to output the build result
-    #[clap(long, default_value_t = String::from("output.wasm"))]
-    out: String,
-}
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
