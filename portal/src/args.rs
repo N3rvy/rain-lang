@@ -1,16 +1,18 @@
-use clap::Parser;
+use clap::{ArgEnum, Parser};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
-struct Args {
-    /// Path to the main module
-    main: String,
+pub struct Args {
+    #[clap(arg_enum)]
+    pub(crate) task: Task,
 
-    /// Path and name of the definition module (ex. engine.d.vrs:engine)
-    #[clap(long)]
-    def: Option<String>,
+    /// Module config file path
+    #[clap(short, long, default_value="./portal.json")]
+    pub module: String,
+}
 
-    // Path where to output the build result
-    #[clap(long, default_value_t = String::from("output.wasm"))]
-    out: String,
+#[derive(ArgEnum, Clone, Debug)]
+pub enum Task {
+    Init,
+    Build,
 }
