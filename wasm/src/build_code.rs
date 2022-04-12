@@ -7,7 +7,7 @@ use common::module::{ModuleUID, Module};
 use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
-use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR};
+use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR, VAR_NOT_LITERAL};
 
 pub struct FunctionData {
     pub name: String,
@@ -87,6 +87,10 @@ impl<'a> ModuleBuilder<'a> {
             self.insert_func(name, &func.metadata, &func.data)?;
         }
 
+        for (name, var) in &module.variables {
+            self.insert_var(name, &var.metadata, &var.data)?;
+        }
+
         Ok(())
     }
 
@@ -102,7 +106,26 @@ impl<'a> ModuleBuilder<'a> {
         Ok(())
     }
 
-    pub fn insert_func(&mut self, name: &str, func_type: &FunctionType, func: &Arc<Function>) -> Result<(), LangError> {
+    fn insert_var(&mut self, _name: &str, _var_type: &TypeKind, value: &ASTNode) -> Result<(), LangError> {
+        let literal = match value.kind.as_ref() {
+            NodeKind::Literal { value } => value,
+            _ => return Err(LangError::new_runtime(VAR_NOT_LITERAL.to_string())),
+        };
+
+        let data = match literal {
+            LiteralKind::Nothing => Vec::new(),
+            LiteralKind::Int(i) => i.to_le_bytes().to_vec(),
+            LiteralKind::Float(f) => f.to_le_bytes().to_vec(),
+            LiteralKind::Bool(b) => (if *b { 1u32 } else { 0u32 }).to_le_bytes().to_vec(),
+            LiteralKind::String(s) => FunctionBuilder::string_to_bytes(s.clone()),
+        };
+
+        self.push_data(data);
+
+        Ok(())
+    }
+
+    fn insert_func(&mut self, name: &str, func_type: &FunctionType, func: &Arc<Function>) -> Result<(), LangError> {
         let mut code_builder = FunctionBuilder::new(
             self,
             name.to_string(),
@@ -358,10 +381,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         self.type_stack.push(TypeKind::Bool);
                     },
                     LiteralKind::String(string) => {
-                        let string_len = string.len() as u32;
-
-                        let mut data = string_len.to_le_bytes().to_vec();
-                        data.append(&mut string.clone().into_bytes());
+                        let data = Self::string_to_bytes(string.clone());
 
                         let offset = self.module_builder.push_data(data);
 
@@ -528,6 +548,15 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         }
 
         Ok(())
+    }
+
+    fn string_to_bytes(string: String) -> Vec<u8> {
+        let string_len = string.len() as u32;
+
+        let mut data = string_len.to_le_bytes().to_vec();
+        data.append(&mut string.clone().into_bytes());
+
+        data
     }
 
     fn get_local(&self, name: &String) -> Option<(&TypeKind, &Vec<u32>)> {
