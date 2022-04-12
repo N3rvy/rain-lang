@@ -1,5 +1,5 @@
 use std::ops::Index;
-use wasm_encoder::{BlockType, Instruction, ValType};
+use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
 use common::errors::LangError;
@@ -8,6 +8,8 @@ use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
 use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR, VAR_NOT_LITERAL};
+
+// TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
 pub struct FunctionData {
     pub name: String,
@@ -42,6 +44,8 @@ pub struct ModuleBuilder<'a> {
     module_loader: &'a ModuleLoader,
     function_names: Vec<String>,
     functions: Vec<(Vec<TypeKind>, TypeKind)>,
+    global_names: Vec<String>,
+    globals: Vec<(TypeKind, u32)>,
 
     data_offset_accumulator: u32,
     data: Vec<ModuleData>,
@@ -55,6 +59,8 @@ impl<'a> ModuleBuilder<'a> {
             module_loader,
             function_names: Vec::new(),
             functions: Vec::new(),
+            global_names: Vec::new(),
+            globals: Vec::new(),
 
             data_offset_accumulator: 0,
             data: Vec::new(),
@@ -75,6 +81,10 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
+        for (name, var) in &module.variables {
+            self.insert_var(name, &var.metadata, &var.data)?;
+        }
+
         for (name, func) in &module.functions {
             let contains_func = self.function_names
                 .iter()
@@ -85,10 +95,6 @@ impl<'a> ModuleBuilder<'a> {
             }
 
             self.insert_func(name, &func.metadata, &func.data)?;
-        }
-
-        for (name, var) in &module.variables {
-            self.insert_var(name, &var.metadata, &var.data)?;
         }
 
         Ok(())
@@ -106,7 +112,7 @@ impl<'a> ModuleBuilder<'a> {
         Ok(())
     }
 
-    fn insert_var(&mut self, _name: &str, _var_type: &TypeKind, value: &ASTNode) -> Result<(), LangError> {
+    fn insert_var(&mut self, name: &str, var_type: &TypeKind, value: &ASTNode) -> Result<(), LangError> {
         let literal = match value.kind.as_ref() {
             NodeKind::Literal { value } => value,
             _ => return Err(LangError::new_runtime(VAR_NOT_LITERAL.to_string())),
@@ -120,7 +126,10 @@ impl<'a> ModuleBuilder<'a> {
             LiteralKind::String(s) => FunctionBuilder::string_to_bytes(s.clone()),
         };
 
-        self.push_data(data);
+        let offset = self.push_data(data);
+
+        self.global_names.push(name.to_string());
+        self.globals.push((var_type.clone(), offset));
 
         Ok(())
     }
@@ -219,6 +228,11 @@ impl<'a> ModuleBuilder<'a> {
     }
 }
 
+enum VarKind {
+    Local(Vec<u32>),
+    Global(u32),
+}
+
 pub struct FunctionBuilder<'a, 'b> {
     module_builder: &'a mut ModuleBuilder<'b>,
 
@@ -313,32 +327,101 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 }
             },
             NodeKind::VariableRef { module: _, name } => {
-                let (local_type, ids) = match self.get_local(name) {
-                    Some((lt, ids)) => (lt.clone(), ids.clone()),
+                let (var_type, var_kind) = match self.get_var(name) {
+                    Some((vr, vk)) => (vr, vk),
                     None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
                 };
 
-                self.type_stack.push(local_type);
+                self.type_stack.push(var_type.clone());
 
-                for id in ids {
-                    self.instructions.push(Instruction::LocalGet(id));
-                }
+                match var_kind {
+                    VarKind::Local(ids) => {
+                        for id in ids {
+                            self.instructions.push(Instruction::LocalGet(id));
+                        }
+                    },
+                    VarKind::Global(offset) => {
+                        self.instructions.push(Instruction::I32Const(offset as i32));
+                        match var_type {
+                            TypeKind::Unknown => todo!(),
+                            TypeKind::Nothing => (),
+                            TypeKind::Int | TypeKind::Bool => {
+                                self.instructions.push(Instruction::I32Load(MemArg {
+                                    memory_index: 0,
+                                    align: 0,
+                                    offset: 0,
+                                }));
+                            },
+                            TypeKind::Float => {
+                                self.instructions.push(Instruction::F32Load(MemArg {
+                                    memory_index: 0,
+                                    align: 0,
+                                    offset: 0,
+                                }));
+                            },
+                            TypeKind::String => {
+                                self.instructions.push(Instruction::I32Load(MemArg {
+                                    memory_index: 0,
+                                    align: 0,
+                                    offset: 0,
+                                }));
+                            },
+                            TypeKind::Vector(_) => todo!(),
+                            TypeKind::Function(_) => todo!(),
+                            TypeKind::Object(_) => todo!(),
+                        }
+                    },
+                };
             },
             NodeKind::VariableAsgn { name, value } => {
-                self.build_statement(value)?;
+                let (local_type, var_kind) = match self.get_var(name) {
+                    Some((lt, vk)) => (lt, vk),
+                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                };
+
+                match var_kind {
+                    VarKind::Local(ids) => {
+                        self.build_statement(value)?;
+                        for id in ids {
+                            self.instructions.push(Instruction::LocalSet(id));
+                        }
+                    },
+                    VarKind::Global(offset) => {
+                        self.instructions.push(Instruction::I32Const(offset as i32));
+
+                        self.build_statement(value)?;
+
+                        match local_type {
+                            TypeKind::Unknown => todo!(),
+                            TypeKind::Nothing => (),
+                            TypeKind::Int | TypeKind::Bool => {
+                                self.instructions.push(Instruction::I32Store(MemArg {
+                                    align: 0,
+                                    memory_index: 0,
+                                    offset: 0,
+                                }))
+                            },
+                            TypeKind::Float => {
+                                self.instructions.push(Instruction::F32Store(MemArg {
+                                    align: 0,
+                                    memory_index: 0,
+                                    offset: 0,
+                                }))
+                            },
+                            // TODO: This cant be done because a var with a string value has the
+                            // string data itself, so it would be poggers to move the string data
+                            // out of the var and store there a pointer
+                            TypeKind::String => todo!(),
+                            TypeKind::Vector(_) => todo!(),
+                            TypeKind::Function(_) => todo!(),
+                            TypeKind::Object(_) => todo!(),
+                        }
+                    },
+                }
 
                 let type_ = self.type_stack.pop().unwrap();
 
-                let (local_type, ids) = match self.get_local(name) {
-                    Some((lt, ids)) => (lt, ids.clone()),
-                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
-                };
-
-                Self::assert_type(&type_, local_type)?;
-
-                for id in ids {
-                    self.instructions.push(Instruction::LocalSet(id));
-                }
+                Self::assert_type(&type_, &local_type)?;
             },
             NodeKind::FunctionInvok { variable, parameters } => {
                 // TODO: Support for other kinds of invocations
@@ -559,15 +642,33 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         data
     }
 
-    fn get_local(&self, name: &String) -> Option<(&TypeKind, &Vec<u32>)> {
+    fn get_var(&self, name: &String) -> Option<(TypeKind, VarKind)> {
         let id = self.local_names
             .iter()
-            .position(|n| n == name)?;
+            .position(|n| n == name);
 
-        Some((
-            self.locals.index(id),
-            self.local_ids.index(id),
-        ))
+        if let Some(id) = id {
+            return Some((
+                self.locals.index(id).clone(),
+                VarKind::Local(self.local_ids.index(id).clone()),
+            ))
+        };
+
+        let id = self.module_builder.global_names
+            .iter()
+            .position(|n| n == name);
+
+        match id {
+            Some(id) => {
+                let (type_, offset) = self.module_builder.globals.index(id);
+
+                Some((
+                    type_.clone(),
+                    VarKind::Global(*offset),
+                ))
+            },
+            None => None,
+        }
     }
 
     #[inline]
