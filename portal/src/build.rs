@@ -37,5 +37,7 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     let mut file = File::create(&path)?;
     file.write_all(wasm.as_slice())?;
 
+    println!("Build successfull! Output file at {}", path.to_str().unwrap());
+
     Ok(())
 }
