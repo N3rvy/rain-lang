@@ -123,7 +123,12 @@ impl<'a> ModuleBuilder<'a> {
             LiteralKind::Int(i) => i.to_le_bytes().to_vec(),
             LiteralKind::Float(f) => f.to_le_bytes().to_vec(),
             LiteralKind::Bool(b) => (if *b { 1u32 } else { 0u32 }).to_le_bytes().to_vec(),
-            LiteralKind::String(s) => FunctionBuilder::string_to_bytes(s.clone()),
+            LiteralKind::String(s) => {
+                let data = FunctionBuilder::string_to_bytes(s.clone());
+                let offset = self.push_data(data);
+
+                offset.to_le_bytes().to_vec()
+            },
         };
 
         let offset = self.push_data(data);
@@ -408,10 +413,13 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                                     offset: 0,
                                 }))
                             },
-                            // TODO: This cant be done because a var with a string value has the
-                            // string data itself, so it would be poggers to move the string data
-                            // out of the var and store there a pointer
-                            TypeKind::String => todo!(),
+                            TypeKind::String => {
+                                self.instructions.push(Instruction::I32Store(MemArg {
+                                    align: 0,
+                                    memory_index: 0,
+                                    offset: 0,
+                                }))
+                            },
                             TypeKind::Vector(_) => todo!(),
                             TypeKind::Function(_) => todo!(),
                             TypeKind::Object(_) => todo!(),
