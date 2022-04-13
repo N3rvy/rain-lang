@@ -12,13 +12,13 @@ use core::{ExternalType, Engine, EngineGetFunction, InternalFunction};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use common::errors::LangError;
+use common::errors::LoadErrorKind;
+use common::errors::RuntimeErrorKind;
 use common::module::{Module, ModuleIdentifier, ModuleUID};
-use errors::CANT_CONVERT_VALUE;
 use evaluate::EvalResult;
 use external_functions::IntoExternalFunctionRunner;
 use lang_value::LangValue;
 use scope::Scope;
-use crate::errors::{INVALID_IDENTIFIER, MODULE_NOT_FOUND, VARIABLE_IS_NOT_A_FUNCTION, VARIABLE_NOT_DECLARED};
 use crate::external_module::InterpreterExternalModule;
 use crate::module_scope::ModuleScope;
 
@@ -27,7 +27,6 @@ mod evaluate;
 mod lang_value;
 mod external_functions;
 mod object;
-mod errors;
 mod module_scope;
 pub mod external_module;
 
@@ -46,7 +45,7 @@ impl EngineModule for InterpreterModule {
     fn new(engine: &mut Self::Engine, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<Self, LangError> {
         let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
-            None => return Err(LangError::new_runtime(INVALID_IDENTIFIER.to_string())),
+            None => return Err(LangError::load(LoadErrorKind::LoadModuleError(id.0.clone()))),
         };
 
         Ok(Self {
@@ -155,15 +154,15 @@ impl<R: ExternalType> InternalFunction<(), Result<R, LangError>>
 
         let module = match module {
             Some(m) => m,
-            None => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
+            None => return Err(LangError::runtime(RuntimeErrorKind::ModuleNotFound(self.module))),
         };
 
         let value = module.scope.get_var(&self.name);
         let func = match value {
-            None => return Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
+            None => return Err(LangError::runtime(RuntimeErrorKind::VarNotFound(self.name.clone()))),
             Some(value) => match value {
                 LangValue::Function(func) => func,
-                _ => return Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string()))
+                _ => return Err(LangError::runtime(RuntimeErrorKind::ValueNotFunc))
             },
         };
 
@@ -180,9 +179,9 @@ impl<R: ExternalType> InternalFunction<(), Result<R, LangError>>
         };
 
         match value.into() {
-            None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
+            None => Err(LangError::runtime(RuntimeErrorKind::CantConvertValue)),
             Some(value) => match R::concretize(value) {
-                None => Err(LangError::new_runtime(CANT_CONVERT_VALUE.to_string())),
+                None => Err(LangError::runtime(RuntimeErrorKind::CantConvertValue)),
                 Some(value) => Ok(value),
             },
         }

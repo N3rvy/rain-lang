@@ -1,7 +1,7 @@
 use core::LangError;
 use std::{ops::{FromResidual, Try, ControlFlow}, sync::Arc, collections::HashMap};
-use common::ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}};
-use crate::{lang_value::LangValue, object::LangObject, errors::{VARIABLE_NOT_DECLARED, VARIABLE_IS_NOT_A_NUMBER, FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS, VARIABLE_IS_NOT_A_FUNCTION}};
+use common::{ast::{ASTNode, NodeKind, types::{ReturnKind, MathOperatorKind, BoolOperatorKind}}, errors::RuntimeErrorKind};
+use crate::{lang_value::LangValue, object::LangObject};
 use super::scope::Scope;
 
 
@@ -38,7 +38,7 @@ macro_rules! expect_some {
     ($value:expr, $err:expr) => {
         match $value {
             Some(val) => val,
-            None => return EvalResult::Err(LangError::new_runtime($err)),
+            None => return EvalResult::Err(LangError::runtime($err)),
         }
     };
 }
@@ -55,7 +55,7 @@ impl<'a> Scope<'a> {
             NodeKind::VariableRef { module, name } => {
                 match self.get_var(*module, name) {
                     Some(value) => EvalResult::Ok(value.clone()),
-                    None => EvalResult::Err(LangError::new_runtime(VARIABLE_NOT_DECLARED.to_string())),
+                    None => EvalResult::Err(LangError::runtime(RuntimeErrorKind::VarNotFound(name.clone()))),
                 }
             },
             NodeKind::VariableAsgn { name, value } => {
@@ -127,8 +127,8 @@ impl<'a> Scope<'a> {
                 let left = self.evaluate_ast(left)?.as_i32();
                 let right = self.evaluate_ast(right)?.as_i32();
                 
-                let min = expect_some!(left, VARIABLE_IS_NOT_A_NUMBER.to_string());
-                let max = expect_some!(right, VARIABLE_IS_NOT_A_NUMBER.to_string());
+                let min = expect_some!(left, RuntimeErrorKind::ValueNotNumber);
+                let max = expect_some!(right, RuntimeErrorKind::ValueNotNumber);
                 
                 for i in min..max {
                     let for_scope = Scope::new_child(self.clone());
@@ -202,8 +202,8 @@ impl<'a> Scope<'a> {
         match func {
             LangValue::Function(func) => {
                 // Parameters
-                if func.parameters.len() != func.parameters.len() {
-                    return EvalResult::Err(LangError::new_runtime(FUNCTION_INCORRECT_NUMBER_OF_PARAMETERS.to_string()));
+                if func.parameters.len() != param_values.len() {
+                    return EvalResult::Err(LangError::runtime(RuntimeErrorKind::FuncInvalidParamCount(func.parameters.len(), param_values.len())));
                 }
         
                 let func_scope = Scope::new_child(self.clone());
@@ -229,7 +229,7 @@ impl<'a> Scope<'a> {
                     Err(err) => EvalResult::Err(err),
                 }
             },
-            _ => return EvalResult::Err(LangError::new_runtime(VARIABLE_IS_NOT_A_FUNCTION.to_string())),
+            _ => return EvalResult::Err(LangError::runtime(RuntimeErrorKind::ValueNotFunc)),
         }
     }
 }

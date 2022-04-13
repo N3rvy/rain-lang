@@ -40,6 +40,19 @@ pub enum BuildErrorKind {
 }
 
 #[derive(Debug)]
+pub enum RuntimeErrorKind {
+    UnexpectedError(String),
+    CantConvertValue,
+    FuncInvalidParamCount(usize, usize),
+    ExtFuncParamCount(usize, usize),
+    ExtFuncParamType,
+    VarNotFound(String),
+    ValueNotNumber,
+    ValueNotFunc,
+    ModuleNotFound(ModuleUID),
+}
+
+#[derive(Debug)]
 pub enum LoadErrorKind {
     ModuleNotFound(String),
     LoadModuleError(String),
@@ -60,7 +73,10 @@ pub enum LangError {
     },
     Load {
         kind: LoadErrorKind,
-    }
+    },
+    Runtime {
+        kind: RuntimeErrorKind,
+    },
 }
 
 impl LangError {
@@ -86,6 +102,12 @@ impl LangError {
 
     pub fn build(kind: BuildErrorKind) -> Self {
         Self::Build {
+            kind
+        }
+    }
+
+    pub fn runtime(kind: RuntimeErrorKind) -> Self {
+        Self::Runtime {
             kind
         }
     }
