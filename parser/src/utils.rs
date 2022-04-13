@@ -9,7 +9,7 @@ macro_rules! expect_token {
 
         match tok {
             Some(Token { kind: $pattern, start: _, end: _ }) => (),
-            Some(_) => return Err(LangError::new_parser_unexpected_token()),
+            Some(token) => return Err(LangError::new_parser_unexpected_token(&token)),
             None => return Err(LangError::new_parser_end_of_file()),
         }
     };
@@ -66,20 +66,20 @@ impl<'a> ParserScope<'a> {
                         continue;
                     }
                 }
-                token => {
+                token_kind => {
                     if next_is_argument {
                         next_is_argument = false;
 
                         // name
-                        let name = match token {
+                        let name = match token_kind {
                             TokenKind::Symbol(name) => name,
-                            _ => return Err(LangError::new_parser_unexpected_token())
+                            _ => return Err(LangError::new_parser_unexpected_token(&token))
                         };
                         
                         // :
                         match tokens.pop() {
                             Some(Token { kind: TokenKind::Operator(OperatorKind::Colon), start: _, end: _ }) => (),
-                            Some(_) => return Err(LangError::new_parser_unexpected_token()),
+                            Some(_) => return Err(LangError::new_parser_unexpected_token(&token)),
                             None => return Err(LangError::new_parser_end_of_file()),
                         }
 
@@ -329,7 +329,8 @@ pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
     // type
     match tokens.pop() {
         Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(tk),
-        _ => Err(LangError::new_parser_unexpected_token())
+        Some(token) => Err(LangError::new_parser_unexpected_token(&token)),
+        None => Err(LangError::new_parser_end_of_file()),
     }
 }
 
@@ -369,7 +370,7 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<Ty
                     next_is_argument = true;
                 }
             },
-            _ => return Err(LangError::new_parser_unexpected_token()),
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
         };
     }
 

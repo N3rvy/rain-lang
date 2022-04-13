@@ -1,7 +1,7 @@
 use common::errors::LangError;
+use tokenizer::tokens::Token;
 
 pub const UNEXPECTED_ERROR: &str = "Unexpected error";
-pub const UNEXPECTED_TOKEN: &str = "Unexpected token";
 pub const UNEXPECTED_END_OF_FILE: &str = "Unexpected end of file";
 pub const WRONG_TYPE: &str = "Wrong typing";
 pub const PARAMETERS_EXPECTING_COMMA: &str = "Expected a comma found a parameter name";
@@ -20,14 +20,14 @@ pub const VAR_INSIDE_DEF_MODULE: &str = "Cannot define a variable inside a defin
 
 
 pub trait ParsingErrorHelper {
-    fn new_parser_unexpected_token() -> Self;
+    fn new_parser_unexpected_token(token: &Token) -> Self;
     fn new_parser_end_of_file() -> Self;
     fn new_parser_wrong_type() -> Self;
 }
 
 impl ParsingErrorHelper for LangError {
-    fn new_parser_unexpected_token() -> Self {
-        Self::new_parser(UNEXPECTED_TOKEN.to_string())
+    fn new_parser_unexpected_token(token: &Token) -> Self {
+        Self::new_parser(format!("Unexpected token {:?}, from {} to {}", token.kind, token.start, token.end))
     }
 
     fn new_parser_end_of_file() -> Self {

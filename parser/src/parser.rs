@@ -88,7 +88,7 @@ impl<'a> ParserScope<'a> {
                         Some(name)
                     },
                     TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => None,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
 
                 // ...)
@@ -143,7 +143,7 @@ impl<'a> ParserScope<'a> {
                 
                 let name = match name.kind {
                     TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
 
                 // ?(type)
@@ -186,7 +186,7 @@ impl<'a> ParserScope<'a> {
                         
                         match tokens.pop_err()?.kind {
                             TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => (),
-                            _ => return Err(LangError::new_parser_unexpected_token()),
+                            _ => return Err(LangError::new_parser_unexpected_token(&token)),
                         }
                         
                         result?
@@ -210,7 +210,7 @@ impl<'a> ParserScope<'a> {
                         
                         ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(Arc::new(field_map)))
                     },
-                    _ => return Err(LangError::new_parser_unexpected_token())
+                    _ => return Err(LangError::new_parser_unexpected_token(&token))
                 }
             },
             TokenKind::Return | TokenKind::Break => {
@@ -251,7 +251,7 @@ impl<'a> ParserScope<'a> {
                 // iter name
                 let iter_name = match tokens.pop_err()?.kind {
                     TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
                 
                 // in
@@ -294,7 +294,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Type(_) |
             TokenKind::Indent |
             TokenKind::Import |
-            TokenKind::Dedent => return Err(LangError::new_parser_unexpected_token()),
+            TokenKind::Dedent => return Err(LangError::new_parser_unexpected_token(&token)),
         };
         
 
@@ -398,9 +398,11 @@ impl<'a> ParserScope<'a> {
             TokenKind::Operator(OperatorKind::Dot) => {
                 tokens.pop();
 
-                let field_name = match tokens.pop_err()?.kind {
+                let token = tokens.pop_err()?;
+
+                let field_name = match token.kind {
                     TokenKind::Symbol(field_name) => field_name,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
                 
                 match &node.eval_type {

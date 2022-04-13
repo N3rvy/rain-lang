@@ -96,7 +96,7 @@ impl ModuleInitializer {
                 // [path]
                 let path = match tokens.pop_err()?.kind {
                     TokenKind::Literal(LiteralKind::String(path)) => path,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
 
                 // new line
@@ -111,10 +111,12 @@ impl ModuleInitializer {
                     return Err(LangError::new_parser(VAR_INSIDE_DEF_MODULE.to_string()));
                 }
 
+                let token = tokens.pop_err()?;
+
                 // <name>
-                let name = match tokens.pop_err()?.kind {
+                let name = match token.kind {
                     TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
 
                 // (type)
@@ -138,10 +140,12 @@ impl ModuleInitializer {
             TokenKind::Function => {
                 // func <name>((<param_name> (type))*) (type): {body}
 
+                let token = tokens.pop_err()?;
+
                 // <name>
-                let name = match tokens.pop_err()?.kind {
+                let name = match token.kind {
                     TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token()),
+                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
 
                 // (
@@ -174,7 +178,7 @@ impl ModuleInitializer {
                 ))
             },
             TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
-            _ => Err(LangError::new_parser_unexpected_token()),
+            _ => Err(LangError::new_parser_unexpected_token(&token)),
         }
     }
 
