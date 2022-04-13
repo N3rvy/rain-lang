@@ -1,5 +1,5 @@
 use common::{errors::LangError, ast::types::LiteralKind};
-use crate::{tokens::Token, errors::INVALID_STRING_LITERAL};
+use crate::{tokens::TokenKind, errors::INVALID_STRING_LITERAL};
 use super::resolver::{Resolver, AddResult};
 
 pub struct StringResolver {
@@ -71,7 +71,7 @@ impl Resolver for StringResolver {
                 AddResult::Ok
             } else {
                 match Self::parse_string(&self.chars) {
-                    Ok(value) => AddResult::End(Token::Literal(LiteralKind::String(value))),
+                    Ok(value) => AddResult::End(TokenKind::Literal(LiteralKind::String(value))),
                     Err(err) => AddResult::Err(err),
                 }
             }

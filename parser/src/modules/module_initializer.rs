@@ -2,10 +2,10 @@ use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKin
 use common::errors::LangError;
 use common::module::{DefinitionModule, ModuleIdentifier};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
-use tokenizer::tokens::Token;
+use tokenizer::tokens::{TokenKind, Token};
 use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, VAR_INSIDE_DEF_MODULE};
 use crate::{expect_indent, expect_token};
-use crate::utils::{parse_parameter_names, parse_type_error};
+use crate::utils::{parse_parameter_names, parse_type_error, TokensExtensions};
 
 pub enum DeclarationKind {
     Variable(TypeKind),
@@ -87,28 +87,24 @@ impl ModuleInitializer {
     }
 
     fn parse_declaration(tokens: &mut Tokens, is_definition: bool) -> Result<DeclarationParseAction, LangError> {
-        let token = match tokens.pop() {
-            Some(t) => t,
-            None => return Err(LangError::new_parser_end_of_file()),
-        };
+        let token = tokens.pop_err()?;
 
-        match token {
-            Token::Import => {
+        match token.kind {
+            TokenKind::Import => {
                 // import [path]
 
                 // [path]
-                let path = match tokens.pop() {
-                    Some(Token::Literal(LiteralKind::String(path))) => path,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                let path = match tokens.pop_err()?.kind {
+                    TokenKind::Literal(LiteralKind::String(path)) => path,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
 
                 // new line
-                expect_token!(tokens.pop(), Token::NewLine);
+                expect_token!(tokens.pop(), TokenKind::NewLine);
 
                 Ok(DeclarationParseAction::Import(path))
             },
-            Token::Variable => {
+            TokenKind::Variable => {
                 // var <name> (type) = [value]
 
                 if is_definition {
@@ -116,17 +112,16 @@ impl ModuleInitializer {
                 }
 
                 // <name>
-                let name = match tokens.pop() {
-                    Some(Token::Symbol(name)) => name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                let name = match tokens.pop_err()?.kind {
+                    TokenKind::Symbol(name) => name,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
 
                 // (type)
                 let type_kind = parse_type_error(tokens)?;
 
                 // =
-                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
+                expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Assign));
 
                 // [value]
                 let body = tokens.snapshot();
@@ -140,18 +135,17 @@ impl ModuleInitializer {
                     },
                 ))
             },
-            Token::Function => {
+            TokenKind::Function => {
                 // func <name>((<param_name> (type))*) (type): {body}
 
                 // <name>
-                let name = match tokens.pop() {
-                    Some(Token::Symbol(name)) => name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                let name = match tokens.pop_err()?.kind {
+                    TokenKind::Symbol(name) => name,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
 
                 // (
-                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
                 // (<param_name> (type))*)
                 let (param_names, param_types) = parse_parameter_names(tokens)?;
@@ -179,7 +173,7 @@ impl ModuleInitializer {
                     }
                 ))
             },
-            Token::NewLine => Ok(DeclarationParseAction::Nothing),
+            TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
             _ => Err(LangError::new_parser_unexpected_token()),
         }
     }
@@ -189,8 +183,8 @@ impl ModuleInitializer {
 
         loop {
             match tokens.pop() {
-                Some(Token::Indent) => indentations += 1,
-                Some(Token::Dedent) => {
+                Some(Token { kind: TokenKind::Indent, start: _, end: _ }) => indentations += 1,
+                Some(Token { kind: TokenKind::Dedent, start: _, end: _ }) => {
                     if indentations == 0 {
                         break;
                     }
@@ -206,7 +200,7 @@ impl ModuleInitializer {
     fn pop_until_newline(tokens: &mut Tokens) {
         loop {
             match tokens.pop() {
-                Some(Token::NewLine) | None => break,
+                Some(Token { kind: TokenKind::NewLine, start: _, end: _ }) | None => break,
                 Some(_) => (),
             }
         }

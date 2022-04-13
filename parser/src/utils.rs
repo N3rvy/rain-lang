@@ -1,5 +1,5 @@
 use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::LangError};
-use tokenizer::{tokens::Token, iterator::Tokens};
+use tokenizer::{tokens::{TokenKind, Token}, iterator::Tokens};
 use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA, WRONG_TYPE}, parser::ParserScope};
 
 #[macro_export]
@@ -8,7 +8,7 @@ macro_rules! expect_token {
         let tok = $token;
 
         match tok {
-            Some($pattern) => (),
+            Some(Token { kind: $pattern, start: _, end: _ }) => (),
             Some(_) => return Err(LangError::new_parser_unexpected_token()),
             None => return Err(LangError::new_parser_end_of_file()),
         }
@@ -18,10 +18,31 @@ macro_rules! expect_token {
 #[macro_export]
 macro_rules! expect_indent {
     ($token: expr) => {
-        expect_token!($token.pop(), Token::Operator(OperatorKind::Colon));
-        expect_token!($token.pop(), Token::NewLine);
-        expect_token!($token.pop(), Token::Indent);
+        expect_token!($token.pop(), TokenKind::Operator(OperatorKind::Colon));
+        expect_token!($token.pop(), TokenKind::NewLine);
+        expect_token!($token.pop(), TokenKind::Indent);
     };
+}
+
+pub trait TokensExtensions {
+    fn pop_err(&mut self) -> Result<Token, LangError>;
+    fn peek_err(&mut self) -> Result<Token, LangError>;
+}
+
+impl TokensExtensions for Tokens {
+    fn pop_err(&mut self) -> Result<Token, LangError> {
+        match self.pop() {
+            Some(token) => Ok(token),
+            None => return Err(LangError::new_parser_end_of_file()),
+        }
+    }
+
+    fn peek_err(&mut self) -> Result<Token, LangError> {
+        match self.pop() {
+            Some(token) => Ok(token),
+            None => return Err(LangError::new_parser_end_of_file()),
+        }
+    }
 }
 
 impl<'a> ParserScope<'a> {
@@ -30,11 +51,14 @@ impl<'a> ParserScope<'a> {
         let mut next_is_argument = true;
         
         loop {
-            let token = tokens.pop();
+            let token = match tokens.pop() {
+                Some(token) => token,
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
                 
-            match token {
-                Some(Token::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close)) => break,
-                Some(Token::Operator(OperatorKind::Comma)) => {
+            match &token.kind {
+                TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
+                TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
                     } else {
@@ -42,19 +66,19 @@ impl<'a> ParserScope<'a> {
                         continue;
                     }
                 }
-                Some(token) => {
+                token => {
                     if next_is_argument {
                         next_is_argument = false;
 
                         // name
                         let name = match token {
-                            Token::Symbol(name) => name,
+                            TokenKind::Symbol(name) => name,
                             _ => return Err(LangError::new_parser_unexpected_token())
                         };
                         
                         // :
                         match tokens.pop() {
-                            Some(Token::Operator(OperatorKind::Colon)) => (),
+                            Some(Token { kind: TokenKind::Operator(OperatorKind::Colon), start: _, end: _ }) => (),
                             Some(_) => return Err(LangError::new_parser_unexpected_token()),
                             None => return Err(LangError::new_parser_end_of_file()),
                         }
@@ -62,12 +86,11 @@ impl<'a> ParserScope<'a> {
                         // value
                         let value = self.parse_statement(tokens)?;
                         
-                        res.push((name, value));
+                        res.push((name.clone(), value));
                     } else {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                     }
                 },
-                None => return Err(LangError::new_parser_end_of_file()),
             };
         }
         
@@ -82,12 +105,15 @@ impl<'a> ParserScope<'a> {
         let mut body = Vec::new();
         
         loop {
-            let token = tokens.peek();
+            let token = match tokens.peek() {
+                Some(token) => token,
+                None => break,
+            };
                 
-            let result = match token {
-                Some(Token::Dedent) | None => break,
-                Some(Token::NewLine) => { tokens.pop(); continue },
-                Some(_) => self.parse_statement(tokens)?,
+            let result = match token.kind {
+                TokenKind::Dedent => break,
+                TokenKind::NewLine => { tokens.pop(); continue },
+                _ => self.parse_statement(tokens)?,
             };
             
             body.push(result);
@@ -105,11 +131,14 @@ impl<'a> ParserScope<'a> {
         let mut vector_type = TypeKind::Unknown;
         
         loop {
-            let token = tokens.peek();
+            let token = match tokens.peek() {
+                Some(token) => token,
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
                 
-            match token {
-                Some(Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close)) => break,
-                Some(Token::Operator(OperatorKind::Comma)) => {
+            match &token.kind {
+                TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close) => break,
+                TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
                     } else {
@@ -119,7 +148,7 @@ impl<'a> ParserScope<'a> {
                         continue;
                     }
                 }
-                Some(_) => {
+                _ => {
                     if next_is_argument {
                         next_is_argument = false;
                         
@@ -135,7 +164,6 @@ impl<'a> ParserScope<'a> {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                     }
                 },
-                None => return Err(LangError::new_parser_end_of_file()),
             };
         }
         
@@ -150,11 +178,14 @@ impl<'a> ParserScope<'a> {
         let mut next_is_argument = true;
         
         loop {
-            let token = tokens.peek();
+            let token = match tokens.peek() {
+                Some(token) => token,
+                None => return Err(LangError::new_parser_end_of_file()),
+            };
                 
-            match token {
-                Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
-                Some(Token::Operator(OperatorKind::Comma)) => {
+            match &token.kind {
+                TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => break,
+                TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
                     } else {
@@ -164,7 +195,7 @@ impl<'a> ParserScope<'a> {
                         continue;
                     }
                 }
-                Some(_) => {
+                _ => {
                     if next_is_argument {
                         next_is_argument = false;
                         body.push(self.parse_statement(tokens)?);
@@ -172,7 +203,6 @@ impl<'a> ParserScope<'a> {
                         return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                     }
                 },
-                None => return Err(LangError::new_parser_end_of_file()),
             };
         }
         
@@ -185,7 +215,7 @@ impl<'a> ParserScope<'a> {
     pub fn parse_type_option(&self, tokens: &mut Tokens) -> Option<TypeKind> {
         // type
         match tokens.peek() {
-            Some(Token::Type(tk)) => {
+            Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => {
                 tokens.pop();
                 Some(tk)
             },
@@ -298,7 +328,7 @@ impl<'a> ParserScope<'a> {
 pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
     // type
     match tokens.pop() {
-        Some(Token::Type(tk)) => Ok(tk),
+        Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(tk),
         _ => Err(LangError::new_parser_unexpected_token())
     }
 }
@@ -313,11 +343,14 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<Ty
     let mut next_is_argument = true;
     
     loop {
-        let token = tokens.pop();
+        let token = match tokens.pop() {
+            Some(token) => token,
+            None => return Err(LangError::new_parser_end_of_file()),
+        };
         
-        match &token {
-            Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => break,
-            Some(Token::Symbol(name)) => {
+        match &token.kind {
+            TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => break,
+            TokenKind::Symbol(name) => {
                 if next_is_argument {
                     next_is_argument = false;
 
@@ -329,15 +362,14 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<Ty
                     return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
                 }
             },
-            Some(Token::Operator(OperatorKind::Comma)) => {
+            TokenKind::Operator(OperatorKind::Comma) => {
                 if next_is_argument {
                     return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
                 } else {
                     next_is_argument = true;
                 }
             },
-            Some(_) => return Err(LangError::new_parser_unexpected_token()),
-            None => return Err(LangError::new_parser_end_of_file()),
+            _ => return Err(LangError::new_parser_unexpected_token()),
         };
     }
 

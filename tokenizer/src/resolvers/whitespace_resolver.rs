@@ -1,4 +1,4 @@
-use crate::tokens::Token;
+use crate::tokens::TokenKind;
 
 use super::resolver::{Resolver, AddResult};
 
@@ -22,7 +22,7 @@ impl Resolver for WhitespaceResolver {
             '\n' => {
                 self.indentation = Some(0);
 
-                AddResult::OkToken(Token::NewLine)
+                AddResult::OkToken(TokenKind::NewLine)
             },
             '\t' => {
                 if let Some(indentation) = self.indentation {

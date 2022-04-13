@@ -1,5 +1,5 @@
 use common::ast::types::{LiteralKind, OperatorKind, TypeKind};
-use crate::tokens::Token;
+use crate::tokens::TokenKind;
 use super::resolver::{Resolver, AddResult};
 
 pub struct SymbolResolver {
@@ -13,29 +13,29 @@ impl SymbolResolver {
         }
     }
     
-    fn end_symbol(&self) -> Token {
+    fn end_symbol(&self) -> TokenKind {
         match self.chars.as_str() {
-            "func" => Token::Function, 
-            "var" => Token::Variable,
-            "return" => Token::Return,
-            "break" => Token::Break,
-            "in" => Token::Operator(OperatorKind::In),
-            "if" => Token::If,
-            "for" => Token::For,
-            "while" => Token::While,
-            "import" => Token::Import,
+            "func" => TokenKind::Function, 
+            "var" => TokenKind::Variable,
+            "return" => TokenKind::Return,
+            "break" => TokenKind::Break,
+            "in" => TokenKind::Operator(OperatorKind::In),
+            "if" => TokenKind::If,
+            "for" => TokenKind::For,
+            "while" => TokenKind::While,
+            "import" => TokenKind::Import,
 
-            "int" => Token::Type(TypeKind::Int),
-            "float" => Token::Type(TypeKind::Float),
-            "bool" => Token::Type(TypeKind::Bool),
-            "str" => Token::Type(TypeKind::String),
-            "none" => Token::Type(TypeKind::Nothing),
-            "any" => Token::Type(TypeKind::Unknown),
+            "int" => TokenKind::Type(TypeKind::Int),
+            "float" => TokenKind::Type(TypeKind::Float),
+            "bool" => TokenKind::Type(TypeKind::Bool),
+            "str" => TokenKind::Type(TypeKind::String),
+            "none" => TokenKind::Type(TypeKind::Nothing),
+            "any" => TokenKind::Type(TypeKind::Unknown),
 
-            "true" => Token::Literal(LiteralKind::Bool(true)),
-            "false" => Token::Literal(LiteralKind::Bool(false)),
+            "true" => TokenKind::Literal(LiteralKind::Bool(true)),
+            "false" => TokenKind::Literal(LiteralKind::Bool(false)),
 
-            _ => Token::Symbol(self.chars.clone()),
+            _ => TokenKind::Symbol(self.chars.clone()),
         }
     }
 }

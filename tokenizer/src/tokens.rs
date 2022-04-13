@@ -2,7 +2,24 @@ use common::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, TypeK
 
 
 #[derive(Clone, Debug)]
-pub enum Token {
+pub struct Token {
+    pub kind: TokenKind,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Token {
+    pub fn new(kind: TokenKind, start: usize, end: usize) -> Self {
+        Self {
+            kind,
+            start,
+            end
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TokenKind {
     NewLine,
     Indent,
     Dedent,

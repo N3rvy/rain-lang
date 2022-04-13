@@ -3,7 +3,9 @@ use std::sync::Arc;
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::module::ModuleUID;
-use tokenizer::{tokens::Token, iterator::Tokens};
+use tokenizer::tokens::Token;
+use tokenizer::{tokens::TokenKind, iterator::Tokens};
+use crate::utils::TokensExtensions;
 use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent, utils::parse_parameter_names};
 use crate::parser_module_scope::ParserModuleScope;
 
@@ -76,18 +78,17 @@ impl<'a> ParserScope<'a> {
         
         let token = token.unwrap();
         
-        let result = match &token {
-            Token::Function => {
-                let next= tokens.pop();
+        let result = match &token.kind {
+            TokenKind::Function => {
+                let next= tokens.pop_err()?;
 
-                let name = match next {
-                    Some(Token::Symbol(name)) => {
-                        expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                let name = match next.kind {
+                    TokenKind::Symbol(name) => {
+                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
                         Some(name)
                     },
-                    Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open)) => None,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    _ => return Err(LangError::new_parser_end_of_file()),
+                    TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => None,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
 
                 // ...)
@@ -136,21 +137,20 @@ impl<'a> ParserScope<'a> {
                     None => func_literal,
                 }
             },
-            Token::Variable => {
+            TokenKind::Variable => {
                 // name
-                let name = tokens.pop();
+                let name = tokens.pop_err()?;
                 
-                let name = match name {
-                    Some(Token::Symbol(name)) => name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                let name = match name.kind {
+                    TokenKind::Symbol(name) => name,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
 
                 // ?(type)
                 let assign_type = self.parse_type_option(tokens);
 
                 // =
-                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Assign));
+                expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Assign));
 
                 // value
                 let value = self.parse_statement(tokens)?;
@@ -169,7 +169,7 @@ impl<'a> ParserScope<'a> {
 
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
             },
-            Token::Symbol(name) => {
+            TokenKind::Symbol(name) => {
                 let (module, var_type) = match self.get(name) {
                     Some(t) => t,
                     None => return Err(LangError::new_parser(VAR_NOT_FOUND.to_string())),
@@ -178,16 +178,15 @@ impl<'a> ParserScope<'a> {
                 let var_ref = NodeKind::new_variable_ref(module, name.clone());
                 ASTNode::new(var_ref, var_type)
             }
-            Token::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
-            Token::Parenthesis(kind, state) => {
+            TokenKind::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
+            TokenKind::Parenthesis(kind, state) => {
                 match (kind, state) {
                     (ParenthesisKind::Round, ParenthesisState::Open) => {
                         let result = self.parse_statement(tokens);
                         
-                        match tokens.pop() {
-                            Some(Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close)) => (),
-                            Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                            None => return Err(LangError::new_parser_end_of_file()),
+                        match tokens.pop_err()?.kind {
+                            TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => (),
+                            _ => return Err(LangError::new_parser_unexpected_token()),
                         }
                         
                         result?
@@ -214,9 +213,9 @@ impl<'a> ParserScope<'a> {
                     _ => return Err(LangError::new_parser_unexpected_token())
                 }
             },
-            Token::Return | Token::Break => {
+            TokenKind::Return | TokenKind::Break => {
                 let value = match tokens.peek() {
-                    Some(Token::NewLine) | None => {
+                    Some(Token { kind: TokenKind::NewLine, start: _, end: _ }) | None => {
                         None
                     },
                     Some(_) => {
@@ -224,9 +223,9 @@ impl<'a> ParserScope<'a> {
                     },
                 };
                 
-                let kind = match &token {
-                    Token::Return => ReturnKind::Return,
-                    Token::Break => ReturnKind::Break,
+                let kind = match &token.kind {
+                    TokenKind::Return => ReturnKind::Return,
+                    TokenKind::Break => ReturnKind::Break,
                     _ => panic!("Like WTF"),
                 };
                 
@@ -238,7 +237,7 @@ impl<'a> ParserScope<'a> {
 
                 ASTNode::new(NodeKind::new_return_statement(value, kind), TypeKind::Nothing)
             },
-            Token::If => {
+            TokenKind::If => {
                 // condition
                 let condition = self.parse_statement(tokens)?;
                 // Indent
@@ -248,21 +247,21 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Nothing)
             },
-            Token::For => {
+            TokenKind::For => {
                 // iter name
-                let iter_name = match tokens.pop() {
-                    Some(Token::Symbol(name)) => name,
+                let iter_name = match tokens.pop_err()?.kind {
+                    TokenKind::Symbol(name) => name,
                     _ => return Err(LangError::new_parser_unexpected_token()),
                 };
                 
                 // in
-                expect_token!(tokens.pop(), Token::Operator(OperatorKind::In));
+                expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::In));
                 
                 // min value
                 let min = self.parse_statement(tokens)?;
                 
                 // ..
-                expect_token!(tokens.pop(), Token::Operator(OperatorKind::Range));
+                expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Range));
                 
                 // max value
                 let max = self.parse_statement(tokens)?;
@@ -277,7 +276,7 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_for_statement(min, max, body, iter_name), TypeKind::Nothing)
             },
-            Token::While => {
+            TokenKind::While => {
                 // condition 
                 let condition = self.parse_statement(tokens)?;
                 // {
@@ -287,15 +286,15 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
             },
-            Token::Type(TypeKind::Nothing) => ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing),
-            Token::NewLine => self.parse_statement(tokens)?,
-            Token::Operator(_) |
-            Token::BoolOperator(_) |
-            Token::MathOperator(_) |
-            Token::Type(_) |
-            Token::Indent |
-            Token::Import |
-            Token::Dedent => return Err(LangError::new_parser_unexpected_token()),
+            TokenKind::Type(TypeKind::Nothing) => ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing),
+            TokenKind::NewLine => self.parse_statement(tokens)?,
+            TokenKind::Operator(_) |
+            TokenKind::BoolOperator(_) |
+            TokenKind::MathOperator(_) |
+            TokenKind::Type(_) |
+            TokenKind::Indent |
+            TokenKind::Import |
+            TokenKind::Dedent => return Err(LangError::new_parser_unexpected_token()),
         };
         
 
@@ -320,8 +319,8 @@ impl<'a> ParserScope<'a> {
         
         let infix = infix.unwrap();
 
-        match infix {
-            Token::MathOperator(operator) => {
+        match infix.kind {
+            TokenKind::MathOperator(operator) => {
                 tokens.pop();
                 let right = self.parse_statement(tokens)?;
                 
@@ -335,7 +334,7 @@ impl<'a> ParserScope<'a> {
                     true
                 ))
             },
-            Token::BoolOperator(operator) => {
+            TokenKind::BoolOperator(operator) => {
                 tokens.pop();
                 let right = self.parse_statement(tokens)?;
                 
@@ -347,12 +346,12 @@ impl<'a> ParserScope<'a> {
                     true
                 ))
             },
-            Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
+            TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
                 tokens.pop();
                 
                 let value = self.parse_statement(tokens)?;
                 
-                expect_token!(tokens.pop(), Token::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
+                expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close));
                 
                 let vec_type = match &node.eval_type {
                     TypeKind::Vector(vt) => (**vt).clone(),
@@ -365,7 +364,7 @@ impl<'a> ParserScope<'a> {
                         vec_type),
                     true)) 
             },
-            Token::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
+            TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
                 tokens.pop();
 
                 let parameters = self.parse_parameter_values(tokens)?;
@@ -396,13 +395,12 @@ impl<'a> ParserScope<'a> {
                     true
                 ))
             },
-            Token::Operator(OperatorKind::Dot) => {
+            TokenKind::Operator(OperatorKind::Dot) => {
                 tokens.pop();
 
-                let field_name = match tokens.pop() {
-                    Some(Token::Symbol(field_name)) => field_name,
-                    Some(_) => return Err(LangError::new_parser_unexpected_token()),
-                    None => return Err(LangError::new_parser_end_of_file()),
+                let field_name = match tokens.pop_err()?.kind {
+                    TokenKind::Symbol(field_name) => field_name,
+                    _ => return Err(LangError::new_parser_unexpected_token()),
                 };
                 
                 match &node.eval_type {
@@ -421,7 +419,7 @@ impl<'a> ParserScope<'a> {
                     _ => return Err(LangError::new_parser(INVALID_FIELD_ACCESS.to_string())),
                 }
             },
-            Token::Operator(OperatorKind::Assign) => {
+            TokenKind::Operator(OperatorKind::Assign) => {
                 let name = match node.kind.as_ref() {
                     NodeKind::VariableRef { module: _, name } => name.to_string(),
                     _ => return Ok((node, false)),

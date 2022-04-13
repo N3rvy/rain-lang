@@ -1,5 +1,5 @@
 use common::{errors::LangError, ast::types::LiteralKind};
-use crate::{tokens::Token, errors::{INT_PARSE_ERROR, FLOAT_PARSE_ERROR}};
+use crate::{tokens::TokenKind, errors::{INT_PARSE_ERROR, FLOAT_PARSE_ERROR}};
 use super::resolver::{Resolver, AddResult};
 
 
@@ -14,15 +14,15 @@ impl NumberResolver {
         }
     }
     
-    fn end_number(&self) -> Result<Token, LangError>  {
+    fn end_number(&self) -> Result<TokenKind, LangError>  {
         if self.chars.contains('.') {
             match self.chars.parse::<f32>() {
-                Ok(value) => Ok(Token::Literal(LiteralKind::Float(value))),
+                Ok(value) => Ok(TokenKind::Literal(LiteralKind::Float(value))),
                 Err(_) => Err(LangError::new_tokenizer(FLOAT_PARSE_ERROR.to_string())),
             }
         } else {
             match self.chars.parse::<i32>() {
-                Ok(value) => Ok(Token::Literal(LiteralKind::Int(value))),
+                Ok(value) => Ok(TokenKind::Literal(LiteralKind::Int(value))),
                 Err(_) => Err(LangError::new_tokenizer(INT_PARSE_ERROR.to_string())),
             }
         }

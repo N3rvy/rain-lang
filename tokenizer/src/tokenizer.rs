@@ -2,12 +2,14 @@ use std::str::Chars;
 
 use common::errors::LangError;
 
-use crate::{tokens::Token, resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens, errors::INVALID_INDENT};
+use crate::{tokens::{Token, TokenKind}, resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens, errors::INVALID_INDENT};
 
 pub struct Tokenizer<'a> {
     current_resolver: Box<dyn Resolver>,
     tokens: Vec<Token>,
     chars: Chars<'a>,
+    last_token_pos: usize,
+    pos: usize,
     pub(crate) indentation_stack: Vec<u32>,
 }
 
@@ -17,10 +19,13 @@ impl<'a> Tokenizer<'a> {
             current_resolver: Box::new(WhitespaceResolver::new(0)), // TODO: Maybe there is a preattier way (without the maybe but i am too lazy to do it right now)
             tokens: Vec::new(),
             chars: source.chars(),
+            last_token_pos: 0,
+            pos: 0,
             indentation_stack: vec![0],
         };
+
         loop {
-            let next_char = match tokenizer.chars.next() {
+            let next_char = match tokenizer.next_char() {
                 Some(c) => c,
                 None => break,
             };
@@ -33,18 +38,30 @@ impl<'a> Tokenizer<'a> {
         Ok(Tokens::from_vec(tokenizer.tokens))
     }
 
+    fn next_char(&mut self) -> Option<char> {
+        self.pos += 1;
+        self.chars.next()
+    }
+
+    fn push_token(&mut self, token: TokenKind) {
+        self.tokens.push(Token::new(token, self.last_token_pos, self.pos));
+
+        self.last_token_pos = 0;
+        self.pos += 1;
+    }
+
     fn tokenize_char(&mut self, char: char) -> Result<(), LangError> {
         let result = self.current_resolver.add(char);
 
         match result {
             AddResult::Ok => Ok(()),
             AddResult::OkToken(token) => {
-                self.tokens.push(token);
+                self.push_token(token);
 
                 Ok(())
             },
             AddResult::End(token) => {
-                self.tokens.push(token);
+                self.push_token(token);
 
                 let next_char = match self.chars.next() {
                     Some(c) => c,
@@ -68,7 +85,7 @@ impl<'a> Tokenizer<'a> {
                     self.indentation_stack.pop();
 
                     loop {
-                        self.tokens.push(Token::Dedent);
+                        self.push_token(TokenKind::Dedent);
 
                         match self.indentation_stack.last() {
                             Some(indent) => {
@@ -85,7 +102,7 @@ impl<'a> Tokenizer<'a> {
 
                     }
                 } else {
-                    self.tokens.push(Token::Indent);
+                    self.push_token(TokenKind::Indent);
                     self.indentation_stack.push(new_indent);
                 }
 
@@ -93,7 +110,7 @@ impl<'a> Tokenizer<'a> {
                 self.tokenize_char(char)
             },
             AddResult::ChangeChars(token, chars) => {
-                self.tokens.push(token);
+                self.push_token(token);
                 
                 self.current_resolver = self.resolver_from_char(chars[0]);
                 
@@ -104,7 +121,7 @@ impl<'a> Tokenizer<'a> {
                 Ok(())
             }
             AddResult::Change(token, char) => {
-                self.tokens.push(token);
+                self.push_token(token);
                 self.current_resolver = self.resolver_from_char(char);
 
                 self.tokenize_char(char)
