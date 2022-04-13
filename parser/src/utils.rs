@@ -1,6 +1,6 @@
-use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::LangError};
-use tokenizer::{tokens::{TokenKind, Token}, iterator::Tokens};
-use crate::{errors::{PARAMETERS_EXPECTING_PARAMETER, ParsingErrorHelper, PARAMETERS_EXPECTING_COMMA, WRONG_TYPE}, parser::ParserScope};
+use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::{LangError, ParserErrorKind}, tokens::{Token, TokenKind}};
+use tokenizer::iterator::Tokens;
+use crate::{errors::ParsingErrorHelper, parser::ParserScope};
 
 #[macro_export]
 macro_rules! expect_token {
@@ -60,7 +60,7 @@ impl<'a> ParserScope<'a> {
                 TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
                 TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedParam));
                     } else {
                         next_is_argument = true;
                         continue;
@@ -88,7 +88,7 @@ impl<'a> ParserScope<'a> {
                         
                         res.push((name.clone(), value));
                     } else {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedComma));
                     }
                 },
             };
@@ -140,7 +140,7 @@ impl<'a> ParserScope<'a> {
                 TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close) => break,
                 TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedParam));
                     } else {
                         tokens.pop();
 
@@ -156,12 +156,12 @@ impl<'a> ParserScope<'a> {
                         if vector_type.is_unknown() {
                             vector_type = node.eval_type.clone();
                         } else if vector_type != node.eval_type {
-                            return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                            return Err(LangError::parser(&token, ParserErrorKind::WrontType(node.eval_type.clone(), vector_type.clone())));
                         }
 
                         body.push(node);
                     } else {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedComma));
                     }
                 },
             };
@@ -187,7 +187,7 @@ impl<'a> ParserScope<'a> {
                 TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => break,
                 TokenKind::Operator(OperatorKind::Comma) => {
                     if next_is_argument {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedParam));
                     } else {
                         tokens.pop();
 
@@ -200,7 +200,7 @@ impl<'a> ParserScope<'a> {
                         next_is_argument = false;
                         body.push(self.parse_statement(tokens)?);
                     } else {
-                        return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                        return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedComma));
                     }
                 },
             };
@@ -360,12 +360,12 @@ pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<Ty
                     names.push(name.clone());
                     types.push(t);
                 } else {
-                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_COMMA.to_string()));
+                    return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedComma));
                 }
             },
             TokenKind::Operator(OperatorKind::Comma) => {
                 if next_is_argument {
-                    return Err(LangError::new_parser(PARAMETERS_EXPECTING_PARAMETER.to_string()));
+                    return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedParam));
                 } else {
                     next_is_argument = true;
                 }

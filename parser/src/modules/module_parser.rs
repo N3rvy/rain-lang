@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use common::ast::ASTNode;
 use common::ast::types::{Function, FunctionType, TypeKind};
-use common::errors::LangError;
+use common::errors::{LangError, ParserErrorKind};
 use common::module::{FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use tokenizer::iterator::Tokens;
-use crate::errors::{UNEXPECTED_ERROR, WRONG_TYPE};
+use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
 use crate::modules::module_loader::ModuleLoaderContext;
@@ -47,6 +47,8 @@ impl<'a> ModuleParser<'a> {
                 DeclarationKind::Function(params, func_type) => {
                     let scope = scope.new_child();
 
+                    let token = &tokens.peek().unwrap();
+
                     let value = Self::parse_function_value(
                         &mut tokens,
                         &scope,
@@ -54,7 +56,7 @@ impl<'a> ModuleParser<'a> {
                         func_type.clone())?;
 
                     if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
-                        return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                        return Err(LangError::wrong_type(&token, &scope.eval_type.borrow(), &func_type.1));
                     }
 
                     functions.push((
@@ -114,7 +116,11 @@ impl<'a> ModuleParser<'a> {
 
     fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: &Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
         if params.len() != func_type.0.len() {
-            return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string()));
+            return Err(
+                LangError::parser(
+                    &tokens.peek().unwrap(),
+                    ParserErrorKind::UnexpectedError(
+                        "parse_function_value: different params lenghts".to_string())));
         }
 
         for i in 0..params.len() {

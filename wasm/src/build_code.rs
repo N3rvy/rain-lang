@@ -2,12 +2,11 @@ use std::ops::Index;
 use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
-use common::errors::LangError;
+use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module};
 use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
-use crate::errors::{FUNC_NOT_FOUND, INVALID_STACK_SIZE, INVALID_STACK_TYPE, MODULE_NOT_FOUND, UNSUPPORTED_FUNC_INVOKE, UNEXPECTED_ERROR, VAR_NOT_LITERAL};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
@@ -115,7 +114,10 @@ impl<'a> ModuleBuilder<'a> {
     fn insert_var(&mut self, name: &str, var_type: &TypeKind, value: &ASTNode) -> Result<(), LangError> {
         let literal = match value.kind.as_ref() {
             NodeKind::Literal { value } => value,
-            _ => return Err(LangError::new_runtime(VAR_NOT_LITERAL.to_string())),
+            _ => return Err(
+                LangError::build(
+                    BuildErrorKind::Unsupported(
+                        "Var declaration must be literal".to_string()))),
         };
 
         let data = match literal {
@@ -205,7 +207,7 @@ impl<'a> ModuleBuilder<'a> {
                     Some(ModuleKind::Data(module)) => {
                         let func = match module.get_func_def(name) {
                             Some(f) => f,
-                            None => return Err(LangError::new_runtime(FUNC_NOT_FOUND.to_string())),
+                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
                         };
 
                         self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
@@ -226,7 +228,7 @@ impl<'a> ModuleBuilder<'a> {
                             ret
                         ))
                     },
-                    _ => return Err(LangError::new_runtime(MODULE_NOT_FOUND.to_string())),
+                    _ => return Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
                 }
             },
         }
@@ -334,7 +336,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VariableRef { module: _, name } => {
                 let (var_type, var_kind) = match self.get_var(name) {
                     Some((vr, vk)) => (vr, vk),
-                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
                 };
 
                 self.type_stack.push(var_type.clone());
@@ -381,7 +383,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VariableAsgn { name, value } => {
                 let (local_type, var_kind) = match self.get_var(name) {
                     Some((lt, vk)) => (lt, vk),
-                    None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
                 };
 
                 match var_kind {
@@ -435,7 +437,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 // TODO: Support for other kinds of invocations
                 let (module, name) = match variable.kind.as_ref() {
                     NodeKind::VariableRef { name, module } => (module, name),
-                    _ => return Err(LangError::new_runtime(UNSUPPORTED_FUNC_INVOKE.to_string())),
+                    _ => return Err(LangError::build(BuildErrorKind::Unsupported("Not static function call".to_string()))),
                 };
 
                 for param in parameters {
@@ -497,7 +499,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     ([left], [right]) => {
                         self.build_math_op(operation, left.clone(), right.clone());
                     }
-                    _ => return Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string())),
+                    _ => return Err(LangError::build(BuildErrorKind::InvalidStackType)),
                 }
             },
             NodeKind::BoolOperation { operation, left, right } => {
@@ -516,7 +518,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     ([left], [right]) => {
                         self.build_bool_op(operation, left.clone(), right.clone());
                     }
-                    _ => return Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string())),
+                    _ => return Err(LangError::build(BuildErrorKind::InvalidStackType)),
                 }
             },
             NodeKind::ReturnStatement { kind: _ , value } => {
@@ -684,7 +686,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         if a == b {
             Ok(())
         } else {
-            Err(LangError::new_runtime(INVALID_STACK_TYPE.to_string()))
+            Err(LangError::build(BuildErrorKind::InvalidStackType))
         }
     }
 
@@ -693,7 +695,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         if self.type_stack.len() == size {
             Ok(())
         } else {
-            Err(LangError::new_runtime(INVALID_STACK_SIZE.to_string()))
+            Err(LangError::build(BuildErrorKind::InvalidStackType))
         }
     }
 }

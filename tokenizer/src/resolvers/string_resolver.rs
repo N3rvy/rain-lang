@@ -1,5 +1,4 @@
-use common::{errors::LangError, ast::types::LiteralKind};
-use crate::{tokens::TokenKind, errors::INVALID_STRING_LITERAL};
+use common::{errors::TokenizerErrorKind, ast::types::LiteralKind, tokens::TokenKind};
 use super::resolver::{Resolver, AddResult};
 
 pub struct StringResolver {
@@ -13,7 +12,7 @@ impl StringResolver {
         }
     }
 
-    fn parse_string(string: &String) -> Result<String, LangError> {
+    fn parse_string(string: &String) -> Result<String, TokenizerErrorKind> {
         let backslashes = Self::count_special_caracters(string);
         let mut res = Vec::<u8>::with_capacity(string.len() - backslashes);
         
@@ -41,7 +40,7 @@ impl StringResolver {
         
         match String::from_utf8(res) {
             Ok(val) => Ok(val),
-            Err(_) => Err(LangError::new_tokenizer(INVALID_STRING_LITERAL.to_string())),
+            Err(_) => Err(TokenizerErrorKind::InvalidStringLiteral),
         }
     }
 

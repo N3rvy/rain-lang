@@ -1,12 +1,13 @@
 use std::{collections::HashMap, cell::RefCell};
 use std::sync::Arc;
+use common::errors::ParserErrorKind;
+use common::tokens::{TokenKind, Token};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::module::ModuleUID;
-use tokenizer::tokens::Token;
-use tokenizer::{tokens::TokenKind, iterator::Tokens};
+use tokenizer::iterator::Tokens;
 use crate::utils::TokensExtensions;
-use crate::{expect_token, errors::{ParsingErrorHelper, VAR_NOT_FOUND, INVALID_FIELD_ACCESS, FIELD_DOESNT_EXIST, INVALID_ASSIGN, NOT_A_FUNCTION, INVALID_ARGS_COUNT, INVALID_ARGS, NOT_A_VECTOR, WRONG_TYPE}, expect_indent, utils::parse_parameter_names};
+use crate::{expect_token, errors::ParsingErrorHelper, expect_indent, utils::parse_parameter_names};
 use crate::parser_module_scope::ParserModuleScope;
 
 pub enum ScopeParent<'a> {
@@ -111,7 +112,7 @@ impl<'a> ParserScope<'a> {
                 let body = body_scope.parse_body(tokens)?;
 
                 if !body_scope.eval_type.borrow().is_compatible(&ret_type) {
-                    return Err(LangError::new_parser(WRONG_TYPE.to_string()));
+                    return Err(LangError::wrong_type(&token, &body_scope.eval_type.borrow(), &ret_type));
                 }
                 
                 let eval_type = TypeKind::Function(FunctionType(param_types.clone(), Box::new(ret_type)));
@@ -158,7 +159,7 @@ impl<'a> ParserScope<'a> {
                 let eval_type = match assign_type {
                     Some(type_kind) => {
                         if !type_kind.is_compatible(&value.eval_type) {
-                            return Err(LangError::new_parser(INVALID_ASSIGN.to_string()))
+                            return Err(LangError::wrong_type(&token, &type_kind, &value.eval_type))
                         }
                         type_kind
                     },
@@ -172,7 +173,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Symbol(name) => {
                 let (module, var_type) = match self.get(name) {
                     Some(t) => t,
-                    None => return Err(LangError::new_parser(VAR_NOT_FOUND.to_string())),
+                    None => return Err(LangError::parser(&token, ParserErrorKind::VarNotFound)),
                 };
 
                 let var_ref = NodeKind::new_variable_ref(module, name.clone());
@@ -347,7 +348,7 @@ impl<'a> ParserScope<'a> {
                 ))
             },
             TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
-                tokens.pop();
+                let token = tokens.pop().unwrap();
                 
                 let value = self.parse_statement(tokens)?;
                 
@@ -355,7 +356,7 @@ impl<'a> ParserScope<'a> {
                 
                 let vec_type = match &node.eval_type {
                     TypeKind::Vector(vt) => (**vt).clone(),
-                    _ => return Err(LangError::new_parser(NOT_A_VECTOR.to_string())),
+                    _ => return Err(LangError::parser(&token, ParserErrorKind::NotIndexable)),
                 };
                 
                 Ok((
@@ -365,24 +366,24 @@ impl<'a> ParserScope<'a> {
                     true)) 
             },
             TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => {
-                tokens.pop();
+                let token = tokens.pop().unwrap();
 
                 let parameters = self.parse_parameter_values(tokens)?;
                 
                 // check that node is function
                 let (arg_types, ret_type) = match &node.eval_type {
                     TypeKind::Function(FunctionType(arg_types, ret_value)) => (arg_types, ret_value),
-                    _ => return Err(LangError::new_parser(NOT_A_FUNCTION.to_string())),
+                    _ => return Err(LangError::parser(&token, ParserErrorKind::NotCallable)),
                 };
                 
                 // Check parameters types
                 if parameters.len() != arg_types.len() {
-                    return Err(LangError::new_parser(INVALID_ARGS_COUNT.to_string()))
+                    return Err(LangError::parser(&token, ParserErrorKind::InvalidArgCount(arg_types.len())))
                 }
                 
                 for i in 0..parameters.len() {
                     if !parameters[i].eval_type.is_compatible(&arg_types[i]) {
-                        return Err(LangError::new_parser(INVALID_ARGS.to_string()))
+                        return Err(LangError::wrong_type(&token, &arg_types[i], &parameters[i].eval_type))
                     }
                 }
                 
@@ -400,25 +401,25 @@ impl<'a> ParserScope<'a> {
 
                 let token = tokens.pop_err()?;
 
-                let field_name = match token.kind {
+                let field_name = match &token.kind {
                     TokenKind::Symbol(field_name) => field_name,
                     _ => return Err(LangError::new_parser_unexpected_token(&token)),
                 };
                 
                 match &node.eval_type {
                     TypeKind::Object(field_types) => {
-                        let field_type = match field_types.get(&field_name) {
+                        let field_type = match field_types.get(field_name) {
                             Some(t) => t.clone(),
-                            None => return Err(LangError::new_parser(FIELD_DOESNT_EXIST.to_string())),
+                            None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
                         };
 
                         Ok((
                             ASTNode::new(
-                                NodeKind::new_field_access(node, field_name),
+                                NodeKind::new_field_access(node, field_name.clone()),
                                 field_type),
                             true))
                     },
-                    _ => return Err(LangError::new_parser(INVALID_FIELD_ACCESS.to_string())),
+                    _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidFieldAccess)),
                 }
             },
             TokenKind::Operator(OperatorKind::Assign) => {

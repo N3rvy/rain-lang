@@ -1,8 +1,8 @@
 use std::str::Chars;
 
-use common::errors::LangError;
+use common::{errors::{LangError, TokenizerErrorKind}, tokens::{Token, TokenKind}};
 
-use crate::{tokens::{Token, TokenKind}, resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens, errors::INVALID_INDENT};
+use crate::{resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens};
 
 pub struct Tokenizer<'a> {
     current_resolver: Box<dyn Resolver>,
@@ -97,7 +97,10 @@ impl<'a> Tokenizer<'a> {
                                 // Otherwise pop the indentaion from the stack
                                 self.indentation_stack.pop();
                             },
-                            None => return Err(LangError::new_tokenizer(INVALID_INDENT.to_string()))    ,
+                            None => return Err(
+                                LangError::tokenizer(
+                                    self.tokens.last().unwrap(),
+                                    TokenizerErrorKind::InvalidIndent)),
                         };
 
                     }
@@ -126,7 +129,12 @@ impl<'a> Tokenizer<'a> {
 
                 self.tokenize_char(char)
             },
-            AddResult::Err(err) => Err(err),
+            AddResult::Err(err) => Err(
+                LangError::tokenizer(
+                    self.tokens
+                        .last()
+                        .unwrap_or(&Token::new(TokenKind::NewLine, self.last_token_pos, self.pos)),
+                    err)),
         }
 
     }

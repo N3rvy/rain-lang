@@ -1,5 +1,4 @@
-use common::{errors::LangError, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}};
-use crate::{tokens::TokenKind, errors::INVALID_OPERATOR_TOKEN_ERROR};
+use common::{errors::TokenizerErrorKind, ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind}, tokens::TokenKind};
 use super::resolver::{Resolver, AddResult};
 
 pub struct OperatorResolver {
@@ -13,7 +12,7 @@ impl OperatorResolver {
         }
     }
     
-    fn end_operator(&self) -> Result<TokenKind, LangError> {
+    fn end_operator(&self) -> Result<TokenKind, TokenizerErrorKind> {
         Ok(match self.chars.as_str() {
             // Operators
             "=" => TokenKind::Operator(OperatorKind::Assign),
@@ -39,7 +38,7 @@ impl OperatorResolver {
             "<=" => TokenKind::BoolOperator(BoolOperatorKind::SmallerEq),
             
             // Fallback
-            _ => return Err(LangError::new_tokenizer(INVALID_OPERATOR_TOKEN_ERROR.to_string()))
+            _ => return Err(TokenizerErrorKind::InvalidOperatorToken),
         })
     }
 }

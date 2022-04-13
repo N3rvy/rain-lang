@@ -1,5 +1,4 @@
-use common::ast::types::{ParenthesisKind, ParenthesisState};
-use crate::tokens::TokenKind;
+use common::{ast::types::{ParenthesisKind, ParenthesisState}, tokens::TokenKind};
 use super::resolver::{Resolver, AddResult};
 
 pub struct ParenthesisResolver;

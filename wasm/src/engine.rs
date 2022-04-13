@@ -1,8 +1,8 @@
 use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError};
 use std::sync::Arc;
-use common::module::{Module, ModuleUID, ModuleIdentifier};
+use common::{module::{Module, ModuleUID, ModuleIdentifier}, errors::BuildErrorKind};
 use core::parser::ModuleKind;
-use crate::{module::WasmModule, errors::UNEXPECTED_ERROR};
+use crate::module::WasmModule;
 use crate::build::WasmBuilder;
 
 pub struct WasmEngine {
@@ -47,7 +47,7 @@ impl EngineBuildSource for WasmEngine {
     fn build_module_source(&self, uid: ModuleUID) -> Result<Vec<u8>, LangError> {
         let module = match self.module_loader.get_module(uid) {
             Some(module) => module,
-            None => return Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string()))
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
         };
 
         match module {
@@ -55,7 +55,7 @@ impl EngineBuildSource for WasmEngine {
                 let builder = WasmBuilder::new(&self.module_loader, module);
                 builder.build()
             },
-            _ => Err(LangError::new_runtime(UNEXPECTED_ERROR.to_string())),
+            _ => Err(LangError::build(BuildErrorKind::UnexpectedError)),
         }
     }
 }

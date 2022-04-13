@@ -1,5 +1,4 @@
-use common::ast::types::{LiteralKind, OperatorKind, TypeKind};
-use crate::tokens::TokenKind;
+use common::{ast::types::{LiteralKind, OperatorKind, TypeKind}, tokens::TokenKind};
 use super::resolver::{Resolver, AddResult};
 
 pub struct SymbolResolver {

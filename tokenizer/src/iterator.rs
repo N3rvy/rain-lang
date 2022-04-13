@@ -1,6 +1,5 @@
 use std::sync::Arc;
-
-use crate::tokens::Token;
+use common::tokens::Token;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TokenSnapshot(usize);

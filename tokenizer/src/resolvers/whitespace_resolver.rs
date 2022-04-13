@@ -1,4 +1,4 @@
-use crate::tokens::TokenKind;
+use common::tokens::TokenKind;
 
 use super::resolver::{Resolver, AddResult};
 

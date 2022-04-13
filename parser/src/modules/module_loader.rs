@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::module::{DefinitionModule, Module, ModuleUID};
-use common::errors::LangError;
+use common::errors::{LangError, LoadErrorKind};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
-use crate::errors::{LOAD_MODULE_ERROR, MODULE_NOT_FOUND};
 use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, DeclarationKind};
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
@@ -86,7 +85,7 @@ impl ModuleLoader {
     pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
         let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
-            None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string()))
+            None => return Err(LangError::load(LoadErrorKind::ModuleNotFound(id.0.clone())))
         };
 
         // If cached then simply return
@@ -96,7 +95,7 @@ impl ModuleLoader {
 
         let source = match importer.load_module(id) {
             Some(source) => source,
-            None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
+            None => return Err(LangError::load(LoadErrorKind::LoadModuleError(id.0.clone())))
         };
 
         self.load_module_with_source(uid, &source, importer)
@@ -112,7 +111,7 @@ impl ModuleLoader {
 
         let source = match importer.load_module(id) {
             Some(source) => source,
-            None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
+            None => return Err(LangError::load(LoadErrorKind::LoadModuleError(id.0.clone())))
         };
 
         Ok((module_uid, Some(self.load_def_module_with_source(module_id.clone(), module_uid, &source, importer)?)))
@@ -139,7 +138,7 @@ impl ModuleLoader {
         for import in &module.imports {
             let uid = match importer.get_unique_identifier(import) {
                 Some(uid) => uid,
-                None => return Err(LangError::new_parser(MODULE_NOT_FOUND.to_string())),
+                None => return Err(LangError::load(LoadErrorKind::ModuleNotFound(import.0.clone()))),
             };
 
             if self.modules.borrow().contains_key(&uid) {
@@ -148,7 +147,7 @@ impl ModuleLoader {
 
             let source = match importer.load_module(&import) {
                 Some(source) => source,
-                None => return Err(LangError::new_parser(LOAD_MODULE_ERROR.to_string()))
+                None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone())))
             };
             let tokens = Tokenizer::tokenize(&source)?;
 

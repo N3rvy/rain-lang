@@ -1,9 +1,9 @@
 use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
-use common::errors::LangError;
+use common::errors::{LangError, ParserErrorKind};
 use common::module::{DefinitionModule, ModuleIdentifier};
+use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
-use tokenizer::tokens::{TokenKind, Token};
-use crate::errors::{ParsingErrorHelper, UNEXPECTED_ERROR, VAR_INSIDE_DEF_MODULE};
+use crate::errors::ParsingErrorHelper;
 use crate::{expect_indent, expect_token};
 use crate::utils::{parse_parameter_names, parse_type_error, TokensExtensions};
 
@@ -34,9 +34,10 @@ impl ModuleInitializer {
         };
 
         loop {
-            if !module.tokens.has_next() {
-                break
-            }
+            let token = match module.tokens.peek() {
+                Some(token) => token,
+                None => break,
+            };
 
             let result = Self::parse_declaration(&mut module.tokens, false);
             match result {
@@ -46,7 +47,10 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Declaration(name, declaration)) => {
                     module.declarations.push((name, declaration));
                 },
-                Ok(DeclarationParseAction::FunctionDefinition(_, _)) => return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string())),
+                Ok(DeclarationParseAction::FunctionDefinition(_, _)) =>
+                    return Err(
+                        LangError::parser(
+                            &token, ParserErrorKind::Unsupported("Function definition inside a normal module".to_string()))),
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -60,16 +64,22 @@ impl ModuleInitializer {
         let mut functions = Vec::new();
 
         loop {
-            if !tokens.has_next() {
-                break
-            }
+            let token = match tokens.peek() {
+                Some(token) => token,
+                None => break,
+            };
 
             let result = Self::parse_declaration(&mut tokens, true);
             match result {
                 Ok(DeclarationParseAction::Import(_path)) => {
                     todo!()
                 },
-                Ok(DeclarationParseAction::Declaration(_, _)) => return Err(LangError::new_parser(UNEXPECTED_ERROR.to_string())),
+                Ok(DeclarationParseAction::Declaration(_, _)) =>
+                    return Err(
+                        LangError::parser(
+                            &token,
+                            ParserErrorKind::Unsupported(
+                                "Declaration inside of a definition module".to_string()))),
                 Ok(DeclarationParseAction::FunctionDefinition(name, func_type)) => {
                     functions.push((name, func_type));
                 },
@@ -108,7 +118,10 @@ impl ModuleInitializer {
                 // var <name> (type) = [value]
 
                 if is_definition {
-                    return Err(LangError::new_parser(VAR_INSIDE_DEF_MODULE.to_string()));
+                    return Err(LangError::parser(
+                        &token,
+                        ParserErrorKind::Unsupported(
+                            "Variable inside of a definition module".to_string())));
                 }
 
                 let token = tokens.pop_err()?;

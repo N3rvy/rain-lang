@@ -1,5 +1,5 @@
-use common::errors::LangError;
-use crate::{tokens::TokenKind, tokenizer::Tokenizer};
+use common::{errors::{TokenizerErrorKind}, tokens::TokenKind};
+use crate::tokenizer::Tokenizer;
 
 use super::{number_resolver::NumberResolver, parenthesis_resolver::ParenthesisResolver, operator_resolver::OperatorResolver, string_resolver::StringResolver, symbol_resolver::SymbolResolver, whitespace_resolver::WhitespaceResolver};
 
@@ -19,7 +19,7 @@ pub enum AddResult {
     /// The operation whent ok, the token in ended and there are leftover characters
     ChangeChars(TokenKind, Vec<char>),
     /// The operation whent wrong
-    Err(LangError),
+    Err(TokenizerErrorKind),
 }
 
 pub trait Resolver {
