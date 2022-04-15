@@ -2,6 +2,7 @@ use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, La
 use std::sync::Arc;
 use common::{module::{Module, ModuleUID, ModuleIdentifier}, errors::BuildErrorKind};
 use core::parser::ModuleKind;
+use core::reexport::anyhow::Result;
 use crate::module::WasmModule;
 use crate::build::WasmBuilder;
 
@@ -12,7 +13,7 @@ pub struct WasmEngine {
 impl Engine for WasmEngine {
     type Module = WasmModule;
 
-    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
         let (uid, _) = self
             .module_loader()
             .load_module(&ModuleIdentifier(identifier.into()), importer)?;
@@ -20,7 +21,7 @@ impl Engine for WasmEngine {
         Ok(uid)
     }
 
-    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
         let (uid, _) = self
             .module_loader()
             .load_def_module(&ModuleIdentifier(import_identifier.into()), &ModuleIdentifier(module_id.into()), importer)?;
@@ -28,7 +29,7 @@ impl Engine for WasmEngine {
         Ok(uid)
     }
 
-    fn insert_module(&mut self, _module: Arc<Module>) -> Result<(), LangError> {
+    fn insert_module(&mut self, _module: Arc<Module>) -> Result<()> {
         Ok(())
     }
 

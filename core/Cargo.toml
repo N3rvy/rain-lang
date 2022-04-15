@@ -7,3 +7,4 @@ edition = "2021"
 common = { path = "../common" }
 tokenizer = { path = "../tokenizer" }
 parser = { path = "../parser" }
+anyhow = "1.0.56"

@@ -7,3 +7,4 @@ edition = "2021"
 common = { path = "../common" }
 tokenizer = { path = "../tokenizer" }
 smallvec = "1.6.1"
+anyhow = "1.0.56"

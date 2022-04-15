@@ -120,13 +120,13 @@ impl Display for LangError {
     }
 }
 
-fn format_error(source: &String, err: LangError) -> String {
+pub fn format_error(source: &String, err: LangError) -> String {
     match err {
         LangError::Tokenizer { token, kind } => format_tokenizer(source, token, kind),
         LangError::Parser { token, kind } => format_parser(source, token, kind),
-        LangError::Build { kind } => todo!(),
-        LangError::Load { kind } => todo!(),
-        LangError::Runtime { kind } => todo!(),
+        LangError::Build { kind } => format_build(kind),
+        LangError::Load { kind } => format_load(kind),
+        LangError::Runtime { kind } => format_runtime(kind),
     }
 }
 
@@ -176,7 +176,7 @@ fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String
     res + "\n" + &err
 }
 
-fn format_build(kind: BuildErrorKind) -> String {
+pub fn format_build(kind: BuildErrorKind) -> String {
     match kind {
         BuildErrorKind::UnexpectedError => "Unexpected error".to_string(),
         BuildErrorKind::Unsupported(feature) => format!("Unsupported feature ({})", feature),
@@ -187,14 +187,14 @@ fn format_build(kind: BuildErrorKind) -> String {
     }
 }
 
-fn format_load(kind: LoadErrorKind) -> String {
+pub fn format_load(kind: LoadErrorKind) -> String {
     match kind {
         LoadErrorKind::ModuleNotFound(name) => format!("Module not found ({})", name),
         LoadErrorKind::LoadModuleError(err) => format!("Erro while loading module: {}", err),
     }
 }
 
-fn format_runtime(kind: RuntimeErrorKind) -> String {
+pub fn format_runtime(kind: RuntimeErrorKind) -> String {
     match kind {
         RuntimeErrorKind::UnexpectedError(str) => format!("Unexpected error: {}", str),
         RuntimeErrorKind::CantConvertValue => "Can't convert value".to_string(),

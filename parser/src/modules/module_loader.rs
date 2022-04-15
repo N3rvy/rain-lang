@@ -1,9 +1,10 @@
+use anyhow::anyhow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::TypeKind;
 use common::module::{DefinitionModule, Module, ModuleUID};
-use common::errors::{LangError, LoadErrorKind};
+use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
 use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, DeclarationKind};
@@ -82,10 +83,10 @@ impl ModuleLoader {
         Ok(def_module)
     }
 
-    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Vec<Arc<Module>>), LangError> {
+    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
         let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
-            None => return Err(LangError::load(LoadErrorKind::ModuleNotFound(id.0.clone())))
+            None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
         };
 
         // If cached then simply return
@@ -95,13 +96,16 @@ impl ModuleLoader {
 
         let source = match importer.load_module(id) {
             Some(source) => source,
-            None => return Err(LangError::load(LoadErrorKind::LoadModuleError(id.0.clone())))
+            None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
 
-        self.load_module_with_source(uid, &source, importer)
+        match self.load_module_with_source(uid, &source, importer) {
+            Ok((uid, modules)) => Ok((uid, modules)),
+            Err(err) => Err(anyhow!(format_error(&source, err))),
+        }
     }
 
-    pub fn load_def_module(&mut self, id: &ModuleIdentifier, module_id: &ModuleIdentifier, importer: &impl ModuleImporter) -> Result<(ModuleUID, Option<Arc<DefinitionModule>>), LangError> {
+    pub fn load_def_module(&mut self, id: &ModuleIdentifier, module_id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Option<Arc<DefinitionModule>>)> {
         let module_uid = ModuleUID::from_string(module_id.0.clone());
 
         // If cached then simply return
@@ -111,10 +115,15 @@ impl ModuleLoader {
 
         let source = match importer.load_module(id) {
             Some(source) => source,
-            None => return Err(LangError::load(LoadErrorKind::LoadModuleError(id.0.clone())))
+            None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
 
-        Ok((module_uid, Some(self.load_def_module_with_source(module_id.clone(), module_uid, &source, importer)?)))
+        let res = self.load_def_module_with_source(module_id.clone(), module_uid, &source, importer);
+
+        match res {
+            Ok(res) => Ok((module_uid, Some(res))),
+            Err(err) => Err(anyhow!(format_error(&source, err))),
+        }
     }
 
     fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> Result<ModuleLoaderContext, LangError> {

@@ -3,6 +3,7 @@ use common::errors::LangError;
 use common::module::{Module, ModuleUID};
 use parser::modules::module_importer::ModuleImporter;
 use parser::modules::module_loader::ModuleLoader;
+use anyhow::Result;
 
 use crate::module::EngineModule;
 use crate::external_module::ExternalModule;
@@ -14,9 +15,9 @@ where
 {
     type Module: EngineModule<Engine = Self>;
 
-    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
-    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError>;
-    fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError>;
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID>;
+    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID>;
+    fn insert_module(&mut self, module: Arc<Module>) -> Result<()>;
 
     fn module_loader(&mut self) -> &mut ModuleLoader;
 

@@ -2,6 +2,7 @@
 #![feature(try_trait_v2)]
 
 use core::EngineExternalModule;
+use core::reexport::anyhow::Result;
 use std::cell::RefCell;
 use core::module::EngineModule;
 use core::parser::ModuleImporter;
@@ -81,7 +82,7 @@ impl EngineModule for InterpreterModule {
 impl Engine for InterpreterEngine {
     type Module = InterpreterModule;
 
-    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
         let (uid, modules) = self
             .module_loader()
             .load_module(&ModuleIdentifier(identifier.into()), importer)?;
@@ -97,11 +98,11 @@ impl Engine for InterpreterEngine {
         Ok(uid)
     }
 
-    fn load_def_module(&mut self, _import_identifier: impl Into<String>, _module_id: impl Into<String>, _importer: &impl ModuleImporter) -> Result<ModuleUID, LangError> {
+    fn load_def_module(&mut self, _import_identifier: impl Into<String>, _module_id: impl Into<String>, _importer: &impl ModuleImporter) -> Result<ModuleUID> {
         todo!()
     }
 
-    fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
+    fn insert_module(&mut self, module: Arc<Module>) -> Result<()> {
         let uid = module.uid;
         let eng_module = InterpreterModule::from_module(self, module)?;
 
