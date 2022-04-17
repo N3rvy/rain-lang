@@ -46,8 +46,7 @@ impl<'a> Tokenizer<'a> {
     fn push_token(&mut self, token: TokenKind) {
         self.tokens.push(Token::new(token, self.last_token_pos, self.pos));
 
-        self.last_token_pos = 0;
-        self.pos += 1;
+        self.last_token_pos = self.pos;
     }
 
     fn tokenize_char(&mut self, char: char) -> Result<(), LangError> {
@@ -63,7 +62,7 @@ impl<'a> Tokenizer<'a> {
             AddResult::End(token) => {
                 self.push_token(token);
 
-                let next_char = match self.chars.next() {
+                let next_char = match self.next_char() {
                     Some(c) => c,
                     None => return Ok(()),
                 };

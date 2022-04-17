@@ -133,12 +133,12 @@ pub fn format_error(source: &String, err: LangError) -> String {
 fn format_token(source: &String, token: Token) -> String {
     let (row, col) = source.chars()
         .take(token.start)
-        .fold((0usize, 0usize), |(row, col), c| match c {
-            '\n' => (row + 1, 0),
+        .fold((1usize, 1usize), |(row, col), c| match c {
+            '\n' => (row + 1, 1),
             _ => (row, col + 1),
         });
     
-        format!("Error from {}:{} to {}:{}", row, col, row, col + (token.end - token.start))
+    format!("Error from {}:{} to {}:{}", row, col, row, col + (token.end - token.start))
 }
 
 fn format_tokenizer(source: &String, token: Token, kind: TokenizerErrorKind) -> String {
