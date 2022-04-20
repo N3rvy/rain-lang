@@ -38,7 +38,7 @@ impl TokensExtensions for Tokens {
     }
 
     fn peek_err(&mut self) -> Result<Token, LangError> {
-        match self.pop() {
+        match self.peek() {
             Some(token) => Ok(token),
             None => return Err(LangError::new_parser_end_of_file()),
         }

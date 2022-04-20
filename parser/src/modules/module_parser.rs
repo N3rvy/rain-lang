@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use common::ast::ASTNode;
-use common::ast::types::{Function, FunctionType, TypeKind};
+use common::ast::types::{Function, FunctionType, LiteralKind, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{FunctionDefinition, Module, ModuleUID, VariableDefinition};
+use common::tokens::TokenKind;
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
@@ -10,6 +10,7 @@ use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
 use crate::modules::module_loader::ModuleLoaderContext;
 use crate::parser::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
+use crate::utils::TokensExtensions;
 
 pub struct ModuleParser<'a> {
     loader_context: &'a ModuleLoaderContext<'a>,
@@ -34,7 +35,13 @@ impl<'a> ModuleParser<'a> {
 
             match &decl.kind {
                 DeclarationKind::Variable(type_) => {
-                    let value = Self::parse_variable_value(&mut tokens, &scope.new_child())?;
+                    let token = &tokens.peek().unwrap();
+                    let value = Self::parse_variable_value(&mut tokens)?;
+                    let value_type = TypeKind::from(value.clone());
+
+                    if !value_type.is_compatible(type_) {
+                        return Err(LangError::wrong_type(&token, type_, &value_type));
+                    }
 
                     variables.push((
                         name.clone(),
@@ -110,8 +117,15 @@ impl<'a> ModuleParser<'a> {
         scope
     }
 
-    fn parse_variable_value(tokens: &mut Tokens, scope: &ParserScope) -> Result<ASTNode, LangError> {
-        scope.parse_statement(tokens)
+    fn parse_variable_value(tokens: &mut Tokens) -> Result<LiteralKind, LangError> {
+        let token = tokens.pop_err()?;
+
+        match token.kind {
+            TokenKind::Literal(kind) => {
+                Ok(kind.clone())
+            },
+            _ => Err(LangError::new_parser_unexpected_token(&token)),
+        }
     }
 
     fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: &Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {

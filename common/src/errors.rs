@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::{Display, Debug};
 use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
@@ -147,9 +148,11 @@ fn format_token(source: &String, token: &Token) -> String {
         .enumerate()
         .map(|(i, line)| {
             if i == 1 {
-                let before = &line[..col-1];
+                let col_end = min(col_end, line.len());
+
+                let before = &line[..col];
+                let err = &line[col..col_end];
                 let after = &line[col_end..];
-                let err = &line[col-1..col_end];
 
                 format!("{}{}{}\n", before, err.red().underline(), after)
             } else {

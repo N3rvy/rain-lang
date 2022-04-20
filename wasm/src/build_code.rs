@@ -111,15 +111,7 @@ impl<'a> ModuleBuilder<'a> {
         Ok(())
     }
 
-    fn insert_var(&mut self, name: &str, var_type: &TypeKind, value: &ASTNode) -> Result<(), LangError> {
-        let literal = match value.kind.as_ref() {
-            NodeKind::Literal { value } => value,
-            _ => return Err(
-                LangError::build(
-                    BuildErrorKind::Unsupported(
-                        "Var declaration must be literal".to_string()))),
-        };
-
+    fn insert_var(&mut self, name: &str, var_type: &TypeKind, literal: &LiteralKind) -> Result<(), LangError> {
         let data = match literal {
             LiteralKind::Nothing => Vec::new(),
             LiteralKind::Int(i) => i.to_le_bytes().to_vec(),
