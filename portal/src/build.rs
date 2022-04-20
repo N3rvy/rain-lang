@@ -3,6 +3,7 @@ use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use common::module::ModuleUID;
 use wasm::engine::WasmEngine;
 use crate::{Args, Engine, EngineBuildSource, ReplImporter};
 use crate::config::Config;
@@ -13,6 +14,14 @@ pub fn build(args: Args) -> anyhow::Result<()> {
 
     // Creating the engine
     let mut engine = WasmEngine::new();
+
+    // Loading core lib
+    engine.module_loader()
+        .load_module_with_source(
+            ModuleUID::from_string("core".to_string()),
+            &include_str!("../core_lib/lib.vrs").to_string(),
+            &ReplImporter,
+        )?;
 
     let def_path = PathBuf::from_str(config.definition_dir.as_str())?;
     for (def_name, file_name) in config.definitions.iter() {
