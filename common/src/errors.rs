@@ -1,4 +1,5 @@
 use std::fmt::{Display, Debug};
+use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
 
 #[derive(Debug)]
@@ -133,18 +134,31 @@ pub fn format_error(source: &String, err: LangError) -> String {
 fn format_token(source: &String, token: &Token) -> String {
     let (row, col) = source.chars()
         .take(token.start)
-        .fold((1usize, 1usize), |(row, col), c| match c {
-            '\n' => (row + 1, 1),
+        .fold((1usize, 0usize), |(row, col), c| match c {
+            '\n' => (row + 1, 0),
             _ => (row, col + 1),
         });
+
+    let col_end = col + (token.end - token.start);
 
     let error_preview: String = source.lines()
         .skip(row - 2)
         .take(3)
-        .intersperse("\n")
+        .enumerate()
+        .map(|(i, line)| {
+            if i == 1 {
+                let before = &line[..col-1];
+                let after = &line[col_end..];
+                let err = &line[col-1..col_end];
+
+                format!("{}{}{}\n", before, err.red().underline(), after)
+            } else {
+                format!("{}\n", line)
+            }
+        })
         .collect();
 
-    format!("\n{}\nError from {}:{} to {}:{}", error_preview, row, col, row, col + (token.end - token.start))
+    format!("\n{}\nError from {}:{} to {}:{}", error_preview, row, col, row, col_end)
 }
 
 fn format_tokenizer(source: &String, token: Token, kind: TokenizerErrorKind) -> String {
