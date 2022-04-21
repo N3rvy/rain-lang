@@ -8,18 +8,25 @@ use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, Module
 pub struct WasmBuilder<'a> {
     module_loader: &'a ModuleLoader,
     module: Arc<common::module::Module>,
+    core_module: Arc<common::module::Module>,
 }
 
 impl<'a> WasmBuilder<'a> {
-    pub fn new(module_loader: &'a ModuleLoader, main_module: Arc<common::module::Module>) -> Self {
+    pub fn new(
+        module_loader: &'a ModuleLoader,
+        main_module: Arc<common::module::Module>,
+        core_module: Arc<common::module::Module>) -> Self
+    {
         Self {
             module_loader,
+            core_module,
             module: main_module,
         }
     }
 
     pub fn build(self) -> Result<Vec<u8>, LangError> {
         let mut module_builder = ModuleBuilder::new(&self.module_loader)?;
+        module_builder.insert_module(self.core_module.clone())?;
         module_builder.insert_module(self.module.clone())?;
 
         let result = module_builder.build();
@@ -156,7 +163,7 @@ pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
         TypeKind::Bool => vec![ValType::I32],
         TypeKind::Unknown |
         TypeKind::Nothing => vec![],
-        TypeKind::Vector(_) => todo!(),
+        TypeKind::Vector(_) => vec![ValType::I32],
         TypeKind::Function(_) => todo!(),
         TypeKind::Object(_) => todo!(),
     }

@@ -93,6 +93,9 @@ impl<'a> ModuleBuilder<'a> {
                 continue
             }
 
+            self.function_names.push(name.clone());
+            self.functions.push((func.metadata.0.clone(), (*func.metadata.1).clone()));
+
             self.insert_func(name, &func.metadata, &func.data)?;
         }
 
@@ -625,11 +628,62 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 // Close loop
                 self.instructions.push(Instruction::End);
             }
-            NodeKind::FieldAccess { .. } => {}
-            NodeKind::VectorLiteral { .. } => {}
-            NodeKind::ObjectLiteral { .. } => {}
-            NodeKind::FunctionLiteral { .. } => {}
-            NodeKind::ValueFieldAccess { .. } => {}
+            NodeKind::FieldAccess { .. } => todo!(),
+            NodeKind::VectorLiteral { values } => {
+                // TODO: Make the vector take other types (for now only ints)
+
+                let (alloc_func_id, _, _) = self.module_builder.get_func(
+                    ModuleUID::from_string("core".to_string()),
+                    &"__internal_memory_alloc".to_string())?;
+
+                self.instructions.push(Instruction::I32Const(values.len() as i32 * 4));
+                self.instructions.push(Instruction::Call(alloc_func_id));
+
+                // TODO: Support multiple allocations in the same method
+                let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                let id = *ids.index(0);
+
+                self.instructions.push(Instruction::LocalTee(id));
+
+                for (offset, val) in values.iter().enumerate() {
+                    self.instructions.push(Instruction::LocalGet(id));
+
+                    self.build_statement(val)?;
+
+                    self.instructions.push(Instruction::I32Store(MemArg {
+                        offset: offset as u64 * 4,
+                        align: 0,
+                        memory_index: 0
+                    }));
+                }
+
+                self.type_stack.push(TypeKind::Vector(Box::new(TypeKind::Int)));
+            },
+            NodeKind::ObjectLiteral { .. } => todo!(),
+            NodeKind::FunctionLiteral { .. } => todo!(),
+            NodeKind::ValueFieldAccess { variable, value } => {
+                // TODO: Make other types work (for now only ints)
+
+                // TODO: Support other types of values
+                let index = match value.kind.as_ref() {
+                    NodeKind::Literal { value: LiteralKind::Int(i) } => *i as u64,
+                    _ => todo!(),
+                };
+
+                self.build_statement(variable)?;
+
+                let var_type = self.type_stack.pop().unwrap();
+
+                if let TypeKind::Vector(type_) = var_type {
+                    if *type_ != TypeKind::Int { todo!() }
+
+                    self.instructions.push(Instruction::I32Load(MemArg {
+                        align: 0,
+                        offset: index * 4,
+                        memory_index: 0,
+                    }));
+                }
+            },
         }
 
         Ok(())
