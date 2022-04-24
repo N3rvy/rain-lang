@@ -179,9 +179,6 @@ impl ModuleInitializer {
 
                 loop {
                     let token = tokens.pop_err()?;
-                    if let Token { kind: TokenKind::Dedent, start: _, end: _ } = token {
-                        break
-                    }
 
                     match token.kind {
                         TokenKind::Variable => {
@@ -197,10 +194,11 @@ impl ModuleInitializer {
                                 decl,
                             ))
                         },
+                        TokenKind::NewLine => (),
+                        TokenKind::Dedent => break,
                         _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
                     }
                 }
-                tokens.pop();
 
                 Ok(DeclarationParseAction::ClassDefinition(
                     name,
