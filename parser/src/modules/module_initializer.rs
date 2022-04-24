@@ -18,7 +18,8 @@ pub struct Declaration {
 }
 
 pub struct ParsableClass {
-    pub declarations: Vec<(String, Declaration)>
+    pub fields: Vec<(String, TypeKind)>,
+    pub functions: Vec<(String, Declaration)>
 }
 
 pub struct ParsableModule {
@@ -134,70 +135,24 @@ impl ModuleInitializer {
                             "Variable inside of a definition module".to_string())));
                 }
 
-                let token = tokens.pop_err()?;
+                let (name, decl) = Self::parse_variable(tokens)?;
 
-                // <name>
-                let name = match token.kind {
-                    TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
-                };
-
-                // (type)
-                let type_kind = parse_type_error(tokens)?;
-
-                // =
-                expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Assign));
-
-                // [value]
-                let body = tokens.snapshot();
-                Self::pop_until_newline(tokens);
-
-                Ok(DeclarationParseAction::Declaration(
-                    name,
-                    Declaration {
-                        kind: DeclarationKind::Variable(type_kind),
-                        body,
-                    },
-                ))
+                Ok(DeclarationParseAction::Declaration(name, decl))
             },
             TokenKind::Function => {
                 // func <name>((<param_name> (type))*) (type): {body}
 
-                let token = tokens.pop_err()?;
-
-                // <name>
-                let name = match token.kind {
-                    TokenKind::Symbol(name) => name,
-                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
-                };
-
-                // (
-                expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
-
-                // (<param_name> (type))*)
-                let (param_names, param_types) = parse_parameter_names(tokens)?;
-
-                // (type)
-                let ret_type = parse_type_error(tokens)?;
-
-                let func_type = FunctionType(param_types, Box::new(ret_type));
-
                 if is_definition {
-                    return Ok(DeclarationParseAction::FunctionDefinition(name, func_type))
+                    let (name, type_) = Self::parse_function_definition(tokens)?;
+
+                    return Ok(DeclarationParseAction::FunctionDefinition(name, type_))
                 }
 
-                expect_indent!(tokens);
-
-                // {body}
-                let body = tokens.snapshot();
-                Self::pop_until_dedent(tokens);
+                let (name, decl) = Self::parse_function(tokens)?;
 
                 Ok(DeclarationParseAction::Declaration(
                     name,
-                    Declaration {
-                        kind: DeclarationKind::Function(param_names, func_type),
-                        body,
-                    }
+                    decl,
                 ))
             },
             TokenKind::Class => {
@@ -219,29 +174,30 @@ impl ModuleInitializer {
                 // :
                 expect_indent!(tokens);
 
-                let mut declarations = Vec::new();
+                let mut fields = Vec::new();
+                let mut functions = Vec::new();
 
                 loop {
-                    let token = tokens.peek();
-                    let definition = Self::parse_declaration(tokens, is_definition)?;
-
-                    match definition {
-                        DeclarationParseAction::Nothing => (),
-                        DeclarationParseAction::Declaration(name, decl) =>
-                            declarations.push((name, decl)),
-                        DeclarationParseAction::FunctionDefinition(_, _) => todo!(),
-
-                        DeclarationParseAction::ClassDefinition(_, _)
-                            => return Err(
-                                LangError::parser(
-                                    &token.unwrap(),
-                                    ParserErrorKind::Unsupported("Class inside another class".to_string()))),
-                        DeclarationParseAction::Import(_)
-                            => return Err(LangError::new_parser_unexpected_token(&token.unwrap())),
+                    let token = tokens.pop_err()?;
+                    if let Token { kind: TokenKind::Dedent, start: _, end: _ } = token {
+                        break
                     }
 
-                    if let Some(Token { kind: TokenKind::Dedent, start: _, end: _ }) = tokens.peek() {
-                        break
+                    match token.kind {
+                        TokenKind::Variable => {
+                            let (name, type_) = Self::parse_variable_definition(tokens)?;
+
+                            fields.push((name, type_));
+                        },
+                        TokenKind::Function => {
+                            let (name, decl) = Self::parse_function(tokens)?;
+
+                            functions.push((
+                                name,
+                                decl,
+                            ))
+                        },
+                        _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
                     }
                 }
                 tokens.pop();
@@ -249,13 +205,114 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::ClassDefinition(
                     name,
                     ParsableClass {
-                        declarations,
+                        fields,
+                        functions,
                     }
                 ))
             },
             TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
             _ => Err(LangError::new_parser_unexpected_token(&token)),
         }
+    }
+
+    fn parse_variable_definition(tokens: &mut Tokens) -> Result<(String, TypeKind), LangError> {
+        let token = tokens.pop_err()?;
+
+        // <name>
+        let name = match token.kind {
+            TokenKind::Symbol(name) => name,
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
+        };
+
+        // (type)
+        let type_kind = parse_type_error(tokens)?;
+
+        Ok((name, type_kind))
+    }
+
+    fn parse_variable(tokens: &mut Tokens) -> Result<(String, Declaration), LangError> {
+        let token = tokens.pop_err()?;
+
+        // <name>
+        let name = match token.kind {
+            TokenKind::Symbol(name) => name,
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
+        };
+
+        // (type)
+        let type_kind = parse_type_error(tokens)?;
+
+        // =
+        expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Assign));
+
+        // [value]
+        let body = tokens.snapshot();
+        Self::pop_until_newline(tokens);
+
+        Ok((
+            name,
+            Declaration {
+                kind: DeclarationKind::Variable(type_kind),
+                body,
+            },
+        ))
+    }
+
+    fn parse_function_definition(tokens: &mut Tokens) -> Result<(String, FunctionType), LangError> {
+        let token = tokens.pop_err()?;
+
+        // <name>
+        let name = match token.kind {
+            TokenKind::Symbol(name) => name,
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
+        };
+
+        // (
+        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+
+        // (<param_name> (type))*)
+        let (_, param_types) = parse_parameter_names(tokens)?;
+
+        // (type)
+        let ret_type = parse_type_error(tokens)?;
+
+        let func_type = FunctionType(param_types, Box::new(ret_type));
+
+        Ok((name, func_type))
+    }
+
+    fn parse_function(tokens: &mut Tokens) -> Result<(String, Declaration), LangError> {
+        let token = tokens.pop_err()?;
+
+        // <name>
+        let name = match token.kind {
+            TokenKind::Symbol(name) => name,
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
+        };
+
+        // (
+        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+
+        // (<param_name> (type))*)
+        let (param_names, param_types) = parse_parameter_names(tokens)?;
+
+        // (type)
+        let ret_type = parse_type_error(tokens)?;
+        let func_type = FunctionType(param_types, Box::new(ret_type));
+
+        expect_indent!(tokens);
+
+        // {body}
+        let body = tokens.snapshot();
+        Self::pop_until_dedent(tokens);
+
+        Ok((
+            name,
+            Declaration {
+                kind: DeclarationKind::Function(param_names, func_type),
+                body,
+            }
+        ))
     }
 
     fn pop_until_dedent(tokens: &mut Tokens) {

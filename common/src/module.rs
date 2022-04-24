@@ -31,7 +31,7 @@ pub struct VariableDefinition {
 
 pub struct ClassDefinition {
     pub functions: Vec<(String, FunctionDefinition)>,
-    pub variables: Vec<(String, VariableDefinition)>,
+    pub fields: Vec<(String, TypeKind)>,
 }
 
 pub struct Module {

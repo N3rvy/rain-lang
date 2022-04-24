@@ -31,13 +31,13 @@ impl<'a> ModuleParser<'a> {
         let mut classes = Vec::new();
 
         for (name, class) in &module.classes {
-            let (functions, variables) = Self::parse_declarations(&class.declarations, &module.tokens, &scope)?;
+            let (functions, _) = Self::parse_declarations(&class.functions, &module.tokens, &scope)?;
 
             classes.push((
                 name.clone(),
                 ClassDefinition {
                     functions,
-                    variables,
+                    fields: class.fields.clone(),
                 }
             ))
         }
