@@ -5,6 +5,12 @@ use super::ASTBody;
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
 #[derive(Clone, Debug)]
+pub struct ClassType {
+    attributes: Vec<(String, TypeKind)>,
+    methods: Vec<(String, FunctionType)>,
+}
+
+#[derive(Clone, Debug)]
 pub enum LiteralKind {
     Nothing,
     Int(i32),

@@ -17,10 +17,15 @@ pub struct Declaration {
     pub body: TokenSnapshot,
 }
 
+pub struct ParsableClass {
+    pub declarations: Vec<(String, Declaration)>
+}
+
 pub struct ParsableModule {
     pub tokens: Tokens,
     pub imports: Vec<ModuleIdentifier>,
-    pub declarations: Vec<(String, Declaration)>
+    pub declarations: Vec<(String, Declaration)>,
+    pub classes: Vec<(String, ParsableClass)>,
 }
 
 pub struct ModuleInitializer;
@@ -31,6 +36,7 @@ impl ModuleInitializer {
             tokens,
             imports: Vec::new(),
             declarations: Vec::new(),
+            classes: Vec::new(),
         };
 
         loop {
@@ -46,6 +52,9 @@ impl ModuleInitializer {
                 },
                 Ok(DeclarationParseAction::Declaration(name, declaration)) => {
                     module.declarations.push((name, declaration));
+                },
+                Ok(DeclarationParseAction::ClassDefinition(name, class)) => {
+                    module.classes.push((name, class));
                 },
                 Ok(DeclarationParseAction::FunctionDefinition(_, _)) =>
                     return Err(
@@ -74,15 +83,16 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Import(_path)) => {
                     todo!()
                 },
+                Ok(DeclarationParseAction::FunctionDefinition(name, func_type)) => {
+                    functions.push((name, func_type));
+                },
+                Ok(DeclarationParseAction::ClassDefinition(_, _)) => todo!(),
                 Ok(DeclarationParseAction::Declaration(_, _)) =>
                     return Err(
                         LangError::parser(
                             &token,
                             ParserErrorKind::Unsupported(
                                 "Declaration inside of a definition module".to_string()))),
-                Ok(DeclarationParseAction::FunctionDefinition(name, func_type)) => {
-                    functions.push((name, func_type));
-                },
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -190,6 +200,59 @@ impl ModuleInitializer {
                     }
                 ))
             },
+            TokenKind::Class => {
+                /*
+                class ClassName:
+                    var attr1 int = 0
+                    var attr2 str = "no"
+
+                    func method1() (type): {body}
+                */
+
+                // <name>
+                let name = match tokens.pop() {
+                    Some(Token { kind: TokenKind::Symbol(name), start: _, end: _ }) => name,
+                    Some(token) => return Err(LangError::new_parser_unexpected_token(&token)),
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
+
+                // :
+                expect_indent!(tokens);
+
+                let mut declarations = Vec::new();
+
+                loop {
+                    let token = tokens.peek();
+                    let definition = Self::parse_declaration(tokens, is_definition)?;
+
+                    match definition {
+                        DeclarationParseAction::Nothing => (),
+                        DeclarationParseAction::Declaration(name, decl) =>
+                            declarations.push((name, decl)),
+                        DeclarationParseAction::FunctionDefinition(_, _) => todo!(),
+
+                        DeclarationParseAction::ClassDefinition(_, _)
+                            => return Err(
+                                LangError::parser(
+                                    &token.unwrap(),
+                                    ParserErrorKind::Unsupported("Class inside another class".to_string()))),
+                        DeclarationParseAction::Import(_)
+                            => return Err(LangError::new_parser_unexpected_token(&token.unwrap())),
+                    }
+
+                    if let Some(Token { kind: TokenKind::Dedent, start: _, end: _ }) = tokens.peek() {
+                        break
+                    }
+                }
+                tokens.pop();
+
+                Ok(DeclarationParseAction::ClassDefinition(
+                    name,
+                    ParsableClass {
+                        declarations,
+                    }
+                ))
+            },
             TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
             _ => Err(LangError::new_parser_unexpected_token(&token)),
         }
@@ -228,5 +291,6 @@ enum DeclarationParseAction {
     Import(String),
     Declaration(String, Declaration),
     FunctionDefinition(String, FunctionType),
+    ClassDefinition(String, ParsableClass),
     Nothing,
 }

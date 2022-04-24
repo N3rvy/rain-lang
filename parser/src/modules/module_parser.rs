@@ -27,6 +27,7 @@ impl<'a> ModuleParser<'a> {
 
         let mut functions = Vec::new();
         let mut variables = Vec::new();
+        let mut classes = Vec::new();
 
         // Parsing every definition
         for (name, decl) in &module.declarations {
@@ -70,15 +71,22 @@ impl<'a> ModuleParser<'a> {
             };
         }
 
+        for (name, class) in &module.classes {
+        }
+
         let module = Module {
             uid,
 
             imports: Vec::new(),
             functions,
             variables,
+            classes,
         };
 
         Ok(module)
+    }
+
+    fn parse_declarations(declarations: Vec<>) {
     }
 
     fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> ParserModuleScope {
