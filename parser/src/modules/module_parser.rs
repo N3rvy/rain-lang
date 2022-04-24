@@ -2,11 +2,11 @@ use std::sync::Arc;
 use common::ast::ASTNode;
 use common::ast::types::{Function, FunctionType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
-use common::module::{FunctionDefinition, Module, ModuleUID, VariableDefinition};
+use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
-use crate::modules::module_initializer::{DeclarationKind, ParsableModule};
+use crate::modules::module_initializer::{Declaration, DeclarationKind, ParsableModule};
 use crate::modules::module_loader::ModuleLoaderContext;
 use crate::parser::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
@@ -25,13 +25,46 @@ impl<'a> ModuleParser<'a> {
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
         let scope = self.create_scope(&module, uid, importer);
 
-        let mut functions = Vec::new();
-        let mut variables = Vec::new();
+        // Parsing every definition
+        let (functions, variables) = Self::parse_declarations(&module.declarations, &module.tokens, &scope)?;
+
         let mut classes = Vec::new();
 
-        // Parsing every definition
-        for (name, decl) in &module.declarations {
-            let mut tokens = module.tokens.new_clone(decl.body);
+        for (name, class) in &module.classes {
+            let (functions, variables) = Self::parse_declarations(&class.declarations, &module.tokens, &scope)?;
+
+            classes.push((
+                name.clone(),
+                ClassDefinition {
+                    functions,
+                    variables,
+                }
+            ))
+        }
+
+        let module = Module {
+            uid,
+
+            imports: Vec::new(),
+            functions,
+            variables,
+            classes,
+        };
+
+        Ok(module)
+    }
+
+    fn parse_declarations(
+        declarations: &Vec<(String, Declaration)>,
+        tokens: &Tokens,
+        scope: &ParserModuleScope,
+    ) -> Result<(Vec<(String, FunctionDefinition)>, Vec<(String, VariableDefinition)>), LangError>
+    {
+        let mut functions = Vec::new();
+        let mut variables = Vec::new();
+
+        for (name, decl) in declarations {
+            let mut tokens = tokens.new_clone(decl.body);
 
             match &decl.kind {
                 DeclarationKind::Variable(type_) => {
@@ -71,22 +104,7 @@ impl<'a> ModuleParser<'a> {
             };
         }
 
-        for (name, class) in &module.classes {
-        }
-
-        let module = Module {
-            uid,
-
-            imports: Vec::new(),
-            functions,
-            variables,
-            classes,
-        };
-
-        Ok(module)
-    }
-
-    fn parse_declarations(declarations: Vec<>) {
+        Ok((functions, variables))
     }
 
     fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> ParserModuleScope {

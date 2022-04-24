@@ -14,7 +14,8 @@ impl SymbolResolver {
     
     fn end_symbol(&self) -> TokenKind {
         match self.chars.as_str() {
-            "func" => TokenKind::Function, 
+            "func" => TokenKind::Function,
+            "class" => TokenKind::Class,
             "var" => TokenKind::Variable,
             "return" => TokenKind::Return,
             "break" => TokenKind::Break,
