@@ -4,6 +4,7 @@ use common::errors::ParserErrorKind;
 use common::tokens::{TokenKind, Token};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
+use common::ast::types::ObjectType;
 use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::TokensExtensions;
@@ -209,7 +210,7 @@ impl<'a> ParserScope<'a> {
                             field_map.insert(field_name.clone(), field.eval_type.clone());
                         }
                         
-                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(Arc::new(field_map)))
+                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(Arc::new(ObjectType(field_map))))
                     },
                     _ => return Err(LangError::new_parser_unexpected_token(&token))
                 }
@@ -409,7 +410,7 @@ impl<'a> ParserScope<'a> {
                 
                 match &node.eval_type {
                     TypeKind::Object(field_types) => {
-                        let field_type = match field_types.get(field_name) {
+                        let field_type = match field_types.0.get(field_name) {
                             Some(t) => t.clone(),
                             None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
                         };

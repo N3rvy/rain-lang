@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use common::ast::ASTNode;
-use common::ast::types::{Function, FunctionType, TypeKind};
+use common::ast::types::{Class, Function, FunctionType, ObjectType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use tokenizer::iterator::Tokens;
@@ -31,13 +31,34 @@ impl<'a> ModuleParser<'a> {
         let mut classes = Vec::new();
 
         for (name, class) in &module.classes {
-            let (functions, _) = Self::parse_declarations(&class.functions, &module.tokens, &scope)?;
+            let scope = scope.new_child();
+
+            let mut functions = Vec::new();
+
+            for (name, decl) in &class.functions {
+                let mut tokens = module.tokens.new_clone(decl.body);
+
+                match &decl.kind {
+                    DeclarationKind::Variable(_) => panic!(),
+                    DeclarationKind::Function(params, type_) => {
+                        let func = Self::parse_function_value(&mut tokens, &scope, params, type_.clone())?;
+
+                        functions.push((
+                            name.clone(),
+                            func,
+                        ))
+                    },
+                }
+            }
 
             classes.push((
                 name.clone(),
                 ClassDefinition {
-                    functions,
-                    fields: class.fields.clone(),
+                    data: Class::new(functions),
+                    metadata: ObjectType(class.fields
+                        .clone()
+                        .into_iter()
+                        .collect()),
                 }
             ))
         }

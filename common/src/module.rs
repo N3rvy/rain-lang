@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use crate::ast::ASTNode;
-use crate::ast::types::{Function, FunctionType, TypeKind};
+use crate::ast::types::{Class, Function, FunctionType, ObjectType, TypeKind};
 
 #[derive(Clone)]
 pub struct ModuleIdentifier(pub String);
@@ -30,8 +30,8 @@ pub struct VariableDefinition {
 }
 
 pub struct ClassDefinition {
-    pub functions: Vec<(String, FunctionDefinition)>,
-    pub fields: Vec<(String, TypeKind)>,
+    pub data: Class,
+    pub metadata: ObjectType,
 }
 
 pub struct Module {

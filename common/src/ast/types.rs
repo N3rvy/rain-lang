@@ -4,6 +4,9 @@ use super::ASTBody;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ObjectType(pub HashMap<String, TypeKind>);
+
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
     Nothing,
@@ -73,7 +76,7 @@ pub enum TypeKind {
     Nothing,
     Vector(Box<TypeKind>),
     Function(FunctionType),
-    Object(Arc<HashMap<String, TypeKind>>),
+    Object(Arc<ObjectType>),
 }
 
 impl TypeKind {
@@ -104,6 +107,22 @@ impl From<LiteralKind> for TypeKind {
             LiteralKind::Bool(_) => Self::Bool,
             LiteralKind::String(_) => Self::String,
         }
+    }
+}
+
+pub struct Class {
+    pub functions: Vec<(String, Arc<Function>)>,
+}
+
+impl Debug for Class {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[Class]")
+    }
+}
+
+impl Class {
+    pub fn new(functions: Vec<(String, Arc<Function>)>) -> Self {
+        Self { functions }
     }
 }
 
