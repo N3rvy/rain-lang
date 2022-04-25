@@ -684,6 +684,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     }));
                 }
             },
+            NodeKind::ConstructClass { .. } => todo!(),
         }
 
         Ok(())

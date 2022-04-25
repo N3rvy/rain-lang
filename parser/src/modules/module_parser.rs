@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ObjectType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
@@ -146,6 +147,27 @@ impl<'a> ModuleParser<'a> {
             };
 
             scope.declare(name.clone(), type_kind);
+        }
+
+        for (name, class) in &module.classes {
+            let mut object_fields = HashMap::new();
+
+            for (name, decl) in &class.functions {
+                match &decl.kind {
+                    DeclarationKind::Variable(_) => (),
+                    DeclarationKind::Function(_, ft) => {
+                        object_fields.insert(name.clone(), TypeKind::Function(ft.clone()));
+                    }
+                }
+            }
+
+            for (name, field) in &class.fields {
+                object_fields.insert(name.clone(), field.clone());
+            }
+
+            let class_type = TypeKind::Object(Arc::new(ObjectType(object_fields)));
+
+            scope.declare(name.clone(), class_type);
         }
 
         for import in &module.imports {

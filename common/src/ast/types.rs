@@ -76,7 +76,7 @@ pub enum TypeKind {
     Nothing,
     Vector(Box<TypeKind>),
     Function(FunctionType),
-    Object(Arc<ObjectType>),
+    Object(Arc<ObjectType>), // TODO: Rename to Class
 }
 
 impl TypeKind {

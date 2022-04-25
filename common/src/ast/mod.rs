@@ -96,6 +96,10 @@ pub enum NodeKind {
         variable: ASTNode,
         value: ASTNode,
     },
+    ConstructClass {
+        module: ModuleUID,
+        name: String,
+    }
 }
 
 impl NodeKind {
@@ -161,5 +165,9 @@ impl NodeKind {
  
     pub fn new_value_field_access(variable: ASTNode, value: ASTNode) -> NodeKind {
         NodeKind::ValueFieldAccess { variable, value }
+    }
+
+    pub fn new_construct_class(module: ModuleUID, name: String) -> NodeKind {
+        NodeKind::ConstructClass { module, name }
     }
 }

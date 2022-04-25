@@ -293,7 +293,6 @@ impl<'a> ParserScope<'a> {
             TokenKind::Operator(_) |
             TokenKind::BoolOperator(_) |
             TokenKind::MathOperator(_) |
-            TokenKind::Type(_) |
             TokenKind::Indent |
             TokenKind::Import |
             TokenKind::Class |
@@ -371,7 +370,7 @@ impl<'a> ParserScope<'a> {
                 let token = tokens.pop().unwrap();
 
                 let parameters = self.parse_parameter_values(tokens)?;
-                
+
                 // check that node is function
                 let (arg_types, ret_type) = match &node.eval_type {
                     TypeKind::Function(FunctionType(arg_types, ret_value)) => (arg_types, ret_value),
