@@ -1,8 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use crate::ast::ASTNode;
-use crate::ast::types::{Class, Function, FunctionType, ObjectType, TypeKind};
+use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ObjectType, TypeKind};
 
 #[derive(Clone)]
 pub struct ModuleIdentifier(pub String);
@@ -25,7 +24,7 @@ pub struct FunctionDefinition {
 }
 
 pub struct VariableDefinition {
-    pub data: ASTNode,
+    pub data: LiteralKind,
     pub metadata: TypeKind,
 }
 

@@ -1,4 +1,6 @@
+use std::cmp::min;
 use std::fmt::{Display, Debug};
+use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
 
 #[derive(Debug)]
@@ -130,19 +132,40 @@ pub fn format_error(source: &String, err: LangError) -> String {
     }
 }
 
-fn format_token(source: &String, token: Token) -> String {
+fn format_token(source: &String, token: &Token) -> String {
     let (row, col) = source.chars()
         .take(token.start)
-        .fold((1usize, 1usize), |(row, col), c| match c {
-            '\n' => (row + 1, 1),
+        .fold((1usize, 0usize), |(row, col), c| match c {
+            '\n' => (row + 1, 0),
             _ => (row, col + 1),
         });
-    
-    format!("Error from {}:{} to {}:{}", row, col, row, col + (token.end - token.start))
+
+    let col_end = col + (token.end - token.start);
+
+    let error_preview: String = source.lines()
+        .skip(row - 2)
+        .take(3)
+        .enumerate()
+        .map(|(i, line)| {
+            if i == 1 {
+                let col_end = min(col_end, line.len());
+
+                let before = &line[..col];
+                let err = &line[col..col_end];
+                let after = &line[col_end..];
+
+                format!("{}{}{}\n", before, err.red().underline(), after)
+            } else {
+                format!("{}\n", line)
+            }
+        })
+        .collect();
+
+    format!("\n{}\nError from {}:{} to {}:{}", error_preview, row, col, row, col_end)
 }
 
 fn format_tokenizer(source: &String, token: Token, kind: TokenizerErrorKind) -> String {
-    let res = format_token(source, token);
+    let res = format_token(source, &token);
     let err = match kind {
         TokenizerErrorKind::FloatParse(str) => format!("Error while parsing float literal ({})", str),
         TokenizerErrorKind::IntParse(str) => format!("Error while parsing int literal ({})", str),
@@ -155,11 +178,11 @@ fn format_tokenizer(source: &String, token: Token, kind: TokenizerErrorKind) -> 
 }
 
 fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String {
-    let res = format_token(source, token);
+    let res = format_token(source, &token);
     let err = match kind {
         ParserErrorKind::UnexpectedError(err) => format!("Unexpected error ({})", err),
         ParserErrorKind::Unsupported(feature) => format!("Unsupported feature ({})", feature),
-        ParserErrorKind::UnexpectedToken => format!("Unexpected"),
+        ParserErrorKind::UnexpectedToken => format!("Unexpected token {:?}", token.kind),
         ParserErrorKind::UnexpectedEndOfFile => format!("Unexpected end of file"),
         ParserErrorKind::WrontType(expected, found) => format!("Expected type {:?}, instead found {:?}", expected, found),
         ParserErrorKind::ParametersExpectedComma => "Expected comma".to_string(),
@@ -190,7 +213,7 @@ pub fn format_build(kind: BuildErrorKind) -> String {
 pub fn format_load(kind: LoadErrorKind) -> String {
     match kind {
         LoadErrorKind::ModuleNotFound(name) => format!("Module not found ({})", name),
-        LoadErrorKind::LoadModuleError(err) => format!("Erro while loading module: {}", err),
+        LoadErrorKind::LoadModuleError(err) => format!("Error while loading module: {}", err),
     }
 }
 

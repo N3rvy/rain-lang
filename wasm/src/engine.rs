@@ -51,9 +51,14 @@ impl EngineBuildSource for WasmEngine {
             None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
         };
 
-        match module {
-            ModuleKind::Data(module) => {
-                let builder = WasmBuilder::new(&self.module_loader, module);
+        let core_module = match self.module_loader.get_module(ModuleUID::from_string("core".to_string())) {
+            Some(module) => module,
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
+        };
+
+        match (module, core_module) {
+            (ModuleKind::Data(module), ModuleKind::Data(core_module)) => {
+                let builder = WasmBuilder::new(&self.module_loader, module, core_module);
                 builder.build()
             },
             _ => Err(LangError::build(BuildErrorKind::UnexpectedError)),

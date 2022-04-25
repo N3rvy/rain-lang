@@ -1,4 +1,5 @@
 #![feature(unboxed_closures)]
+#![feature(iter_intersperse)]
 
 pub mod errors;
 pub mod ast;
