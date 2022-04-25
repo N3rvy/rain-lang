@@ -177,6 +177,8 @@ impl<'a> ParserScope<'a> {
                     None => return Err(LangError::parser(&token, ParserErrorKind::VarNotFound)),
                 };
 
+                // TODO: Check if the type is an object, in that case this is class construction
+
                 let var_ref = NodeKind::new_variable_ref(module, name.clone());
                 ASTNode::new(var_ref, var_type)
             }
