@@ -1,6 +1,6 @@
 use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::{LangError, ParserErrorKind}, tokens::{Token, TokenKind}};
 use tokenizer::iterator::Tokens;
-use crate::{errors::ParsingErrorHelper, parser::ParserScope};
+use crate::{errors::ParsingErrorHelper, parser_scope::ParserScope};
 
 #[macro_export]
 macro_rules! expect_token {

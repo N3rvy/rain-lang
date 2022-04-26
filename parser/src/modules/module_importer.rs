@@ -1,6 +1,7 @@
 use common::module::ModuleUID;
 use common::module::ModuleIdentifier;
 
+/// User defined module import technique (from file system to http requests)
 pub trait ModuleImporter {
     /// Returns an unique identifier of a specified module identifier.
     /// It is used to check if the same module is already been loaded.

@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{ClassType, FunctionType, TypeKind};
-use common::module::{DefinitionModule, Module, ModuleUID};
+use common::module::{DeclarationModule, Module, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
@@ -11,12 +11,15 @@ use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, Decl
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
 
+// TODO: Move this to the core crate
+
 #[derive(Clone)]
 pub enum ModuleKind {
-    Data(Arc<Module>),
-    Definition(Arc<DefinitionModule>),
+    Definition(Arc<Module>),
+    Declaration(Arc<DeclarationModule>),
 }
 
+/// This handles the loading and dependency loading of modules
 pub struct ModuleLoader {
     modules: RefCell<HashMap<ModuleUID, ModuleKind>>,
 }
@@ -38,7 +41,7 @@ impl ModuleLoader {
         -> Result<(ModuleUID, Vec<Arc<Module>>), LangError>
     {
         let tokens = Tokenizer::tokenize(&source)?;
-        let parsable_module = ModuleInitializer::create(tokens)?;
+        let parsable_module = ModuleInitializer::initialize_module(tokens)?;
         let context = self.create_context(&parsable_module, importer)?;
         let parser = ModuleParser::new(&context);
 
@@ -54,7 +57,7 @@ impl ModuleLoader {
 
             self.modules
                 .borrow_mut()
-                .insert(*uid, ModuleKind::Data(module));
+                .insert(*uid, ModuleKind::Definition(module));
         }
 
         // Loading the main module
@@ -65,22 +68,26 @@ impl ModuleLoader {
 
         self.modules
             .borrow_mut()
-            .insert(uid, ModuleKind::Data(module));
+            .insert(uid, ModuleKind::Definition(module));
 
         Ok((uid, modules))
     }
 
-    pub fn load_def_module_with_source(&mut self, id: ModuleIdentifier, uid: ModuleUID, source: &String, _importer: &impl ModuleImporter)
-        -> Result<Arc<DefinitionModule>, LangError>
-    {
+    pub fn load_declaration_module_with_source(
+        &mut self,
+        id: ModuleIdentifier,
+        uid: ModuleUID,
+        source: &String,
+        _importer: &impl ModuleImporter
+    ) -> Result<Arc<DeclarationModule>, LangError> {
         let tokens = Tokenizer::tokenize(&source)?;
-        let def_module = Arc::new(ModuleInitializer::create_definition(tokens, id)?);
+        let decl_module = Arc::new(ModuleInitializer::parse_declaration_module(tokens, id)?);
 
         self.modules
             .borrow_mut()
-            .insert(uid, ModuleKind::Definition(def_module.clone()));
+            .insert(uid, ModuleKind::Declaration(decl_module.clone()));
 
-        Ok(def_module)
+        Ok(decl_module)
     }
 
     pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
@@ -105,7 +112,12 @@ impl ModuleLoader {
         }
     }
 
-    pub fn load_def_module(&mut self, id: &ModuleIdentifier, module_id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Option<Arc<DefinitionModule>>)> {
+    pub fn load_declaration_module(
+        &mut self,
+        id: &ModuleIdentifier,
+        module_id: &ModuleIdentifier,
+        importer: &impl ModuleImporter
+    ) -> anyhow::Result<(ModuleUID, Option<Arc<DeclarationModule>>)> {
         let module_uid = ModuleUID::from_string(module_id.0.clone());
 
         // If cached then simply return
@@ -118,7 +130,7 @@ impl ModuleLoader {
             None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
 
-        let res = self.load_def_module_with_source(module_id.clone(), module_uid, &source, importer);
+        let res = self.load_declaration_module_with_source(module_id.clone(), module_uid, &source, importer);
 
         match res {
             Ok(res) => Ok((module_uid, Some(res))),
@@ -129,7 +141,7 @@ impl ModuleLoader {
     fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> Result<ModuleLoaderContext, LangError> {
         let mut modules = Vec::new();
 
-        self.add_imports(&mut modules, &module, importer)?;
+        self.load_imports(&mut modules, &module, importer)?;
 
         Ok(ModuleLoaderContext {
             module_loader: self,
@@ -137,7 +149,7 @@ impl ModuleLoader {
         })
     }
 
-    fn add_imports(
+    fn load_imports(
         &self,
         vec: &mut Vec<(ModuleUID, ParsableModule)>,
         module: &ParsableModule,
@@ -160,9 +172,9 @@ impl ModuleLoader {
             };
             let tokens = Tokenizer::tokenize(&source)?;
 
-            let parsable_module = ModuleInitializer::create(tokens)?;
+            let parsable_module = ModuleInitializer::initialize_module(tokens)?;
 
-            self.add_imports(vec, &parsable_module, importer)?;
+            self.load_imports(vec, &parsable_module, importer)?;
 
             vec.push((uid, parsable_module));
         }
@@ -170,14 +182,14 @@ impl ModuleLoader {
         Ok(())
     }
 
-    pub fn def_modules(&self) -> Vec<Arc<DefinitionModule>> {
+    pub fn declaration_modules(&self) -> Vec<Arc<DeclarationModule>> {
         self.modules
             .borrow()
             .iter()
             .filter_map(|(_, module)| {
                 match module {
-                    ModuleKind::Definition(def_module) => Some(def_module.clone()),
-                    ModuleKind::Data(_) => None,
+                    ModuleKind::Declaration(decl_module) => Some(decl_module.clone()),
+                    ModuleKind::Definition(_) => None,
                 }
             })
             .collect()
@@ -199,19 +211,20 @@ impl ModuleLoader {
     }
 }
 
-pub enum DefinitionKind {
+pub enum GlobalDeclarationKind {
     Var(TypeKind),
     Func(FunctionType),
     Class(Arc<ClassType>),
 }
 
+/// This handles dependencies for loading a single module
 pub struct ModuleLoaderContext<'a> {
     module_loader: &'a ModuleLoader,
     modules: Vec<(ModuleUID, ParsableModule)>,
 }
 
 impl<'a> ModuleLoaderContext<'a> {
-    pub fn get_definitions(&self, module_uid: ModuleUID) -> Vec<(String, DefinitionKind)> {
+    pub fn get_declarations(&self, module_uid: ModuleUID) -> Vec<(String, GlobalDeclarationKind)> {
         let module = self.modules
             .iter()
             .find(|(uid, _)| *uid == module_uid);
@@ -222,8 +235,8 @@ impl<'a> ModuleLoaderContext<'a> {
                     .iter()
                     .map(|(name, decl)| {
                         let kind = match &decl.kind {
-                            DeclarationKind::Variable(type_) => DefinitionKind::Var(type_.clone()),
-                            DeclarationKind::Function(_, type_) => DefinitionKind::Func(type_.clone()),
+                            DeclarationKind::Variable(type_) => GlobalDeclarationKind::Var(type_.clone()),
+                            DeclarationKind::Function(_, type_) => GlobalDeclarationKind::Func(type_.clone()),
                         };
 
                         (name.clone(), kind)
@@ -235,19 +248,19 @@ impl<'a> ModuleLoaderContext<'a> {
                     .get_module(module_uid)
                     .and_then(|module| {
                         match module {
-                            ModuleKind::Data(module) => {
-                                Some(module.functions
-                                    .iter()
-                                    .map(|(name, func)| (name.clone(), DefinitionKind::Func(func.metadata.clone())))
-                                    .chain(module.variables
-                                        .iter()
-                                        .map(|(name, var)| (name.clone(), DefinitionKind::Var(var.metadata.clone()))))
-                                    .collect())
-                            },
                             ModuleKind::Definition(module) => {
                                 Some(module.functions
                                     .iter()
-                                    .map(|(name, func_type)| (name.clone(), DefinitionKind::Func(func_type.clone())))
+                                    .map(|(name, func)| (name.clone(), GlobalDeclarationKind::Func(func.metadata.clone())))
+                                    .chain(module.variables
+                                        .iter()
+                                        .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.metadata.clone()))))
+                                    .collect())
+                            },
+                            ModuleKind::Declaration(module) => {
+                                Some(module.functions
+                                    .iter()
+                                    .map(|(name, func_type)| (name.clone(), GlobalDeclarationKind::Func(func_type.clone())))
                                     .collect())
                             }
                         }

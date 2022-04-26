@@ -24,7 +24,7 @@ impl Engine for WasmEngine {
     fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
         let (uid, _) = self
             .module_loader()
-            .load_def_module(&ModuleIdentifier(import_identifier.into()), &ModuleIdentifier(module_id.into()), importer)?;
+            .load_declaration_module(&ModuleIdentifier(import_identifier.into()), &ModuleIdentifier(module_id.into()), importer)?;
 
         Ok(uid)
     }
@@ -57,7 +57,7 @@ impl EngineBuildSource for WasmEngine {
         };
 
         match (module, core_module) {
-            (ModuleKind::Data(module), ModuleKind::Data(core_module)) => {
+            (ModuleKind::Definition(module), ModuleKind::Definition(core_module)) => {
                 let builder = WasmBuilder::new(&self.module_loader, module, core_module);
                 builder.build()
             },

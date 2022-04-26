@@ -67,7 +67,7 @@ impl<'a> ModuleBuilder<'a> {
             function_imports: Vec::new(),
         };
 
-        for def_module in module_loader.def_modules() {
+        for def_module in module_loader.declaration_modules() {
             for (name, type_) in &def_module.functions {
                 builder.function_names.push(name.clone());
                 builder.functions.push((type_.0.clone(), *type_.1.clone()));
@@ -197,7 +197,7 @@ impl<'a> ModuleBuilder<'a> {
                     .get_module(module_uid);
 
                 match module {
-                    Some(ModuleKind::Data(module)) => {
+                    Some(ModuleKind::Definition(module)) => {
                         let func = match module.get_func_def(name) {
                             Some(f) => f,
                             None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
@@ -232,7 +232,7 @@ impl<'a> ModuleBuilder<'a> {
                     .get_module(module_uid);
 
                 match module {
-                    Some(ModuleKind::Data(module)) => {
+                    Some(ModuleKind::Definition(module)) => {
                         let class = match module.get_class_def(class_name) {
                             Some(f) => f,
                             None => return Err(LangError::build(BuildErrorKind::ClassNotFound(class_name.clone()))),

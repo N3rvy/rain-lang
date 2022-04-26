@@ -14,6 +14,7 @@ pub enum ScopeParent<'a> {
     Scope(&'a ParserScope<'a>),
 }
 
+/// This is the scope used for parsing code (this only handles codes inside definitions)
 pub struct ParserScope<'a> {
     parent: ScopeParent<'a>,
     pub eval_type: RefCell<TypeKind>,

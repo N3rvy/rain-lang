@@ -130,7 +130,7 @@ impl EngineExternalModule for InterpreterEngine {
 
     fn insert_external_module(&mut self, module: Self::ExternalModule) {
         self.module_loader()
-            .insert_module(module.uid, ModuleKind::Data(Arc::new(module.module)));
+            .insert_module(module.uid, ModuleKind::Definition(Arc::new(module.module)));
 
         (*self.module_store)
             .borrow_mut()

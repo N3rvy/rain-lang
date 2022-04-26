@@ -84,14 +84,14 @@ impl Module {
     }
 }
 
-pub struct DefinitionModule {
+pub struct DeclarationModule {
     pub id: ModuleIdentifier,
 
     pub imports: Vec<ModuleUID>,
     pub functions: Vec<(String, FunctionType)>,
 }
 
-impl DefinitionModule {
+impl DeclarationModule {
     pub fn get_func_type(&self, name: &String) -> Option<&FunctionType> {
         self.functions
             .iter()

@@ -7,11 +7,14 @@ use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{Declaration, DeclarationKind, ParsableModule};
-use crate::modules::module_loader::{DefinitionKind, ModuleLoaderContext};
-use crate::parser::ParserScope;
+use crate::modules::module_loader::{GlobalDeclarationKind, ModuleLoaderContext};
+use crate::parser_scope::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
 use crate::utils::TokensExtensions;
 
+/// This struct finalizes parsing for the `ParsableModule`s.
+/// It's job is to go through every declaration inside a `ParsableModule`
+/// and through parsing it converts it to a definition
 pub struct ModuleParser<'a> {
     loader_context: &'a ModuleLoaderContext<'a>,
 }
@@ -195,13 +198,13 @@ impl<'a> ModuleParser<'a> {
                 None => continue,
             };
 
-            let definitions = self.loader_context.get_definitions(uid);
+            let definitions = self.loader_context.get_declarations(uid);
 
             for (name, def) in definitions {
                 match def {
-                    DefinitionKind::Var(type_) => scope.declare_external_var(name.clone(), uid, type_),
-                    DefinitionKind::Func(type_) => scope.declare_external_func(name.clone(), uid, type_),
-                    DefinitionKind::Class(type_) => scope.declare_external_class(name.clone(), uid, type_),
+                    GlobalDeclarationKind::Var(type_) => scope.declare_external_var(name.clone(), uid, type_),
+                    GlobalDeclarationKind::Func(type_) => scope.declare_external_func(name.clone(), uid, type_),
+                    GlobalDeclarationKind::Class(type_) => scope.declare_external_class(name.clone(), uid, type_),
                 }
             }
         }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{ClassType, FunctionType, TypeKind};
 use common::module::ModuleUID;
-use crate::parser::ParserScope;
+use crate::parser_scope::ParserScope;
 
 pub enum ScopeGetResult {
     Class(ModuleUID, Arc<ClassType>),

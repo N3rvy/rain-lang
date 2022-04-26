@@ -1,6 +1,6 @@
 use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
-use common::module::{DefinitionModule, ModuleIdentifier};
+use common::module::{DeclarationModule, ModuleIdentifier};
 use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use crate::errors::ParsingErrorHelper;
@@ -22,6 +22,7 @@ pub struct ParsableClass {
     pub functions: Vec<(String, Declaration)>
 }
 
+/// This represents a module that needs more processing to be parsed
 pub struct ParsableModule {
     pub tokens: Tokens,
     pub imports: Vec<ModuleIdentifier>,
@@ -29,10 +30,16 @@ pub struct ParsableModule {
     pub classes: Vec<(String, ParsableClass)>,
 }
 
+/// First step of a module parsing, this can either create a `ParsableModule` or a `DeclarationModule`.
+/// `ParsableModule` when the module is a definition module, this will contain
+/// the declarations with a corresponding token snapshot for later parsing.
+/// `DeclarationModule` when the module is a declaration module, this
+/// will parse all the declarations and directly create a already completely
+/// parsed module.
 pub struct ModuleInitializer;
 
 impl ModuleInitializer {
-    pub fn create(tokens: Tokens) -> Result<ParsableModule, LangError> {
+    pub fn initialize_module(tokens: Tokens) -> Result<ParsableModule, LangError> {
         let mut module = ParsableModule {
             tokens,
             imports: Vec::new(),
@@ -69,7 +76,7 @@ impl ModuleInitializer {
         Ok(module)
     }
 
-    pub fn create_definition(mut tokens: Tokens, id: ModuleIdentifier) -> Result<DefinitionModule, LangError> {
+    pub fn parse_declaration_module(mut tokens: Tokens, id: ModuleIdentifier) -> Result<DeclarationModule, LangError> {
         let imports = Vec::new();
         let mut functions = Vec::new();
 
@@ -99,7 +106,7 @@ impl ModuleInitializer {
             }
         }
 
-        Ok(DefinitionModule {
+        Ok(DeclarationModule {
             id,
 
             imports,
