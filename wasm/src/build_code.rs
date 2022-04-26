@@ -632,18 +632,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VectorLiteral { values } => {
                 // TODO: Make the vector take other types (for now only ints)
 
-                let (alloc_func_id, _, _) = self.module_builder.get_func(
-                    ModuleUID::from_string("core".to_string()),
-                    &"__internal_memory_alloc".to_string())?;
-
-                self.instructions.push(Instruction::I32Const(values.len() as i32 * 4));
-                self.instructions.push(Instruction::Call(alloc_func_id));
-
-                // TODO: Support multiple allocations in the same method
-                let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
-                let id = *ids.index(0);
-
-                self.instructions.push(Instruction::LocalTee(id));
+                let id = self.build_memory_alloc(values.len() as i32 * 4, true)?;
 
                 for (offset, val) in values.iter().enumerate() {
                     self.instructions.push(Instruction::LocalGet(id));
@@ -684,10 +673,54 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     }));
                 }
             },
-            NodeKind::ConstructClass { .. } => todo!(),
+            NodeKind::ConstructClass { class_type } => {
+                // TODO: Implement constructor
+
+                // TODO: Class types should have fields and functions separated
+
+                let size = class_type.0
+                    .iter()
+                    .map(|(_, type_)| match type_ {
+                        TypeKind::Int => 4,
+                        TypeKind::Float => 4,
+                        TypeKind::String => 4,
+                        TypeKind::Bool => 4,
+                        TypeKind::Vector(_) => 4,
+                        TypeKind::Object(_) => 4,
+                        TypeKind::Nothing => 0,
+                        TypeKind::Unknown => 0,
+                        TypeKind::Function(_) => 0, // This is because functions are not fields
+                    })
+                    .sum();
+
+                self.build_memory_alloc(size, true)?;
+
+                self.type_stack.push(TypeKind::Int);
+            },
         }
 
         Ok(())
+    }
+
+    fn build_memory_alloc(&mut self, size: i32, tee: bool) -> Result<u32, LangError> {
+        let (alloc_func_id, _, _) = self.module_builder.get_func(
+            ModuleUID::from_string("core".to_string()),
+            &"__internal_memory_alloc".to_string())?;
+
+        self.instructions.push(Instruction::I32Const(size));
+        self.instructions.push(Instruction::Call(alloc_func_id));
+
+        // TODO: Support multiple allocations in the same method
+        let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+        let id = *ids.index(0);
+
+        if tee {
+            self.instructions.push(Instruction::LocalTee(id));
+        } else {
+            self.instructions.push(Instruction::LocalSet(id));
+        }
+
+        Ok(id)
     }
 
     fn string_to_bytes(string: String) -> Vec<u8> {

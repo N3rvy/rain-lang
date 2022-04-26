@@ -98,7 +98,7 @@ pub enum NodeKind {
         value: ASTNode,
     },
     ConstructClass {
-        type_: Arc<ClassType>,
+        class_type: Arc<ClassType>,
     }
 }
 
@@ -168,6 +168,6 @@ impl NodeKind {
     }
 
     pub fn new_construct_class(type_: Arc<ClassType>) -> NodeKind {
-        NodeKind::ConstructClass { type_ }
+        NodeKind::ConstructClass { class_type: type_ }
     }
 }
