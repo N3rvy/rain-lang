@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use common::ast::types::{Class, Function, FunctionType, LiteralKind, ObjectType, TypeKind};
+use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use common::tokens::TokenKind;
@@ -57,7 +57,7 @@ impl<'a> ModuleParser<'a> {
                 name.clone(),
                 ClassDefinition {
                     data: Class::new(functions),
-                    metadata: ObjectType(class.fields
+                    metadata: ClassType(class.fields
                         .clone()
                         .into_iter()
                         .collect()),
@@ -165,7 +165,7 @@ impl<'a> ModuleParser<'a> {
                 object_fields.insert(name.clone(), field.clone());
             }
 
-            let class_type = TypeKind::Object(Arc::new(ObjectType(object_fields)));
+            let class_type = TypeKind::Object(Arc::new(ClassType(object_fields)));
 
             scope.declare(name.clone(), class_type);
         }

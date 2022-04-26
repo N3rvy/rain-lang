@@ -5,7 +5,7 @@ use super::ASTBody;
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ObjectType(pub HashMap<String, TypeKind>);
+pub struct ClassType(pub HashMap<String, TypeKind>);
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
@@ -76,7 +76,7 @@ pub enum TypeKind {
     Nothing,
     Vector(Box<TypeKind>),
     Function(FunctionType),
-    Object(Arc<ObjectType>), // TODO: Rename to Class
+    Object(Arc<ClassType>),
 }
 
 impl TypeKind {
