@@ -425,13 +425,13 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 Self::assert_type(&type_, &local_type)?;
             },
             NodeKind::FunctionInvok { variable, parameters } => {
-                for param in parameters {
-                    self.build_statement(param)?;
-                }
-
                 // TODO: Support for other kinds of invocations
                 let (func_id, param_types, ret_type) = match variable.kind.as_ref() {
                     NodeKind::VariableRef { name, module } => {
+                        for param in parameters {
+                            self.build_statement(param)?;
+                        }
+
                         self.module_builder.get_func(*module, name)?
                     },
                     NodeKind::FieldAccess { variable, field_name } => {
@@ -441,6 +441,10 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                             TypeKind::Object(ct) => ct,
                             _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
                         };
+
+                        for param in parameters {
+                            self.build_statement(param)?;
+                        }
 
                         self.module_builder.get_method(class_type.module, &class_type.name, field_name)?
                     },
