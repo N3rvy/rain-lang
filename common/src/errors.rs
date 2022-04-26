@@ -34,6 +34,7 @@ pub enum ParserErrorKind {
 pub enum BuildErrorKind {
     UnexpectedError,
     Unsupported(String),
+    ClassNotFound(String),
     FuncNotFound(String),
     ModuleNotFound(ModuleUID),
     InvalidStackType, // TODO: Implement types
@@ -203,6 +204,7 @@ pub fn format_build(kind: BuildErrorKind) -> String {
     match kind {
         BuildErrorKind::UnexpectedError => "Unexpected error".to_string(),
         BuildErrorKind::Unsupported(feature) => format!("Unsupported feature ({})", feature),
+        BuildErrorKind::ClassNotFound(class_name) => format!("Class not found ({})", class_name),
         BuildErrorKind::FuncNotFound(name) => format!("Function not found ({})", name),
         BuildErrorKind::ModuleNotFound(uid) => format!("Module not found ({:?})", uid),
         BuildErrorKind::InvalidStackType => "Invalid stack type".to_string(),

@@ -1,4 +1,5 @@
 use std::{sync::Arc, fmt::Debug};
+use crate::module::ModuleUID;
 use super::ASTBody;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -6,6 +7,8 @@ pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClassType {
+    pub name: String,
+    pub module: ModuleUID,
     pub fields: Vec<(String, TypeKind)>,
     pub methods: Vec<(String, FunctionType)>,
 }

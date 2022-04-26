@@ -3,7 +3,7 @@ use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
 use common::errors::{LangError, BuildErrorKind};
-use common::module::{ModuleUID, Module};
+use common::module::{ModuleUID, Module, FunctionDefinition};
 use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
@@ -179,8 +179,6 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
-        // This "code duplication" is done because otherwise it would complain
-        // that self.functions is already borrowed
         let func_id = self.function_names
             .iter()
             .position(|n| n == name);
@@ -205,28 +203,72 @@ impl<'a> ModuleBuilder<'a> {
                             None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
                         };
 
-                        self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
-
-                        self.function_names.push(name.clone());
-                        self.functions.push((
-                            func.metadata.0.clone(),
-                            *func.metadata.1.clone(),
-                        ));
-
-                        let (params, ret) = self.functions
-                            .last()
-                            .unwrap();
-
-                        Ok((
-                            self.functions.len() as u32 - 1,
-                            params,
-                            ret
-                        ))
+                        self.load_func(func, name)
                     },
-                    _ => return Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
+                    _ => Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
                 }
             },
         }
+    }
+
+    fn get_method(&mut self, module_uid: ModuleUID, class_name: &String, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
+        let func_name = format!("{}::{}", class_name, name);
+
+        let func_id = self.function_names
+            .iter()
+            .position(|n| n == &func_name);
+
+        match func_id {
+            Some(func_id) => {
+                let (params, ret) = self.functions.index(func_id);
+                Ok((
+                    func_id as u32,
+                    params,
+                    ret,
+                ))
+            },
+            None => {
+                let module = self.module_loader
+                    .get_module(module_uid);
+
+                match module {
+                    Some(ModuleKind::Data(module)) => {
+                        let class = match module.get_class_def(class_name) {
+                            Some(f) => f,
+                            None => return Err(LangError::build(BuildErrorKind::ClassNotFound(class_name.clone()))),
+                        };
+
+                        let func = match class.get_method_def(name) {
+                            Some(f) => f,
+                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
+                        };
+
+                        self.load_func(&func, name)
+                    },
+                    _ => Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
+                }
+            },
+        }
+    }
+
+    fn load_func(&mut self, func: &FunctionDefinition, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
+        self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
+
+        self.function_names.push(name.clone());
+        self.functions.push((
+            func.metadata.0.clone(),
+            *func.metadata.1.clone(),
+        ));
+
+        let (params, ret) = self.functions
+            .last()
+            .unwrap();
+
+        Ok((
+            self.functions.len() as u32 - 1,
+            params,
+            ret
+        ))
     }
 }
 
@@ -429,17 +471,29 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 Self::assert_type(&type_, &local_type)?;
             },
             NodeKind::FunctionInvok { variable, parameters } => {
-                // TODO: Support for other kinds of invocations
-                let (module, name) = match variable.kind.as_ref() {
-                    NodeKind::VariableRef { name, module } => (module, name),
-                    _ => return Err(LangError::build(BuildErrorKind::Unsupported("Not static function call".to_string()))),
-                };
-
                 for param in parameters {
                     self.build_statement(param)?;
                 }
 
-                let (func_id, param_types, ret_type) = self.module_builder.get_func(*module, name)?;
+                // TODO: Support for other kinds of invocations
+                let (func_id, param_types, ret_type) = match variable.kind.as_ref() {
+                    NodeKind::VariableRef { name, module } => {
+                        self.module_builder.get_func(*module, name)?
+                    },
+                    NodeKind::FieldAccess { variable, field_name } => {
+                        self.build_statement(variable)?;
+
+                        self.instructions.push(Instruction::Drop);
+
+                        let class_type = match self.type_stack.pop().unwrap() {
+                            TypeKind::Object(ct) => ct,
+                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                        };
+
+                        self.module_builder.get_method(class_type.module, &class_type.name, field_name)?
+                    },
+                    _ => return Err(LangError::build(BuildErrorKind::Unsupported("Not static function call".to_string()))),
+                };
 
                 for param in param_types {
                     let type_ = self.type_stack.pop().unwrap();

@@ -33,6 +33,25 @@ pub struct ClassDefinition {
     pub metadata: ClassType,
 }
 
+impl ClassDefinition {
+    pub fn get_method_def(&self, name: &String) -> Option<FunctionDefinition> {
+        self.data.functions
+            .iter()
+            .find(|(n, _)| n == name)
+            .and_then(|(_, def)| {
+                let (_, func_type) = self.metadata.methods
+                    .iter()
+                    .find(|(n, _)| n == name)
+                    .unwrap();
+
+                Some(FunctionDefinition {
+                    data: def.clone(),
+                    metadata: func_type.clone(),
+                })
+            })
+    }
+}
+
 pub struct Module {
     pub uid: ModuleUID,
 
@@ -52,6 +71,13 @@ impl Module {
 
     pub fn get_var_def(&self, name: &String) -> Option<&VariableDefinition> {
         self.variables
+            .iter()
+            .find(|(n, _)| n == name)
+            .and_then(|(_, def)| Some(def))
+    }
+
+    pub fn get_class_def(&self, name: &String) -> Option<&ClassDefinition> {
+        self.classes
             .iter()
             .find(|(n, _)| n == name)
             .and_then(|(_, def)| Some(def))

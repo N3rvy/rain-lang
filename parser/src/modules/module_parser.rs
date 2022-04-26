@@ -63,6 +63,8 @@ impl<'a> ModuleParser<'a> {
                 ClassDefinition {
                     data: Class::new(functions),
                     metadata: ClassType {
+                        name: name.clone(),
+                        module: uid,
                         fields: class.fields.clone(),
                         methods: function_types,
                     }
@@ -163,6 +165,8 @@ impl<'a> ModuleParser<'a> {
 
             let class_type = Arc::new(ClassType {
                 methods,
+                name: name.clone(),
+                module: uid,
                 fields: class.fields.clone(),
             });
 
