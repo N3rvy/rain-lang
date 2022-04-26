@@ -240,10 +240,10 @@ impl<'a> ModuleBuilder<'a> {
 
                         let func = match class.get_method_def(name) {
                             Some(f) => f,
-                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
+                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(func_name.clone()))),
                         };
 
-                        self.load_func(&func, name)
+                        self.load_func(&func, &func_name)
                     },
                     _ => Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
                 }
