@@ -431,10 +431,16 @@ impl<'a> ParserScope<'a> {
                 };
                 
                 match &node.eval_type {
-                    TypeKind::Object(field_types) => {
-                        let field_type = match field_types.fields.iter().find(|(name, _)| name == field_name) {
+                    TypeKind::Object(class_type) => {
+                        let field_type = match class_type.fields.iter().find(|(name, _)| name == field_name) {
                             Some((_, t)) => t.clone(),
-                            None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
+                            None => {
+                                // If the field doesn't exist search for a method
+                                match class_type.methods.iter().find(|(name, _)| name == field_name) {
+                                    Some((_, ft)) => TypeKind::Function(ft.clone()),
+                                    None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
+                                }
+                            }
                         };
 
                         Ok((
@@ -442,7 +448,7 @@ impl<'a> ParserScope<'a> {
                                 NodeKind::new_field_access(node, field_name.clone()),
                                 field_type),
                             true))
-                    },
+                    }
                     _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidFieldAccess)),
                 }
             },
