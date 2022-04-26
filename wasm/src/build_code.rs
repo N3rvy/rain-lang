@@ -93,10 +93,10 @@ impl<'a> ModuleBuilder<'a> {
                 continue
             }
 
+            self.insert_func(name, &func.metadata, &func.data)?;
+
             self.function_names.push(name.clone());
             self.functions.push((func.metadata.0.clone(), (*func.metadata.1).clone()));
-
-            self.insert_func(name, &func.metadata, &func.data)?;
         }
 
         Ok(())
