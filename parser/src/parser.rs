@@ -295,6 +295,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Operator(_) |
             TokenKind::BoolOperator(_) |
             TokenKind::MathOperator(_) |
+            TokenKind::Type(_) |
             TokenKind::Indent |
             TokenKind::Import |
             TokenKind::Class |
