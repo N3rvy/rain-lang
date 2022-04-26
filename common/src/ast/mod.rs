@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use crate::ast::types::ClassType;
 use crate::module::ModuleUID;
 
 use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
@@ -97,8 +98,7 @@ pub enum NodeKind {
         value: ASTNode,
     },
     ConstructClass {
-        module: ModuleUID,
-        name: String,
+        type_: Arc<ClassType>,
     }
 }
 
@@ -167,7 +167,7 @@ impl NodeKind {
         NodeKind::ValueFieldAccess { variable, value }
     }
 
-    pub fn new_construct_class(module: ModuleUID, name: String) -> NodeKind {
-        NodeKind::ConstructClass { module, name }
+    pub fn new_construct_class(type_: Arc<ClassType>) -> NodeKind {
+        NodeKind::ConstructClass { type_ }
     }
 }

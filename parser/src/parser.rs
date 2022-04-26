@@ -9,7 +9,7 @@ use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::TokensExtensions;
 use crate::{expect_token, errors::ParsingErrorHelper, expect_indent, utils::parse_parameter_names};
-use crate::parser_module_scope::ParserModuleScope;
+use crate::parser_module_scope::{ParserModuleScope, ScopeGetResult};
 
 pub enum ScopeParent<'a> {
     Module(&'a ParserModuleScope),
@@ -48,7 +48,7 @@ impl<'a> ParserScope<'a> {
         }
     }
     
-    pub fn get(&self, name: &String) -> Option<(ModuleUID, TypeKind)> {
+    pub fn get(&self, name: &String) -> ScopeGetResult {
         let types = self.types.borrow();
         
         let value = self.names.borrow()
@@ -59,7 +59,7 @@ impl<'a> ParserScope<'a> {
             .and_then(|(i, _)| Some(types[types.len() - 1 - i].clone()));
 
         match value {
-            Some(value) => Some((self.module_uid, value)),
+            Some(value) => ScopeGetResult::Ref(self.module_uid, value),
             None => match self.parent {
                 ScopeParent::Module(module) => module.get(name),
                 ScopeParent::Scope(scope) => scope.get(name),
@@ -172,15 +172,50 @@ impl<'a> ParserScope<'a> {
                 ASTNode::new(NodeKind::new_variable_decl(name, value), eval_type)
             },
             TokenKind::Symbol(name) => {
-                let (module, var_type) = match self.get(name) {
-                    Some(t) => t,
-                    None => return Err(LangError::parser(&token, ParserErrorKind::VarNotFound)),
-                };
+                match self.get(name) {
+                    ScopeGetResult::Class(_, class_type) => {
+                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
-                // TODO: Check if the type is an object, in that case this is class construction
+                        let parameters = self.parse_parameter_values(tokens)?;
 
-                let var_ref = NodeKind::new_variable_ref(module, name.clone());
-                ASTNode::new(var_ref, var_type)
+                        // TODO: Make this a bit better
+                        let constructor = class_type.0
+                            .get("new")
+                            .and_then(|new| match new {
+                                TypeKind::Function(type_) => Some(type_.clone()),
+                                _ => None,
+                            });
+
+                        match constructor {
+                            Some(constructor) => {
+                                // Check parameters types
+                                if parameters.len() != constructor.0.len() {
+                                    return Err(LangError::parser(&token, ParserErrorKind::InvalidArgCount(constructor.0.len())))
+                                }
+
+                                for i in 0..parameters.len() {
+                                    if !parameters[i].eval_type.is_compatible(&constructor.0[i]) {
+                                        return Err(LangError::wrong_type(&token, &constructor.0[i], &parameters[i].eval_type))
+                                    }
+                                }
+                            }
+                            None => {
+                                if parameters.len() != 0 {
+                                    return Err(LangError::parser(&token, ParserErrorKind::InvalidArgCount(0)))
+                                }
+                            }
+                        }
+
+                        ASTNode::new(
+                            NodeKind::new_construct_class(class_type.clone()),
+                            TypeKind::Object(class_type.clone()))
+                    },
+                    ScopeGetResult::Ref(uid, type_) => {
+                        let var_ref = NodeKind::new_variable_ref(uid, name.clone());
+                        ASTNode::new(var_ref, type_)
+                    },
+                    ScopeGetResult::None => return Err(LangError::parser(&token, ParserErrorKind::VarNotFound)),
+                }
             }
             TokenKind::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
             TokenKind::Parenthesis(kind, state) => {

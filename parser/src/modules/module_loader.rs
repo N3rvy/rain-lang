@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
-use common::ast::types::TypeKind;
+use common::ast::types::{ClassType, FunctionType, TypeKind};
 use common::module::{DefinitionModule, Module, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
@@ -199,13 +199,19 @@ impl ModuleLoader {
     }
 }
 
+pub enum DefinitionKind {
+    Var(TypeKind),
+    Func(FunctionType),
+    Class(Arc<ClassType>),
+}
+
 pub struct ModuleLoaderContext<'a> {
     module_loader: &'a ModuleLoader,
     modules: Vec<(ModuleUID, ParsableModule)>,
 }
 
 impl<'a> ModuleLoaderContext<'a> {
-    pub fn get_definitions(&self, module_uid: ModuleUID) -> Vec<(String, TypeKind)> {
+    pub fn get_definitions(&self, module_uid: ModuleUID) -> Vec<(String, DefinitionKind)> {
         let module = self.modules
             .iter()
             .find(|(uid, _)| *uid == module_uid);
@@ -216,8 +222,8 @@ impl<'a> ModuleLoaderContext<'a> {
                     .iter()
                     .map(|(name, decl)| {
                         let kind = match &decl.kind {
-                            DeclarationKind::Variable(type_) => type_.clone(),
-                            DeclarationKind::Function(_, type_) => TypeKind::Function(type_.clone()),
+                            DeclarationKind::Variable(type_) => DefinitionKind::Var(type_.clone()),
+                            DeclarationKind::Function(_, type_) => DefinitionKind::Func(type_.clone()),
                         };
 
                         (name.clone(), kind)
@@ -232,16 +238,16 @@ impl<'a> ModuleLoaderContext<'a> {
                             ModuleKind::Data(module) => {
                                 Some(module.functions
                                     .iter()
-                                    .map(|(name, func)| (name.clone(), TypeKind::Function(func.metadata.clone())))
+                                    .map(|(name, func)| (name.clone(), DefinitionKind::Func(func.metadata.clone())))
                                     .chain(module.variables
                                         .iter()
-                                        .map(|(name, var)| (name.clone(), var.metadata.clone())))
+                                        .map(|(name, var)| (name.clone(), DefinitionKind::Var(var.metadata.clone()))))
                                     .collect())
                             },
                             ModuleKind::Definition(module) => {
                                 Some(module.functions
                                     .iter()
-                                    .map(|(name, func_type)| (name.clone(), TypeKind::Function(func_type.clone())))
+                                    .map(|(name, func_type)| (name.clone(), DefinitionKind::Func(func_type.clone())))
                                     .collect())
                             }
                         }

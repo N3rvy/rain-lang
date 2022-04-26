@@ -8,7 +8,7 @@ use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_initializer::{Declaration, DeclarationKind, ParsableModule};
-use crate::modules::module_loader::ModuleLoaderContext;
+use crate::modules::module_loader::{DefinitionKind, ModuleLoaderContext};
 use crate::parser::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
 use crate::utils::TokensExtensions;
@@ -141,12 +141,10 @@ impl<'a> ModuleParser<'a> {
 
         // Declaring every type into the scope
         for (name, def) in &module.declarations {
-            let type_kind = match &def.kind {
-                DeclarationKind::Variable(t) => t.clone(),
-                DeclarationKind::Function(_, ft) => TypeKind::Function(ft.clone()),
-            };
-
-            scope.declare(name.clone(), type_kind);
+            match &def.kind {
+                DeclarationKind::Variable(t) => scope.declare_var(name.clone(), t.clone()),
+                DeclarationKind::Function(_, ft) => scope.declare_func(name.clone(), ft.clone()),
+            }
         }
 
         for (name, class) in &module.classes {
@@ -165,9 +163,9 @@ impl<'a> ModuleParser<'a> {
                 object_fields.insert(name.clone(), field.clone());
             }
 
-            let class_type = TypeKind::Object(Arc::new(ClassType(object_fields)));
+            let class_type = Arc::new(ClassType(object_fields));
 
-            scope.declare(name.clone(), class_type);
+            scope.declare_class(name.clone(), class_type);
         }
 
         for import in &module.imports {
@@ -178,8 +176,12 @@ impl<'a> ModuleParser<'a> {
 
             let definitions = self.loader_context.get_definitions(uid);
 
-            for (name, decl) in definitions {
-                scope.declare_external(name, uid, decl);
+            for (name, def) in definitions {
+                match def {
+                    DefinitionKind::Var(type_) => scope.declare_external_var(name.clone(), uid, type_),
+                    DefinitionKind::Func(type_) => scope.declare_external_func(name.clone(), uid, type_),
+                    DefinitionKind::Class(type_) => scope.declare_external_class(name.clone(), uid, type_),
+                }
             }
         }
 
