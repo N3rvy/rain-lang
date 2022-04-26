@@ -1,11 +1,14 @@
-use std::{collections::HashMap, sync::Arc, fmt::Debug};
+use std::{sync::Arc, fmt::Debug};
 use super::ASTBody;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ClassType(pub HashMap<String, TypeKind>);
+pub struct ClassType {
+    pub fields: Vec<(String, TypeKind)>,
+    pub methods: Vec<(String, FunctionType)>,
+}
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {

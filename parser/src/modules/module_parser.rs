@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
@@ -36,6 +35,7 @@ impl<'a> ModuleParser<'a> {
             let scope = scope.new_child();
 
             let mut functions = Vec::new();
+            let mut function_types = Vec::new();
 
             for (name, decl) in &class.functions {
                 let mut tokens = module.tokens.new_clone(decl.body);
@@ -48,7 +48,12 @@ impl<'a> ModuleParser<'a> {
                         functions.push((
                             name.clone(),
                             func,
-                        ))
+                        ));
+
+                        function_types.push((
+                            name.clone(),
+                            type_.clone(),
+                        ));
                     },
                 }
             }
@@ -57,10 +62,10 @@ impl<'a> ModuleParser<'a> {
                 name.clone(),
                 ClassDefinition {
                     data: Class::new(functions),
-                    metadata: ClassType(class.fields
-                        .clone()
-                        .into_iter()
-                        .collect()),
+                    metadata: ClassType {
+                        fields: class.fields.clone(),
+                        methods: function_types,
+                    }
                 }
             ))
         }
@@ -148,22 +153,18 @@ impl<'a> ModuleParser<'a> {
         }
 
         for (name, class) in &module.classes {
-            let mut object_fields = HashMap::new();
+            let methods = class.functions
+                .iter()
+                .filter_map(|(name, decl)| match &decl.kind {
+                    DeclarationKind::Variable(_) => None,
+                    DeclarationKind::Function(_, ft) => Some((name.clone(), ft.clone())),
+                })
+                .collect();
 
-            for (name, decl) in &class.functions {
-                match &decl.kind {
-                    DeclarationKind::Variable(_) => (),
-                    DeclarationKind::Function(_, ft) => {
-                        object_fields.insert(name.clone(), TypeKind::Function(ft.clone()));
-                    }
-                }
-            }
-
-            for (name, field) in &class.fields {
-                object_fields.insert(name.clone(), field.clone());
-            }
-
-            let class_type = Arc::new(ClassType(object_fields));
+            let class_type = Arc::new(ClassType {
+                methods,
+                fields: class.fields.clone(),
+            });
 
             scope.declare_class(name.clone(), class_type);
         }

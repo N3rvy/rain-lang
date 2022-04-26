@@ -1,10 +1,8 @@
-use std::{collections::HashMap, cell::RefCell};
-use std::sync::Arc;
+use std::cell::RefCell;
 use common::errors::ParserErrorKind;
 use common::tokens::{TokenKind, Token};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
-use common::ast::types::ClassType;
 use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::TokensExtensions;
@@ -179,15 +177,13 @@ impl<'a> ParserScope<'a> {
                         let parameters = self.parse_parameter_values(tokens)?;
 
                         // TODO: Make this a bit better
-                        let constructor = class_type.0
-                            .get("new")
-                            .and_then(|new| match new {
-                                TypeKind::Function(type_) => Some(type_.clone()),
-                                _ => None,
-                            });
+                        let constructor = class_type.methods
+                            .iter()
+                            .find(|(name, _)| name == "new")
+                            .cloned();
 
                         match constructor {
-                            Some(constructor) => {
+                            Some((_, constructor)) => {
                                 // Check parameters types
                                 if parameters.len() != constructor.0.len() {
                                     return Err(LangError::parser(&token, ParserErrorKind::InvalidArgCount(constructor.0.len())))
@@ -237,17 +233,6 @@ impl<'a> ParserScope<'a> {
                             NodeKind::new_vector_literal(values),
                             TypeKind::Vector(Box::new(vector_type))
                         )
-                    },
-                    (ParenthesisKind::Curly, ParenthesisState::Open) => {
-                        let values = self.parse_object_values(tokens)?;
-                        
-                        let mut field_map = HashMap::new();
-
-                        for (field_name, field) in &values {
-                            field_map.insert(field_name.clone(), field.eval_type.clone());
-                        }
-                        
-                        ASTNode::new(NodeKind::new_object_literal(values), TypeKind::Object(Arc::new(ClassType(field_map))))
                     },
                     _ => return Err(LangError::new_parser_unexpected_token(&token))
                 }
@@ -447,8 +432,8 @@ impl<'a> ParserScope<'a> {
                 
                 match &node.eval_type {
                     TypeKind::Object(field_types) => {
-                        let field_type = match field_types.0.get(field_name) {
-                            Some(t) => t.clone(),
+                        let field_type = match field_types.fields.iter().find(|(name, _)| name == field_name) {
+                            Some((_, t)) => t.clone(),
                             None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
                         };
 

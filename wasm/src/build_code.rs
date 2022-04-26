@@ -639,7 +639,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let mut field_type = TypeKind::Unknown;
 
                 let mut offset = 0;
-                for (name, type_) in &class_type.0 {
+                for (name, type_) in &class_type.fields {
                     if field_name == name {
                         field_type = type_.clone();
                         break
@@ -683,7 +683,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let mut field_type = TypeKind::Unknown;
 
                 let mut offset = 0;
-                for (name, type_) in &class_type.0 {
+                for (name, type_) in &class_type.fields {
                     if field_name == name {
                         field_type = type_.clone();
                         break
@@ -763,7 +763,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 // TODO: Class types should have fields and functions separated
 
-                let size = class_type.0
+                let size = class_type.fields
                     .iter()
                     .map(|(_, type_)| match type_ {
                         TypeKind::Int => 4,
