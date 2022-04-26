@@ -178,7 +178,7 @@ impl<'a> ModuleBuilder<'a> {
         offset
     }
 
-    fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
+    pub(crate) fn get_func(&mut self, module_uid: ModuleUID, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
         let func_id = self.function_names
             .iter()
             .position(|n| n == name);
@@ -278,7 +278,7 @@ enum VarKind {
 }
 
 pub struct FunctionBuilder<'a, 'b> {
-    module_builder: &'a mut ModuleBuilder<'b>,
+    pub(crate) module_builder: &'a mut ModuleBuilder<'b>,
 
     /// This is like locals but is kept untouched
     params: Vec<TypeKind>,
@@ -386,34 +386,11 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     },
                     VarKind::Global(offset) => {
                         self.instructions.push(Instruction::I32Const(offset as i32));
-                        match var_type {
-                            TypeKind::Unknown => todo!(),
-                            TypeKind::Nothing => (),
-                            TypeKind::Int | TypeKind::Bool => {
-                                self.instructions.push(Instruction::I32Load(MemArg {
-                                    memory_index: 0,
-                                    align: 0,
-                                    offset: 0,
-                                }));
-                            },
-                            TypeKind::Float => {
-                                self.instructions.push(Instruction::F32Load(MemArg {
-                                    memory_index: 0,
-                                    align: 0,
-                                    offset: 0,
-                                }));
-                            },
-                            TypeKind::String => {
-                                self.instructions.push(Instruction::I32Load(MemArg {
-                                    memory_index: 0,
-                                    align: 0,
-                                    offset: 0,
-                                }));
-                            },
-                            TypeKind::Vector(_) => todo!(),
-                            TypeKind::Function(_) => todo!(),
-                            TypeKind::Object(_) => todo!(),
-                        }
+                        self.build_mem_load(&var_type, MemArg {
+                            memory_index: 0,
+                            offset: 0,
+                            align: 0,
+                        });
                     },
                 };
             },
@@ -435,34 +412,11 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                         self.build_statement(value)?;
 
-                        match local_type {
-                            TypeKind::Unknown => todo!(),
-                            TypeKind::Nothing => (),
-                            TypeKind::Int | TypeKind::Bool => {
-                                self.instructions.push(Instruction::I32Store(MemArg {
-                                    align: 0,
-                                    memory_index: 0,
-                                    offset: 0,
-                                }))
-                            },
-                            TypeKind::Float => {
-                                self.instructions.push(Instruction::F32Store(MemArg {
-                                    align: 0,
-                                    memory_index: 0,
-                                    offset: 0,
-                                }))
-                            },
-                            TypeKind::String => {
-                                self.instructions.push(Instruction::I32Store(MemArg {
-                                    align: 0,
-                                    memory_index: 0,
-                                    offset: 0,
-                                }))
-                            },
-                            TypeKind::Vector(_) => todo!(),
-                            TypeKind::Function(_) => todo!(),
-                            TypeKind::Object(_) => todo!(),
-                        }
+                        self.build_mem_store(&local_type, MemArg {
+                            align: 0,
+                            memory_index: 0,
+                            offset: 0,
+                        });
                     },
                 }
 
@@ -715,12 +669,11 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     return Err(LangError::build(BuildErrorKind::UnexpectedError));
                 }
 
-                // TODO: Support other types
-                self.instructions.push(Instruction::I32Load(MemArg {
+                self.build_mem_load(&field_type, MemArg {
                     offset,
                     align: 0,
                     memory_index: 0,
-                }));
+                });
 
                 self.type_stack.push(field_type);
             },
@@ -761,12 +714,11 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     return Err(LangError::build(BuildErrorKind::InvalidStackType));
                 }
 
-                // TODO: Support other types
-                self.instructions.push(Instruction::I32Store(MemArg {
+                self.build_mem_store(&field_type, MemArg {
                     offset,
                     align: 0,
                     memory_index: 0,
-                }));
+                });
             },
             NodeKind::VectorLiteral { values } => {
                 // TODO: Make the vector take other types (for now only ints)
@@ -839,27 +791,6 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         }
 
         Ok(())
-    }
-
-    fn build_memory_alloc(&mut self, size: i32, tee: bool) -> Result<u32, LangError> {
-        let (alloc_func_id, _, _) = self.module_builder.get_func(
-            ModuleUID::from_string("core".to_string()),
-            &"__internal_memory_alloc".to_string())?;
-
-        self.instructions.push(Instruction::I32Const(size));
-        self.instructions.push(Instruction::Call(alloc_func_id));
-
-        // TODO: Support multiple allocations in the same method
-        let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
-        let id = *ids.index(0);
-
-        if tee {
-            self.instructions.push(Instruction::LocalTee(id));
-        } else {
-            self.instructions.push(Instruction::LocalSet(id));
-        }
-
-        Ok(id)
     }
 
     fn string_to_bytes(string: String) -> Vec<u8> {

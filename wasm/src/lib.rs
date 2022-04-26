@@ -3,3 +3,4 @@ pub mod module;
 mod build;
 mod build_code;
 mod build_op;
+mod build_mem;
