@@ -135,16 +135,25 @@ impl Class {
 pub struct Function {
     pub body: ASTBody,
     pub parameters: Vec<String>,
+    pub is_method: bool,
 }
 
 impl Debug for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("[Function]")
+        if self.is_method {
+            f.write_str("[Method]")
+        } else {
+            f.write_str("[Function]")
+        }
     }
 }
 
 impl Function {
-    pub fn new(body: ASTBody, parameters: Vec<String>) -> Arc<Function> {
-        Arc::new(Self { body, parameters })
+    pub fn new(body: ASTBody, parameters: Vec<String>, is_method: bool) -> Arc<Function> {
+        Arc::new(Self {
+            is_method,
+            body,
+            parameters,
+        })
     }
 }

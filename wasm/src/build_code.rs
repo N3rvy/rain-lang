@@ -437,8 +437,6 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     NodeKind::FieldAccess { variable, field_name } => {
                         self.build_statement(variable)?;
 
-                        self.instructions.push(Instruction::Drop);
-
                         let class_type = match self.type_stack.pop().unwrap() {
                             TypeKind::Object(ct) => ct,
                             _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
@@ -449,7 +447,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     _ => return Err(LangError::build(BuildErrorKind::Unsupported("Not static function call".to_string()))),
                 };
 
-                for param in param_types {
+                for param in param_types.iter().skip(1) {
                     let type_ = self.type_stack.pop().unwrap();
 
                     Self::assert_type(&type_, &param)?;
@@ -723,7 +721,13 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VectorLiteral { values } => {
                 // TODO: Make the vector take other types (for now only ints)
 
-                let id = self.build_memory_alloc(values.len() as i32 * 4, true)?;
+                self.build_memory_alloc(values.len() as i32 * 4)?;
+
+                // TODO: Support multiple allocations in the same method
+                let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                let id = *ids.index(0);
+
+                self.instructions.push(Instruction::LocalTee(id));
 
                 for (offset, val) in values.iter().enumerate() {
                     self.instructions.push(Instruction::LocalGet(id));
@@ -784,7 +788,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     })
                     .sum();
 
-                self.build_memory_alloc(size, true)?;
+                self.build_memory_alloc(size)?;
 
                 self.type_stack.push(TypeKind::Object(class_type.clone()));
             },

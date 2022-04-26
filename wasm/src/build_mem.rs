@@ -1,4 +1,3 @@
-use std::ops::Index;
 use wasm_encoder::{Instruction, MemArg, ValType};
 use common::ast::types::TypeKind;
 use common::errors::LangError;
@@ -44,7 +43,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         }
     }
 
-    pub(crate) fn build_memory_alloc(&mut self, size: i32, tee: bool) -> Result<u32, LangError> {
+    pub(crate) fn build_memory_alloc(&mut self, size: i32) -> Result<(), LangError> {
         let (alloc_func_id, _, _) = self.module_builder.get_func(
             ModuleUID::from_string("core".to_string()),
             &"__internal_memory_alloc".to_string())?;
@@ -52,16 +51,6 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         self.instructions.push(Instruction::I32Const(size));
         self.instructions.push(Instruction::Call(alloc_func_id));
 
-        // TODO: Support multiple allocations in the same method
-        let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
-        let id = *ids.index(0);
-
-        if tee {
-            self.instructions.push(Instruction::LocalTee(id));
-        } else {
-            self.instructions.push(Instruction::LocalSet(id));
-        }
-
-        Ok(id)
+        Ok(())
     }
 }

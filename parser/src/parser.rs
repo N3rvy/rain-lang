@@ -118,7 +118,7 @@ impl<'a> ParserScope<'a> {
 
                 let func_literal = ASTNode::new(
                     NodeKind::new_function_literal(
-                        Function::new(body, param_names)),
+                        Function::new(body, param_names, false)),
                     eval_type.clone(),
                 );
 

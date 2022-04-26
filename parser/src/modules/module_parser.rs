@@ -32,6 +32,13 @@ impl<'a> ModuleParser<'a> {
         let mut classes = Vec::new();
 
         for (name, class) in &module.classes {
+            let class_type = Arc::new(ClassType {
+                name: name.clone(),
+                module: uid,
+                fields: class.fields.clone(),
+                methods: vec![],
+            });
+
             let scope = scope.new_child();
 
             let mut functions = Vec::new();
@@ -43,7 +50,13 @@ impl<'a> ModuleParser<'a> {
                 match &decl.kind {
                     DeclarationKind::Variable(_) => panic!(),
                     DeclarationKind::Function(params, type_) => {
-                        let func = Self::parse_function_value(&mut tokens, &scope, params, type_.clone())?;
+                        let mut params = params.clone();
+                        let mut type_ = type_.clone();
+
+                        params.insert(0, "self".to_string());
+                        type_.0.insert(0, TypeKind::Object(class_type.clone()));
+
+                        let func = Self::parse_function_value(&mut tokens, &scope, &params, type_.clone(), true)?;
 
                         functions.push((
                             name.clone(),
@@ -58,16 +71,18 @@ impl<'a> ModuleParser<'a> {
                 }
             }
 
+            unsafe {
+                // This should not be done but... IDC, it is safe (the last words before the disaster...)
+                // TODO: This also causes recursion so maybe change in the future (just maybe...)
+                let method_ptr = &class_type.methods as *const Vec<(String, FunctionType)> as *mut Vec<(String, FunctionType)>;
+                *method_ptr = function_types;
+            }
+
             classes.push((
                 name.clone(),
                 ClassDefinition {
                     data: Class::new(functions),
-                    metadata: ClassType {
-                        name: name.clone(),
-                        module: uid,
-                        fields: class.fields.clone(),
-                        methods: function_types,
-                    }
+                    metadata: class_type,
                 }
             ))
         }
@@ -123,7 +138,8 @@ impl<'a> ModuleParser<'a> {
                         &mut tokens,
                         &scope,
                         params,
-                        func_type.clone())?;
+                        func_type.clone(),
+                        false)?;
 
                     if !scope.eval_type.borrow().is_compatible(func_type.1.as_ref()) {
                         return Err(LangError::wrong_type(&token, &scope.eval_type.borrow(), &func_type.1));
@@ -204,7 +220,13 @@ impl<'a> ModuleParser<'a> {
         }
     }
 
-    fn parse_function_value(tokens: &mut Tokens, scope: &ParserScope, params: &Vec<String>, func_type: FunctionType) -> Result<Arc<Function>, LangError> {
+    fn parse_function_value(
+        tokens: &mut Tokens,
+        scope: &ParserScope,
+        params: &Vec<String>,
+        func_type: FunctionType,
+        is_method: bool
+    ) -> Result<Arc<Function>, LangError> {
         if params.len() != func_type.0.len() {
             return Err(
                 LangError::parser(
@@ -219,7 +241,7 @@ impl<'a> ModuleParser<'a> {
 
         let body = scope.parse_body(tokens)?;
 
-        Ok(Function::new(body, params.clone()))
+        Ok(Function::new(body, params.clone(), is_method))
     }
 
 }

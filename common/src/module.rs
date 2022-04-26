@@ -30,7 +30,7 @@ pub struct VariableDefinition {
 
 pub struct ClassDefinition {
     pub data: Class,
-    pub metadata: ClassType,
+    pub metadata: Arc<ClassType>,
 }
 
 impl ClassDefinition {
