@@ -628,7 +628,92 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 // Close loop
                 self.instructions.push(Instruction::End);
             }
-            NodeKind::FieldAccess { .. } => todo!(),
+            NodeKind::FieldAccess { variable, field_name } => {
+                self.build_statement(variable)?;
+
+                let class_type = match self.type_stack.pop().unwrap() {
+                    TypeKind::Object(obj) => obj,
+                    _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                };
+
+                let mut field_type = TypeKind::Unknown;
+
+                let mut offset = 0;
+                for (name, type_) in &class_type.0 {
+                    if field_name == name {
+                        field_type = type_.clone();
+                        break
+                    }
+                    offset += match type_ {
+                        TypeKind::Unknown => 0,
+                        TypeKind::Int => 4,
+                        TypeKind::Float => 4,
+                        TypeKind::String => 4,
+                        TypeKind::Bool => 4,
+                        TypeKind::Nothing => 0,
+                        TypeKind::Vector(_) => 4,
+                        TypeKind::Object(_) => 4,
+                        TypeKind::Function(_) => 0, // This is because functions are not fields
+                    }
+                }
+
+                if matches!(field_type, TypeKind::Unknown) {
+                    return Err(LangError::build(BuildErrorKind::UnexpectedError));
+                }
+
+                // TODO: Support other types
+                self.instructions.push(Instruction::I32Load(MemArg {
+                    offset,
+                    align: 0,
+                    memory_index: 0,
+                }));
+
+                self.type_stack.push(field_type);
+            },
+            NodeKind::FieldAsgn { variable, field_name, value } => {
+                // TODO: Future me please fix this shit, this is just a copy of the thing above
+
+                self.build_statement(variable)?;
+
+                let class_type = match self.type_stack.pop().unwrap() {
+                    TypeKind::Object(obj) => obj,
+                    _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                };
+
+                let mut field_type = TypeKind::Unknown;
+
+                let mut offset = 0;
+                for (name, type_) in &class_type.0 {
+                    if field_name == name {
+                        field_type = type_.clone();
+                        break
+                    }
+                    offset += match type_ {
+                        TypeKind::Unknown => 0,
+                        TypeKind::Int => 4,
+                        TypeKind::Float => 4,
+                        TypeKind::String => 4,
+                        TypeKind::Bool => 4,
+                        TypeKind::Nothing => 0,
+                        TypeKind::Vector(_) => 4,
+                        TypeKind::Object(_) => 4,
+                        TypeKind::Function(_) => 0, // This is because functions are not fields
+                    }
+                }
+
+                self.build_statement(value)?;
+
+                if field_type != self.type_stack.pop().unwrap() {
+                    return Err(LangError::build(BuildErrorKind::InvalidStackType));
+                }
+
+                // TODO: Support other types
+                self.instructions.push(Instruction::I32Store(MemArg {
+                    offset,
+                    align: 0,
+                    memory_index: 0,
+                }));
+            },
             NodeKind::VectorLiteral { values } => {
                 // TODO: Make the vector take other types (for now only ints)
 
@@ -695,7 +780,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 self.build_memory_alloc(size, true)?;
 
-                self.type_stack.push(TypeKind::Int);
+                self.type_stack.push(TypeKind::Object(class_type.clone()));
             },
         }
 

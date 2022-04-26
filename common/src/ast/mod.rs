@@ -84,6 +84,11 @@ pub enum NodeKind {
         variable: ASTNode,
         field_name: String,
     },
+    FieldAsgn {
+        variable: ASTNode,
+        field_name: String,
+        value: ASTNode,
+    },
     VectorLiteral {
         values: Vec<ASTNode>
     },
@@ -149,6 +154,10 @@ impl NodeKind {
 
     pub fn new_field_access(variable: ASTNode, field_name: String) -> NodeKind {
         NodeKind::FieldAccess { variable, field_name }
+    }
+
+    pub fn new_field_asgn(variable: ASTNode, field_name: String, value: ASTNode) -> NodeKind {
+        NodeKind::FieldAsgn { variable, field_name, value }
     }
 
     pub fn new_vector_literal(values: Vec<ASTNode>) -> NodeKind {

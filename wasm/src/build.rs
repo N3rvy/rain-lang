@@ -165,6 +165,6 @@ pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
         TypeKind::Nothing => vec![],
         TypeKind::Vector(_) => vec![ValType::I32],
         TypeKind::Function(_) => todo!(),
-        TypeKind::Object(_) => todo!(),
+        TypeKind::Object(_) => vec![ValType::I32],
     }
 }

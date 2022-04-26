@@ -462,20 +462,27 @@ impl<'a> ParserScope<'a> {
                 }
             },
             TokenKind::Operator(OperatorKind::Assign) => {
-                let name = match node.kind.as_ref() {
-                    NodeKind::VariableRef { module: _, name } => name.to_string(),
-                    _ => return Ok((node, false)),
-                };
-
                 tokens.pop();
 
                 let value = self.parse_statement(tokens)?;
 
-                Ok((
-                    ASTNode::new(
-                        NodeKind::new_variable_asgn(name, value),
-                        TypeKind::Nothing),
-                    true))
+                match *node.kind {
+                    NodeKind::VariableRef { module: _, name } => {
+                        Ok((
+                            ASTNode::new(
+                                NodeKind::new_variable_asgn(name, value),
+                                TypeKind::Nothing),
+                            true))
+                    },
+                    NodeKind::FieldAccess { variable, field_name } => {
+                        Ok((
+                            ASTNode::new(
+                                NodeKind::new_field_asgn(variable, field_name, value),
+                                TypeKind::Nothing),
+                            true))
+                    },
+                    _ => Ok((node, false)),
+                }
             },
             
             _ => Ok((node, false)),
