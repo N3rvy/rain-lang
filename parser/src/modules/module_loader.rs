@@ -44,7 +44,7 @@ impl ModuleLoader {
             Ok(tokens) => tokens,
             Err(err) => return Err(anyhow!(format_error(source, err))),
         };
-        let parsable_module = match ModuleInitializer::initialize_module(tokens) {
+        let parsable_module = match ModuleInitializer::initialize_module(tokens, uid) {
             Ok(module) => module,
             Err(err) => return Err(anyhow!(format_error(source, err)))
         };
@@ -93,7 +93,7 @@ impl ModuleLoader {
         _importer: &impl ModuleImporter
     ) -> Result<Arc<DeclarationModule>, LangError> {
         let tokens = Tokenizer::tokenize(&source)?;
-        let decl_module = Arc::new(ModuleInitializer::parse_declaration_module(tokens, id)?);
+        let decl_module = Arc::new(ModuleInitializer::parse_declaration_module(tokens, id, uid)?);
 
         self.modules
             .borrow_mut()
@@ -181,7 +181,7 @@ impl ModuleLoader {
             };
             let tokens = Tokenizer::tokenize(&source)?;
 
-            let parsable_module = match ModuleInitializer::initialize_module(tokens) {
+            let parsable_module = match ModuleInitializer::initialize_module(tokens, uid) {
                 Ok(module) => module,
                 Err(err) => return Err(anyhow!(format_error(&source, err)))
             };
@@ -249,6 +249,9 @@ impl<'a> ModuleLoaderContext<'a> {
                     .chain(module.variables
                         .iter()
                         .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.type_kind.clone()))))
+                    .chain(module.classes
+                        .iter()
+                        .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.class_type.clone()))))
                     .collect()
             },
             None => {

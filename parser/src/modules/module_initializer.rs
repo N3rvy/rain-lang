@@ -1,6 +1,7 @@
-use common::ast::types::{FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use std::sync::Arc;
+use common::ast::types::{ClassType, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
-use common::module::{DeclarationModule, ModuleIdentifier};
+use common::module::{DeclarationModule, ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use crate::errors::ParsingErrorHelper;
@@ -19,12 +20,13 @@ pub struct FunctionDeclaration {
 }
 
 pub struct ParsableClass {
-    pub fields: Vec<(String, TypeKind)>,
+    pub class_type: Arc<ClassType>,
     pub functions: Vec<(String, FunctionDeclaration)>
 }
 
 /// This represents a module that needs more processing to be parsed
 pub struct ParsableModule {
+    pub uid: ModuleUID,
     pub tokens: Tokens,
     pub imports: Vec<ModuleIdentifier>,
     pub variables: Vec<(String, VariableDeclaration)>,
@@ -41,8 +43,9 @@ pub struct ParsableModule {
 pub struct ModuleInitializer;
 
 impl ModuleInitializer {
-    pub fn initialize_module(tokens: Tokens) -> Result<ParsableModule, LangError> {
+    pub fn initialize_module(tokens: Tokens, uid: ModuleUID) -> Result<ParsableModule, LangError> {
         let mut module = ParsableModule {
+            uid,
             tokens,
             imports: Vec::new(),
             variables: Vec::new(),
@@ -56,7 +59,7 @@ impl ModuleInitializer {
                 None => break,
             };
 
-            let result = Self::parse_declaration(&mut module.tokens, false);
+            let result = Self::parse_declaration(&mut module.tokens, module.uid, false);
             match result {
                 Ok(DeclarationParseAction::Import(path)) => {
                     module.imports.push(ModuleIdentifier(path));
@@ -82,7 +85,7 @@ impl ModuleInitializer {
         Ok(module)
     }
 
-    pub fn parse_declaration_module(mut tokens: Tokens, id: ModuleIdentifier) -> Result<DeclarationModule, LangError> {
+    pub fn parse_declaration_module(mut tokens: Tokens, id: ModuleIdentifier, uid: ModuleUID) -> Result<DeclarationModule, LangError> {
         let imports = Vec::new();
         let mut functions = Vec::new();
 
@@ -92,7 +95,7 @@ impl ModuleInitializer {
                 None => break,
             };
 
-            let result = Self::parse_declaration(&mut tokens, true);
+            let result = Self::parse_declaration(&mut tokens, uid, true);
             match result {
                 Ok(DeclarationParseAction::Import(_path)) => {
                     todo!()
@@ -121,7 +124,7 @@ impl ModuleInitializer {
         })
     }
 
-    fn parse_declaration(tokens: &mut Tokens, is_definition: bool) -> Result<DeclarationParseAction, LangError> {
+    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID, is_definition: bool) -> Result<DeclarationParseAction, LangError> {
         let token = tokens.pop_err()?;
 
         match token.kind {
@@ -190,6 +193,7 @@ impl ModuleInitializer {
 
                 let mut fields = Vec::new();
                 let mut functions = Vec::new();
+                let mut function_types = Vec::new();
 
                 loop {
                     let token = tokens.pop_err()?;
@@ -203,10 +207,15 @@ impl ModuleInitializer {
                         TokenKind::Function => {
                             let (name, decl) = Self::parse_function(tokens)?;
 
+                            function_types.push((
+                                name.clone(),
+                                decl.func_type.clone(),
+                            ));
+
                             functions.push((
                                 name,
                                 decl,
-                            ))
+                            ));
                         },
                         TokenKind::NewLine => (),
                         TokenKind::Dedent => break,
@@ -214,10 +223,17 @@ impl ModuleInitializer {
                     }
                 }
 
+                let class_type = Arc::new(ClassType {
+                    name: name.clone(),
+                    module,
+                    fields,
+                    methods: function_types,
+                });
+
                 Ok(DeclarationParseAction::Class(
                     name,
                     ParsableClass {
-                        fields,
+                        class_type,
                         functions,
                     }
                 ))
