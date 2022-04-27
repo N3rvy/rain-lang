@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use common::module::ModuleUID;
 use wasm::engine::WasmEngine;
@@ -15,12 +15,16 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     // Creating the engine
     let mut engine = WasmEngine::new();
 
+    let importer = ReplImporter {
+        base_dir: PathBuf::from(&config.src_dir),
+    };
+
     // Loading core lib
     engine.module_loader()
         .load_module_with_source(
             ModuleUID::from_string("core".to_string()),
             &include_str!("../core_lib/lib.vrs").to_string(),
-            &ReplImporter,
+            &importer,
         )?;
 
     let def_path = PathBuf::from_str(config.definition_dir.as_str())?;
@@ -31,14 +35,12 @@ pub fn build(args: Args) -> anyhow::Result<()> {
                 .to_str()
                 .unwrap(),
             def_name,
-            &ReplImporter)?;
+            &importer)?;
     }
 
     // Creating the module from the source file
-    let main_path = Path::new(config.src_dir.as_str()).join(config.main);
-
     let module = engine
-        .load_module(main_path.to_str().unwrap(), &ReplImporter)?;
+        .load_module(config.main, &importer)?;
 
     let wasm = engine.build_module_source(module)?;
 

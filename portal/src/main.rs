@@ -3,7 +3,8 @@ mod config;
 mod build;
 mod init;
 
-use std::env;
+use std::fs;
+use std::path::PathBuf;
 use build::build;
 use init::init;
 use core::{Engine, parser::ModuleImporter, EngineBuildSource};
@@ -24,25 +25,21 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-struct ReplImporter;
+struct ReplImporter {
+    base_dir: PathBuf,
+}
 
 impl ModuleImporter for ReplImporter {
     fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
-        Some(ModuleUID::from_string(identifier.0.clone()))
+        let path = self.base_dir.join(&identifier.0);
+
+        let path = fs::canonicalize(&path).ok()?;
+        Some(ModuleUID::from_string(path.to_str().unwrap().to_string()))
     }
 
     fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
-        let mod_path = match env::current_dir() {
-            Ok(path) => path,
-            Err(_) => return None,
-        };
-        let mod_path = mod_path.join(&identifier.0);
+        let path = self.base_dir.join(&identifier.0);
 
-        let source = std::fs::read_to_string(mod_path);
-        let source = match source {
-            Ok(source) => source,
-            Err(_) => return None,
-        };
-        Some(source)
+        std::fs::read_to_string(path.to_str()?).ok()
     }
 }

@@ -38,10 +38,16 @@ impl ModuleLoader {
     }
 
     pub fn load_module_with_source(&mut self, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
-        -> Result<(ModuleUID, Vec<Arc<Module>>), LangError>
+        -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)>
     {
-        let tokens = Tokenizer::tokenize(&source)?;
-        let parsable_module = ModuleInitializer::initialize_module(tokens)?;
+        let tokens = match Tokenizer::tokenize(&source) {
+            Ok(tokens) => tokens,
+            Err(err) => return Err(anyhow!(format_error(source, err))),
+        };
+        let parsable_module = match ModuleInitializer::initialize_module(tokens) {
+            Ok(module) => module,
+            Err(err) => return Err(anyhow!(format_error(source, err)))
+        };
         let context = self.create_context(&parsable_module, importer)?;
         let parser = ModuleParser::new(&context);
 
@@ -50,8 +56,11 @@ impl ModuleLoader {
 
         // Loading all the dependencies
         for (uid, parsable_module) in &context.modules {
-            let module = Arc::new(
-                parser.parse_module(parsable_module, *uid, importer)?);
+            let module = match parser.parse_module(parsable_module, *uid, importer) {
+                Ok(module) => module,
+                Err(err) => return Err(anyhow!(format_error(source, err))),
+            };
+            let module = Arc::new(module);
 
             modules.push(module.clone());
 
@@ -61,8 +70,11 @@ impl ModuleLoader {
         }
 
         // Loading the main module
-        let module = Arc::new(
-            parser.parse_module(&parsable_module, uid, importer)?);
+        let module = match parser.parse_module(&parsable_module, uid, importer) {
+            Ok(module) => module,
+            Err(err) => return Err(anyhow!(format_error(source, err))),
+        };
+        let module = Arc::new(module);
 
         modules.push(module.clone());
 
@@ -106,10 +118,7 @@ impl ModuleLoader {
             None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
 
-        match self.load_module_with_source(uid, &source, importer) {
-            Ok((uid, modules)) => Ok((uid, modules)),
-            Err(err) => Err(anyhow!(format_error(&source, err))),
-        }
+        self.load_module_with_source(uid, &source, importer)
     }
 
     pub fn load_declaration_module(
@@ -138,7 +147,7 @@ impl ModuleLoader {
         }
     }
 
-    fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> Result<ModuleLoaderContext, LangError> {
+    fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> anyhow::Result<ModuleLoaderContext> {
         let mut modules = Vec::new();
 
         self.load_imports(&mut modules, &module, importer)?;
@@ -154,12 +163,12 @@ impl ModuleLoader {
         vec: &mut Vec<(ModuleUID, ParsableModule)>,
         module: &ParsableModule,
         importer: &impl ModuleImporter,
-    ) -> Result<(), LangError> {
+    ) -> anyhow::Result<()> {
 
         for import in &module.imports {
             let uid = match importer.get_unique_identifier(import) {
                 Some(uid) => uid,
-                None => return Err(LangError::load(LoadErrorKind::ModuleNotFound(import.0.clone()))),
+                None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
             };
 
             if self.modules.borrow().contains_key(&uid) {
@@ -168,11 +177,14 @@ impl ModuleLoader {
 
             let source = match importer.load_module(&import) {
                 Some(source) => source,
-                None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone())))
+                None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(import.0.clone()))))
             };
             let tokens = Tokenizer::tokenize(&source)?;
 
-            let parsable_module = ModuleInitializer::initialize_module(tokens)?;
+            let parsable_module = match ModuleInitializer::initialize_module(tokens) {
+                Ok(module) => module,
+                Err(err) => return Err(anyhow!(format_error(&source, err)))
+            };
 
             self.load_imports(vec, &parsable_module, importer)?;
 
@@ -217,7 +229,7 @@ pub enum GlobalDeclarationKind {
     Class(Arc<ClassType>),
 }
 
-/// This handles dependencies for loading a single module
+/// This contains the `ParsableModule`s used for loading a module's dependencies
 pub struct ModuleLoaderContext<'a> {
     module_loader: &'a ModuleLoader,
     modules: Vec<(ModuleUID, ParsableModule)>,
