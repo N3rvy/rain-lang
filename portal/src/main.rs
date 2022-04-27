@@ -29,16 +29,22 @@ struct ReplImporter {
     base_dir: PathBuf,
 }
 
+impl ReplImporter {
+    fn get_path(&self, identifier: &ModuleIdentifier) -> PathBuf {
+        self.base_dir.join(identifier.0.clone() + ".vrs")
+    }
+}
+
 impl ModuleImporter for ReplImporter {
     fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
-        let path = self.base_dir.join(&identifier.0);
+        let path = self.get_path(identifier);
 
         let path = fs::canonicalize(&path).ok()?;
         Some(ModuleUID::from_string(path.to_str().unwrap().to_string()))
     }
 
     fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
-        let path = self.base_dir.join(&identifier.0);
+        let path = self.get_path(identifier);
 
         std::fs::read_to_string(path.to_str()?).ok()
     }

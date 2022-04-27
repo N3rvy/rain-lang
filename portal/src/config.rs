@@ -28,4 +28,4 @@ impl Default for Config {
     }
 }
 
-fn default_main() -> String { "main.vrs".to_string() }
+fn default_main() -> String { "main".to_string() }
