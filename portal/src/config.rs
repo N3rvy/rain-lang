@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -9,9 +8,9 @@ pub struct Config {
     #[serde(default = "default_main")]
     pub main: String,
     #[serde(default)]
-    pub definition_dir: String,
+    pub declaration_dir: String,
     #[serde(default)]
-    pub definitions: HashMap<String, String>,
+    pub declarations: Vec<String>,
     pub build_path: String,
 }
 
@@ -21,8 +20,8 @@ impl Default for Config {
             name: "Project name".to_string(),
             src_dir: "src".to_string(),
             main: "main.vrs".to_string(),
-            definition_dir: "".to_string(),
-            definitions: HashMap::new(),
+            declaration_dir: "".to_string(),
+            declarations: Vec::new(),
             build_path: "output.wasm".to_string(),
         }
     }

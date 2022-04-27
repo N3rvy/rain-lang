@@ -2,7 +2,7 @@ use std::env;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::PathBuf;
-use std::str::FromStr;
+use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::module::ModuleUID;
 use wasm::engine::WasmEngine;
 use crate::{Args, Engine, EngineBuildSource, ReplImporter};
@@ -16,7 +16,8 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     let mut engine = WasmEngine::new();
 
     let importer = ReplImporter {
-        base_dir: PathBuf::from(&config.src_dir),
+        src_dir: PathBuf::from(&config.src_dir),
+        declaration_dir: PathBuf::from(&config.declaration_dir),
     };
 
     // Loading core lib
@@ -27,14 +28,10 @@ pub fn build(args: Args) -> anyhow::Result<()> {
             &importer,
         )?;
 
-    let def_path = PathBuf::from_str(config.definition_dir.as_str())?;
-    for (def_name, file_name) in config.definitions.iter() {
+    for file_name in config.declarations.iter() {
         engine.load_def_module(
-            def_path
-                .join(file_name)
-                .to_str()
-                .unwrap(),
-            def_name,
+            file_name,
+            DECLARATION_IMPORT_PREFIX.to_string() + file_name,
             &importer)?;
     }
 

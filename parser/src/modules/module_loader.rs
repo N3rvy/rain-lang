@@ -113,7 +113,7 @@ impl ModuleLoader {
             return Ok((uid, Vec::new()))
         }
 
-        let source = match importer.load_module(id) {
+        let source = match importer.load_module(id, false) {
             Some(source) => source,
             None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
@@ -134,7 +134,7 @@ impl ModuleLoader {
             return Ok((module_uid, None))
         }
 
-        let source = match importer.load_module(id) {
+        let source = match importer.load_module(id, true) {
             Some(source) => source,
             None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
         };
@@ -175,7 +175,7 @@ impl ModuleLoader {
                 continue
             }
 
-            let source = match importer.load_module(&import) {
+            let source = match importer.load_module(&import, false) {
                 Some(source) => source,
                 None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(import.0.clone()))))
             };

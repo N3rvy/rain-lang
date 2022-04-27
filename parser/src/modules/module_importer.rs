@@ -9,5 +9,5 @@ pub trait ModuleImporter {
     fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID>;
 
     /// Returns the code of a module as a string
-    fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String>;
+    fn load_module(&self, identifier: &ModuleIdentifier, declaration: bool) -> Option<String>;
 }

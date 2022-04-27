@@ -21,8 +21,8 @@ pub fn init(args: Args) -> anyhow::Result<()> {
     config_file.write_all(config_str.as_bytes())?;
     println!("Config file created at {}", config_path.to_str().unwrap());
 
-    if config.definition_dir != "" {
-        fs::create_dir_all(config.definition_dir.clone())?;
+    if config.declaration_dir != "" {
+        fs::create_dir_all(config.declaration_dir.clone())?;
     }
     fs::create_dir_all(config.src_dir.clone())?;
 
