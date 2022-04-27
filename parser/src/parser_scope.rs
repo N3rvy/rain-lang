@@ -204,7 +204,7 @@ impl<'a> ParserScope<'a> {
                         }
 
                         ASTNode::new(
-                            NodeKind::new_construct_class(class_type.clone()),
+                            NodeKind::new_construct_class(parameters, class_type.clone()),
                             TypeKind::Object(class_type.clone()))
                     },
                     ScopeGetResult::Ref(uid, type_) => {

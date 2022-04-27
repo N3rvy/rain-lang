@@ -103,6 +103,7 @@ pub enum NodeKind {
         value: ASTNode,
     },
     ConstructClass {
+        parameters: ASTBody,
         class_type: Arc<ClassType>,
     }
 }
@@ -176,7 +177,7 @@ impl NodeKind {
         NodeKind::ValueFieldAccess { variable, value }
     }
 
-    pub fn new_construct_class(type_: Arc<ClassType>) -> NodeKind {
-        NodeKind::ConstructClass { class_type: type_ }
+    pub fn new_construct_class(parameters: ASTBody, class_type: Arc<ClassType>) -> NodeKind {
+        NodeKind::ConstructClass { parameters, class_type }
     }
 }

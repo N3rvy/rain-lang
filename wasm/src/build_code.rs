@@ -772,11 +772,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     }));
                 }
             },
-            NodeKind::ConstructClass { class_type } => {
-                // TODO: Implement constructor
-
-                // TODO: Class types should have fields and functions separated
-
+            NodeKind::ConstructClass { parameters, class_type } => {
                 let size = class_type.fields
                     .iter()
                     .map(|(_, type_)| match type_ {
@@ -793,6 +789,27 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     .sum();
 
                 self.build_memory_alloc(size)?;
+
+                if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == "new") {
+                    // TODO: Support multiple allocations in the same method
+                    let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                    let id = *ids.index(0);
+
+                    self.instructions.push(Instruction::LocalTee(id));
+
+                    for param in parameters {
+                        self.build_statement(param)?;
+                    }
+
+                    let (constructor_id, _, _) = self.module_builder.get_method(
+                        class_type.module,
+                        &class_type.name,
+                        &"new".to_string())?;
+
+                    self.instructions.push(Instruction::Call(constructor_id));
+
+                    self.instructions.push(Instruction::LocalGet(id));
+                }
 
                 self.type_stack.push(TypeKind::Object(class_type.clone()));
             },
