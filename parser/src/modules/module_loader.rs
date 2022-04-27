@@ -7,7 +7,7 @@ use common::module::{DeclarationModule, Module, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
-use crate::modules::module_initializer::{ParsableModule, ModuleInitializer, DeclarationKind};
+use crate::modules::module_initializer::{ParsableModule, ModuleInitializer};
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
 
@@ -243,16 +243,12 @@ impl<'a> ModuleLoaderContext<'a> {
 
         match module {
             Some((_, module)) => {
-                module.declarations
+                module.functions
                     .iter()
-                    .map(|(name, decl)| {
-                        let kind = match &decl.kind {
-                            DeclarationKind::Variable(type_) => GlobalDeclarationKind::Var(type_.clone()),
-                            DeclarationKind::Function(_, type_) => GlobalDeclarationKind::Func(type_.clone()),
-                        };
-
-                        (name.clone(), kind)
-                    })
+                    .map(|(name, func)| (name.clone(), GlobalDeclarationKind::Func(func.func_type.clone())))
+                    .chain(module.variables
+                        .iter()
+                        .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.type_kind.clone()))))
                     .collect()
             },
             None => {
@@ -267,6 +263,9 @@ impl<'a> ModuleLoaderContext<'a> {
                                     .chain(module.variables
                                         .iter()
                                         .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.metadata.clone()))))
+                                    .chain(module.classes
+                                        .iter()
+                                        .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.metadata.clone()))))
                                     .collect())
                             },
                             ModuleKind::Declaration(module) => {

@@ -7,26 +7,28 @@ use crate::errors::ParsingErrorHelper;
 use crate::{expect_indent, expect_token};
 use crate::utils::{parse_parameter_names, parse_type_error, TokensExtensions};
 
-pub enum DeclarationKind {
-    Variable(TypeKind),
-    Function(Vec<String>, FunctionType),
+pub struct VariableDeclaration {
+    pub type_kind: TypeKind,
+    pub body: TokenSnapshot,
 }
 
-pub struct Declaration {
-    pub kind: DeclarationKind,
+pub struct FunctionDeclaration {
+    pub params: Vec<String>,
+    pub func_type: FunctionType,
     pub body: TokenSnapshot,
 }
 
 pub struct ParsableClass {
     pub fields: Vec<(String, TypeKind)>,
-    pub functions: Vec<(String, Declaration)>
+    pub functions: Vec<(String, FunctionDeclaration)>
 }
 
 /// This represents a module that needs more processing to be parsed
 pub struct ParsableModule {
     pub tokens: Tokens,
     pub imports: Vec<ModuleIdentifier>,
-    pub declarations: Vec<(String, Declaration)>,
+    pub variables: Vec<(String, VariableDeclaration)>,
+    pub functions: Vec<(String, FunctionDeclaration)>,
     pub classes: Vec<(String, ParsableClass)>,
 }
 
@@ -43,7 +45,8 @@ impl ModuleInitializer {
         let mut module = ParsableModule {
             tokens,
             imports: Vec::new(),
-            declarations: Vec::new(),
+            variables: Vec::new(),
+            functions: Vec::new(),
             classes: Vec::new(),
         };
 
@@ -58,13 +61,16 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Import(path)) => {
                     module.imports.push(ModuleIdentifier(path));
                 },
-                Ok(DeclarationParseAction::Declaration(name, declaration)) => {
-                    module.declarations.push((name, declaration));
+                Ok(DeclarationParseAction::Function(name, func)) => {
+                    module.functions.push((name, func));
                 },
-                Ok(DeclarationParseAction::ClassDefinition(name, class)) => {
+                Ok(DeclarationParseAction::Variable(name, var)) => {
+                    module.variables.push((name, var));
+                },
+                Ok(DeclarationParseAction::Class(name, class)) => {
                     module.classes.push((name, class));
                 },
-                Ok(DeclarationParseAction::FunctionDefinition(_, _)) =>
+                Ok(DeclarationParseAction::FunctionDeclaration(_, _)) =>
                     return Err(
                         LangError::parser(
                             &token, ParserErrorKind::Unsupported("Function definition inside a normal module".to_string()))),
@@ -91,11 +97,12 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::Import(_path)) => {
                     todo!()
                 },
-                Ok(DeclarationParseAction::FunctionDefinition(name, func_type)) => {
+                Ok(DeclarationParseAction::FunctionDeclaration(name, func_type)) => {
                     functions.push((name, func_type));
                 },
-                Ok(DeclarationParseAction::ClassDefinition(_, _)) => todo!(),
-                Ok(DeclarationParseAction::Declaration(_, _)) =>
+                Ok(DeclarationParseAction::Function(_, _)) |
+                Ok(DeclarationParseAction::Variable(_, _)) |
+                Ok(DeclarationParseAction::Class(_, _)) =>
                     return Err(
                         LangError::parser(
                             &token,
@@ -144,7 +151,7 @@ impl ModuleInitializer {
 
                 let (name, decl) = Self::parse_variable(tokens)?;
 
-                Ok(DeclarationParseAction::Declaration(name, decl))
+                Ok(DeclarationParseAction::Variable(name, decl))
             },
             TokenKind::Function => {
                 // func <name>((<param_name> (type))*) (type): {body}
@@ -152,12 +159,12 @@ impl ModuleInitializer {
                 if is_definition {
                     let (name, type_) = Self::parse_function_definition(tokens)?;
 
-                    return Ok(DeclarationParseAction::FunctionDefinition(name, type_))
+                    return Ok(DeclarationParseAction::FunctionDeclaration(name, type_))
                 }
 
                 let (name, decl) = Self::parse_function(tokens)?;
 
-                Ok(DeclarationParseAction::Declaration(
+                Ok(DeclarationParseAction::Function(
                     name,
                     decl,
                 ))
@@ -207,7 +214,7 @@ impl ModuleInitializer {
                     }
                 }
 
-                Ok(DeclarationParseAction::ClassDefinition(
+                Ok(DeclarationParseAction::Class(
                     name,
                     ParsableClass {
                         fields,
@@ -235,7 +242,7 @@ impl ModuleInitializer {
         Ok((name, type_kind))
     }
 
-    fn parse_variable(tokens: &mut Tokens) -> Result<(String, Declaration), LangError> {
+    fn parse_variable(tokens: &mut Tokens) -> Result<(String, VariableDeclaration), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -256,8 +263,8 @@ impl ModuleInitializer {
 
         Ok((
             name,
-            Declaration {
-                kind: DeclarationKind::Variable(type_kind),
+            VariableDeclaration {
+                type_kind,
                 body,
             },
         ))
@@ -286,7 +293,7 @@ impl ModuleInitializer {
         Ok((name, func_type))
     }
 
-    fn parse_function(tokens: &mut Tokens) -> Result<(String, Declaration), LangError> {
+    fn parse_function(tokens: &mut Tokens) -> Result<(String, FunctionDeclaration), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -313,8 +320,9 @@ impl ModuleInitializer {
 
         Ok((
             name,
-            Declaration {
-                kind: DeclarationKind::Function(param_names, func_type),
+            FunctionDeclaration {
+                params: param_names,
+                func_type,
                 body,
             }
         ))
@@ -351,8 +359,9 @@ impl ModuleInitializer {
 
 enum DeclarationParseAction {
     Import(String),
-    Declaration(String, Declaration),
-    FunctionDefinition(String, FunctionType),
-    ClassDefinition(String, ParsableClass),
+    Variable(String, VariableDeclaration),
+    Function(String, FunctionDeclaration),
+    Class(String, ParsableClass),
+    FunctionDeclaration(String, FunctionType),
     Nothing,
 }
