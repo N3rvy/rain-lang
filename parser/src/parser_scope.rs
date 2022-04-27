@@ -3,6 +3,7 @@ use common::errors::ParserErrorKind;
 use common::tokens::{TokenKind, Token};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
+use common::constants::CLASS_CONSTRUCTOR_NAME;
 use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::TokensExtensions;
@@ -180,7 +181,7 @@ impl<'a> ParserScope<'a> {
                         // TODO: Make this a bit better
                         let constructor = class_type.methods
                             .iter()
-                            .find(|(name, _)| name == "new")
+                            .find(|(name, _)| name == CLASS_CONSTRUCTOR_NAME)
                             .cloned();
 
                         match constructor {

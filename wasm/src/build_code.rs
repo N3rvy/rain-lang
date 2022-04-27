@@ -7,6 +7,7 @@ use common::module::{ModuleUID, Module, FunctionDefinition};
 use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
 use crate::build::{convert_type, convert_types};
+use common::constants::CLASS_CONSTRUCTOR_NAME;
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
@@ -790,7 +791,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 self.build_memory_alloc(size)?;
 
-                if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == "new") {
+                if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
                     // TODO: Support multiple allocations in the same method
                     let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
                     let id = *ids.index(0);
@@ -804,7 +805,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     let (constructor_id, _, _) = self.module_builder.get_method(
                         class_type.module,
                         &class_type.name,
-                        &"new".to_string())?;
+                        &CLASS_CONSTRUCTOR_NAME.to_string())?;
 
                     self.instructions.push(Instruction::Call(constructor_id));
 
