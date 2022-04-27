@@ -89,6 +89,7 @@ pub struct DeclarationModule {
 
     pub imports: Vec<ModuleUID>,
     pub functions: Vec<(String, FunctionType)>,
+    pub classes: Vec<(String, Arc<ClassType>)>,
 }
 
 impl DeclarationModule {

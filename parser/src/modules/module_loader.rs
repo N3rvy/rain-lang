@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{ClassType, FunctionType, TypeKind};
+use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::module::{DeclarationModule, Module, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
@@ -166,9 +167,14 @@ impl ModuleLoader {
     ) -> anyhow::Result<()> {
 
         for import in &module.imports {
-            let uid = match importer.get_unique_identifier(import) {
-                Some(uid) => uid,
-                None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
+            // TODO: This is horrible please fix
+            let uid = if import.0.starts_with(DECLARATION_IMPORT_PREFIX) {
+                ModuleUID::from_string(import.0.clone())
+            } else {
+                match importer.get_unique_identifier(import) {
+                    Some(uid) => uid,
+                    None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
+                }
             };
 
             if self.modules.borrow().contains_key(&uid) {
@@ -275,6 +281,9 @@ impl<'a> ModuleLoaderContext<'a> {
                                 Some(module.functions
                                     .iter()
                                     .map(|(name, func_type)| (name.clone(), GlobalDeclarationKind::Func(func_type.clone())))
+                                    .chain(module.classes
+                                        .iter()
+                                        .map(|(name, class_type)| (name.clone(), GlobalDeclarationKind::Class(class_type.clone()))))
                                     .collect())
                             }
                         }

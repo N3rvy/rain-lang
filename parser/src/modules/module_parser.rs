@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
+use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleUID, VariableDefinition};
 use common::tokens::TokenKind;
@@ -171,9 +172,14 @@ impl<'a> ModuleParser<'a> {
         }
 
         for import in &module.imports {
-            let uid = match importer.get_unique_identifier(import) {
-                Some(uid) => uid,
-                None => continue,
+            // TODO: This is horrible please fix
+            let uid = if import.0.starts_with(DECLARATION_IMPORT_PREFIX) {
+                ModuleUID::from_string(import.0.clone())
+            } else {
+                match importer.get_unique_identifier(import) {
+                    Some(uid) => uid,
+                    None => continue,
+                }
             };
 
             let definitions = self.loader_context.get_declarations(uid);

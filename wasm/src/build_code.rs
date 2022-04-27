@@ -69,6 +69,17 @@ impl<'a> ModuleBuilder<'a> {
         };
 
         for def_module in module_loader.declaration_modules() {
+            for (class_name, class_type) in &def_module.classes {
+                for (method_name, func_type) in &class_type.methods {
+                    let name = format!("{}::{}", class_name, method_name);
+
+                    builder.function_names.push(name.clone());
+                    builder.functions.push((func_type.0.clone(), (*func_type.1).clone()));
+
+                    builder.insert_imported_func(def_module.id.0.as_ref(), name.as_ref(), func_type)?;
+                }
+            }
+
             for (name, type_) in &def_module.functions {
                 builder.function_names.push(name.clone());
                 builder.functions.push((type_.0.clone(), *type_.1.clone()));

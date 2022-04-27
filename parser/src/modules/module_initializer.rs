@@ -76,7 +76,11 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::FunctionDeclaration(_, _)) =>
                     return Err(
                         LangError::parser(
-                            &token, ParserErrorKind::Unsupported("Function definition inside a normal module".to_string()))),
+                            &token, ParserErrorKind::Unsupported("Function declaration inside a definition module".to_string()))),
+                Ok(DeclarationParseAction::ClassDeclaration(_)) =>
+                    return Err(
+                        LangError::parser(
+                            &token, ParserErrorKind::Unsupported("Class declaration inside a definition module".to_string()))),
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -88,6 +92,7 @@ impl ModuleInitializer {
     pub fn parse_declaration_module(mut tokens: Tokens, id: ModuleIdentifier, uid: ModuleUID) -> Result<DeclarationModule, LangError> {
         let imports = Vec::new();
         let mut functions = Vec::new();
+        let mut classes = Vec::new();
 
         loop {
             let token = match tokens.peek() {
@@ -103,6 +108,9 @@ impl ModuleInitializer {
                 Ok(DeclarationParseAction::FunctionDeclaration(name, func_type)) => {
                     functions.push((name, func_type));
                 },
+                Ok(DeclarationParseAction::ClassDeclaration(class_type)) => {
+                    classes.push((class_type.name.clone(), Arc::new(class_type)));
+                },
                 Ok(DeclarationParseAction::Function(_, _)) |
                 Ok(DeclarationParseAction::Variable(_, _)) |
                 Ok(DeclarationParseAction::Class(_, _)) =>
@@ -110,7 +118,7 @@ impl ModuleInitializer {
                         LangError::parser(
                             &token,
                             ParserErrorKind::Unsupported(
-                                "Declaration inside of a definition module".to_string()))),
+                                "Definition inside of a declaration module".to_string()))),
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -121,10 +129,11 @@ impl ModuleInitializer {
 
             imports,
             functions,
+            classes,
         })
     }
 
-    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID, is_definition: bool) -> Result<DeclarationParseAction, LangError> {
+    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID, declaration: bool) -> Result<DeclarationParseAction, LangError> {
         let token = tokens.pop_err()?;
 
         match token.kind {
@@ -145,7 +154,7 @@ impl ModuleInitializer {
             TokenKind::Variable => {
                 // var <name> (type) = [value]
 
-                if is_definition {
+                if declaration {
                     return Err(LangError::parser(
                         &token,
                         ParserErrorKind::Unsupported(
@@ -159,8 +168,8 @@ impl ModuleInitializer {
             TokenKind::Function => {
                 // func <name>((<param_name> (type))*) (type): {body}
 
-                if is_definition {
-                    let (name, type_) = Self::parse_function_definition(tokens)?;
+                if declaration {
+                    let (name, type_) = Self::parse_function_declaration(tokens)?;
 
                     return Ok(DeclarationParseAction::FunctionDeclaration(name, type_))
                 }
@@ -191,59 +200,106 @@ impl ModuleInitializer {
                 // :
                 expect_indent!(tokens);
 
-                let mut fields = Vec::new();
-                let mut functions = Vec::new();
-                let mut function_types = Vec::new();
+                if declaration {
+                    let class_type = Self::parse_class_declaration(tokens, module, &name)?;
 
-                loop {
-                    let token = match tokens.pop() {
-                        Some(token) => token,
-                        None => break,
-                    };
+                    Ok(DeclarationParseAction::ClassDeclaration(class_type))
+                } else {
+                    let class = Self::parse_class_definition(tokens, module, &name)?;
 
-                    match token.kind {
-                        TokenKind::Variable => {
-                            let (name, type_) = Self::parse_variable_definition(tokens)?;
-
-                            fields.push((name, type_));
-                        },
-                        TokenKind::Function => {
-                            let (name, decl) = Self::parse_function(tokens)?;
-
-                            function_types.push((
-                                name.clone(),
-                                decl.func_type.clone(),
-                            ));
-
-                            functions.push((
-                                name,
-                                decl,
-                            ));
-                        },
-                        TokenKind::NewLine => (),
-                        TokenKind::Dedent => break,
-                        _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
-                    }
+                    Ok(DeclarationParseAction::Class(name, class))
                 }
-
-                let class_type = Arc::new(ClassType {
-                    name: name.clone(),
-                    module,
-                    fields,
-                    methods: function_types,
-                });
-
-                Ok(DeclarationParseAction::Class(
-                    name,
-                    ParsableClass {
-                        class_type,
-                        functions,
-                    }
-                ))
             },
             TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
             _ => Err(LangError::new_parser_unexpected_token(&token)),
         }
+    }
+
+    fn parse_class_declaration(tokens: &mut Tokens, module: ModuleUID, name: &String) -> Result<ClassType, LangError> {
+        let mut fields = Vec::new();
+        let mut methods = Vec::new();
+
+        loop {
+            let token = match tokens.pop() {
+                Some(token) => token,
+                None => break,
+            };
+
+            match token.kind {
+                TokenKind::Variable => {
+                    let (name, type_) = Self::parse_variable_definition(tokens)?;
+
+                    fields.push((name, type_));
+                },
+                TokenKind::Function => {
+                    let (name, func_type) = Self::parse_function_declaration(tokens)?;
+
+                    methods.push((
+                        name,
+                        func_type,
+                    ));
+                },
+                TokenKind::NewLine => (),
+                TokenKind::Dedent => break,
+                _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
+            }
+        }
+
+        Ok(ClassType {
+            name: name.clone(),
+            module,
+            fields,
+            methods,
+        })
+    }
+
+    fn parse_class_definition(tokens: &mut Tokens, module: ModuleUID, name: &String) -> Result<ParsableClass, LangError> {
+        let mut fields = Vec::new();
+        let mut functions = Vec::new();
+        let mut function_types = Vec::new();
+
+        loop {
+            let token = match tokens.pop() {
+                Some(token) => token,
+                None => break,
+            };
+
+            match token.kind {
+                TokenKind::Variable => {
+                    let (name, type_) = Self::parse_variable_definition(tokens)?;
+
+                    fields.push((name, type_));
+                },
+                TokenKind::Function => {
+                    let (name, decl) = Self::parse_function(tokens)?;
+
+                    function_types.push((
+                        name.clone(),
+                        decl.func_type.clone(),
+                    ));
+
+                    functions.push((
+                        name,
+                        decl,
+                    ));
+                },
+                TokenKind::NewLine => (),
+                TokenKind::Dedent => break,
+                _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
+            }
+        }
+
+        let class_type = Arc::new(ClassType {
+            name: name.clone(),
+            module,
+            fields,
+            methods: function_types,
+        });
+
+        Ok(ParsableClass {
+            class_type,
+            functions,
+        })
     }
 
     fn parse_variable_definition(tokens: &mut Tokens) -> Result<(String, TypeKind), LangError> {
@@ -289,7 +345,7 @@ impl ModuleInitializer {
         ))
     }
 
-    fn parse_function_definition(tokens: &mut Tokens) -> Result<(String, FunctionType), LangError> {
+    fn parse_function_declaration(tokens: &mut Tokens) -> Result<(String, FunctionType), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -382,5 +438,6 @@ enum DeclarationParseAction {
     Function(String, FunctionDeclaration),
     Class(String, ParsableClass),
     FunctionDeclaration(String, FunctionType),
+    ClassDeclaration(ClassType),
     Nothing,
 }
