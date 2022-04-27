@@ -196,7 +196,10 @@ impl ModuleInitializer {
                 let mut function_types = Vec::new();
 
                 loop {
-                    let token = tokens.pop_err()?;
+                    let token = match tokens.pop() {
+                        Some(token) => token,
+                        None => break,
+                    };
 
                     match token.kind {
                         TokenKind::Variable => {
