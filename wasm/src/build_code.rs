@@ -1,12 +1,12 @@
 use std::ops::Index;
 use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind};
+use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind};
 use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module, FunctionDefinition};
 use core::parser::{ModuleLoader, ModuleKind};
 use std::sync::Arc;
-use crate::build::{convert_type, convert_types};
+use crate::build::{convert_class, convert_type, convert_types};
 use common::constants::CLASS_CONSTRUCTOR_NAME;
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
@@ -446,13 +446,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                         self.module_builder.get_func(*module, name)?
                     },
-                    NodeKind::FieldAccess { variable, field_name } => {
+                    NodeKind::FieldAccess { variable, class_type, field_name } => {
                         self.build_statement(variable)?;
-
-                        let class_type = match self.type_stack.pop().unwrap() {
-                            TypeKind::Object(ct) => ct,
-                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
-                        };
 
                         for param in parameters {
                             self.build_statement(param)?;
@@ -650,79 +645,199 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 // Close loop
                 self.instructions.push(Instruction::End);
             }
-            NodeKind::FieldAccess { variable, field_name } => {
-                self.build_statement(variable)?;
+            NodeKind::FieldAccess { variable, class_type, field_name } => {
+                match &class_type.kind {
+                    ClassKind::Normal => {
+                        self.build_statement(variable)?;
 
-                let class_type = match self.type_stack.pop().unwrap() {
-                    TypeKind::Object(obj) => obj,
-                    _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
-                };
+                        let class_type = match self.type_stack.pop().unwrap() {
+                            TypeKind::Object(obj) => obj,
+                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                        };
 
-                let mut field_type = TypeKind::Unknown;
+                        let mut field_type = TypeKind::Unknown;
 
-                let mut offset = 0;
-                for (name, type_) in &class_type.fields {
-                    if field_name == name {
-                        field_type = type_.clone();
-                        break
+                        let mut offset = 0;
+                        for (name, type_) in &class_type.fields {
+                            if field_name == name {
+                                field_type = type_.clone();
+                                break
+                            }
+                            offset += Self::get_type_byte_size(type_) as u64;
+                        }
+
+                        if matches!(field_type, TypeKind::Unknown) {
+                            return Err(LangError::build(BuildErrorKind::UnexpectedError));
+                        }
+
+                        self.build_mem_load(&field_type, MemArg {
+                            offset,
+                            align: 0,
+                            memory_index: 0,
+                        });
+
+                        self.type_stack.push(field_type);
                     }
-                    offset += match type_ {
-                        TypeKind::Unknown => 0,
-                        TypeKind::Int => 4,
-                        TypeKind::Float => 4,
-                        TypeKind::String => 4,
-                        TypeKind::Bool => 4,
-                        TypeKind::Nothing => 0,
-                        TypeKind::Vector(_) => 4,
-                        TypeKind::Object(_) => 4,
-                        TypeKind::Function(_) => 4,
+                    ClassKind::Data => {
+                        match variable.kind.as_ref() {
+                            NodeKind::VariableRef { module: _, name } => {
+                                let (var_type, var_kind) = match self.get_var(name) {
+                                    Some(var) => var,
+                                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                                };
+
+                                match var_kind {
+                                    VarKind::Local(ids) => {
+                                        let mut field_type = TypeKind::Nothing;
+                                        let mut idx_offset = 0u32;
+
+                                        for (name, type_) in &class_type.fields {
+                                            if name == field_name {
+                                                field_type = type_.clone();
+                                                break
+                                            }
+
+                                            idx_offset += convert_type(type_).len() as u32;
+                                        }
+
+                                        let start_id = ids.index(0) + idx_offset;
+                                        let idx_count = convert_type(&field_type).len() as u32;
+
+                                        for i in start_id..(start_id + idx_count) {
+                                            self.instructions.push(Instruction::LocalGet(i));
+                                        }
+
+                                        self.type_stack.push(field_type);
+                                    },
+                                    VarKind::Global(location) => {
+                                        self.instructions.push(Instruction::I32Const(location as i32));
+
+                                        let mut field_type = TypeKind::Nothing;
+                                        let mut offset = 0;
+
+                                        for (name, type_) in &class_type.fields {
+                                            if name == field_name {
+                                                field_type = type_.clone();
+                                                break
+                                            }
+
+                                            offset += Self::get_type_byte_size(type_) as u64;
+                                        }
+
+                                        self.build_mem_load(&var_type, MemArg {
+                                            offset,
+                                            align: 0,
+                                            memory_index: 0
+                                        });
+
+                                        self.type_stack.push(field_type);
+                                    },
+                                }
+                            },
+                            _ => todo!(),
+                        }
                     }
                 }
-
-                if matches!(field_type, TypeKind::Unknown) {
-                    return Err(LangError::build(BuildErrorKind::UnexpectedError));
-                }
-
-                self.build_mem_load(&field_type, MemArg {
-                    offset,
-                    align: 0,
-                    memory_index: 0,
-                });
-
-                self.type_stack.push(field_type);
             },
-            NodeKind::FieldAsgn { variable, field_name, value } => {
+            NodeKind::FieldAsgn { variable, class_type, field_name, value } => {
                 // TODO: Future me please fix this shit, this is just a copy of the thing above
 
-                self.build_statement(variable)?;
+                match &class_type.kind {
+                    ClassKind::Normal => {
+                        self.build_statement(variable)?;
 
-                let class_type = match self.type_stack.pop().unwrap() {
-                    TypeKind::Object(obj) => obj,
-                    _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
-                };
+                        let class_type = match self.type_stack.pop().unwrap() {
+                            TypeKind::Object(obj) => obj,
+                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                        };
 
-                let mut field_type = TypeKind::Unknown;
+                        let mut field_type = TypeKind::Unknown;
 
-                let mut offset = 0;
-                for (name, type_) in &class_type.fields {
-                    if field_name == name {
-                        field_type = type_.clone();
-                        break
-                    }
-                    offset += Self::get_type_byte_size(type_) as u64;
+                        let mut offset = 0;
+                        for (name, type_) in &class_type.fields {
+                            if field_name == name {
+                                field_type = type_.clone();
+                                break
+                            }
+                            offset += Self::get_type_byte_size(type_) as u64;
+                        }
+
+                        self.build_statement(value)?;
+
+                        if field_type != self.type_stack.pop().unwrap() {
+                            return Err(LangError::build(BuildErrorKind::InvalidStackType));
+                        }
+
+                        self.build_mem_store(&field_type, MemArg {
+                            offset,
+                            align: 0,
+                            memory_index: 0,
+                        });
+                    },
+                    ClassKind::Data => {
+                        match variable.kind.as_ref() {
+                            NodeKind::VariableRef { module: _, name } => {
+                                let (var_type, var_kind) = match self.get_var(name) {
+                                    Some(var) => var,
+                                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                                };
+
+                                match var_kind {
+                                    VarKind::Local(ids) => {
+                                        let mut field_type = TypeKind::Nothing;
+                                        let mut idx_offset = 0u32;
+
+                                        for (name, type_) in &class_type.fields {
+                                            if name == field_name {
+                                                field_type = type_.clone();
+                                                break
+                                            }
+
+                                            idx_offset += convert_type(type_).len() as u32;
+                                        }
+
+                                        let start_id = ids.index(0) + idx_offset;
+                                        let idx_count = convert_type(&field_type).len() as u32;
+
+                                        self.build_statement(value)?;
+
+                                        for i in start_id..(start_id + idx_count) {
+                                            self.instructions.push(Instruction::LocalSet(i));
+                                        }
+
+                                        self.type_stack.push(field_type);
+                                    },
+                                    VarKind::Global(location) => {
+                                        self.instructions.push(Instruction::I32Const(location as i32));
+
+                                        let mut field_type = TypeKind::Nothing;
+                                        let mut offset = 0;
+
+                                        for (name, type_) in &class_type.fields {
+                                            if name == field_name {
+                                                field_type = type_.clone();
+                                                break
+                                            }
+
+                                            offset += Self::get_type_byte_size(type_) as u64;
+                                        }
+
+                                        self.build_statement(value)?;
+
+                                        self.build_mem_store(&var_type, MemArg {
+                                            offset,
+                                            align: 0,
+                                            memory_index: 0
+                                        });
+
+                                        self.type_stack.push(field_type);
+                                    },
+                                }
+                            },
+                            _ => todo!(),
+                        }
+                    },
                 }
-
-                self.build_statement(value)?;
-
-                if field_type != self.type_stack.pop().unwrap() {
-                    return Err(LangError::build(BuildErrorKind::InvalidStackType));
-                }
-
-                self.build_mem_store(&field_type, MemArg {
-                    offset,
-                    align: 0,
-                    memory_index: 0,
-                });
             },
             NodeKind::VectorLiteral { values } => {
                 // TODO: Make the vector take other types (for now only ints)
@@ -775,35 +890,46 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 }
             },
             NodeKind::ConstructClass { parameters, class_type } => {
-                let size = class_type.fields
-                    .iter()
-                    .map(|(_, type_)| Self::get_type_byte_size(type_) as i32)
-                    .sum();
+                match &class_type.kind {
+                    ClassKind::Normal => {
+                        let size = class_type.fields
+                            .iter()
+                            .map(|(_, type_)| Self::get_type_byte_size(type_) as i32)
+                            .sum();
 
-                self.build_memory_alloc(size)?;
+                        self.build_memory_alloc(size)?;
 
-                if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
-                    // TODO: Support multiple allocations in the same method
-                    let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
-                    let id = *ids.index(0);
+                        if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
+                            // TODO: Support multiple allocations in the same method
+                            let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                            let id = *ids.index(0);
 
-                    self.instructions.push(Instruction::LocalTee(id));
+                            self.instructions.push(Instruction::LocalTee(id));
 
-                    for param in parameters {
-                        self.build_statement(param)?;
-                    }
+                            for param in parameters {
+                                self.build_statement(param)?;
+                            }
 
-                    let (constructor_id, _, _) = self.module_builder.get_method(
-                        class_type.module,
-                        &class_type.name,
-                        &CLASS_CONSTRUCTOR_NAME.to_string())?;
+                            let (constructor_id, _, _) = self.module_builder.get_method(
+                                class_type.module,
+                                &class_type.name,
+                                &CLASS_CONSTRUCTOR_NAME.to_string())?;
 
-                    self.instructions.push(Instruction::Call(constructor_id));
+                            self.instructions.push(Instruction::Call(constructor_id));
 
-                    self.instructions.push(Instruction::LocalGet(id));
+                            self.instructions.push(Instruction::LocalGet(id));
+                        }
+
+                        self.type_stack.push(TypeKind::Object(class_type.clone()));
+                    },
+                    ClassKind::Data => {
+                        for type_ in convert_class(class_type) {
+                            self.build_default_value(type_);
+                        }
+
+                        self.type_stack.push(TypeKind::Object(class_type.clone()));
+                    },
                 }
-
-                self.type_stack.push(TypeKind::Object(class_type.clone()));
             },
         }
 

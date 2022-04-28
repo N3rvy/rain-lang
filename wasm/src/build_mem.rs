@@ -31,6 +31,20 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         }
     }
 
+    pub fn build_default_value(&mut self, type_: ValType) {
+        let inst = match type_ {
+            ValType::I32 => Instruction::I32Const(0),
+            ValType::I64 => Instruction::I64Const(0),
+            ValType::F32 => Instruction::F32Const(0f32),
+            ValType::F64 => Instruction::F64Const(0f64),
+            ValType::V128 => Instruction::V128Const(0i128),
+            ValType::FuncRef => Instruction::RefFunc(0),
+            ValType::ExternRef => todo!(),
+        };
+
+        self.instructions.push(inst);
+    }
+
     fn convert_store_type(type_: ValType, mem_arg: MemArg) -> Instruction<'static> {
         match type_ {
             ValType::I32 => Instruction::I32Store(mem_arg),

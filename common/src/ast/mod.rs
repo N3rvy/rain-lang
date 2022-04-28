@@ -82,10 +82,12 @@ pub enum NodeKind {
     },
     FieldAccess {
         variable: ASTNode,
+        class_type: Arc<ClassType>,
         field_name: String,
     },
     FieldAsgn {
         variable: ASTNode,
+        class_type: Arc<ClassType>,
         field_name: String,
         value: ASTNode,
     },
@@ -153,12 +155,12 @@ impl NodeKind {
         NodeKind::WhileStatement { condition, body }
     }
 
-    pub fn new_field_access(variable: ASTNode, field_name: String) -> NodeKind {
-        NodeKind::FieldAccess { variable, field_name }
+    pub fn new_field_access(variable: ASTNode, class_type: Arc<ClassType>, field_name: String) -> NodeKind {
+        NodeKind::FieldAccess { variable, class_type, field_name }
     }
 
-    pub fn new_field_asgn(variable: ASTNode, field_name: String, value: ASTNode) -> NodeKind {
-        NodeKind::FieldAsgn { variable, field_name, value }
+    pub fn new_field_asgn(variable: ASTNode, class_type: Arc<ClassType>, field_name: String, value: ASTNode) -> NodeKind {
+        NodeKind::FieldAsgn { variable, class_type, field_name, value }
     }
 
     pub fn new_vector_literal(values: Vec<ASTNode>) -> NodeKind {

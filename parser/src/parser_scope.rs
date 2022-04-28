@@ -446,9 +446,11 @@ impl<'a> ParserScope<'a> {
                             }
                         };
 
+                        let class_type = class_type.clone();
+
                         Ok((
                             ASTNode::new(
-                                NodeKind::new_field_access(node, field_name.clone()),
+                                NodeKind::new_field_access(node, class_type, field_name.clone()),
                                 field_type),
                             true))
                     }
@@ -468,10 +470,10 @@ impl<'a> ParserScope<'a> {
                                 TypeKind::Nothing),
                             true))
                     },
-                    NodeKind::FieldAccess { variable, field_name } => {
+                    NodeKind::FieldAccess { variable, class_type, field_name } => {
                         Ok((
                             ASTNode::new(
-                                NodeKind::new_field_asgn(variable, field_name, value),
+                                NodeKind::new_field_asgn(variable, class_type, field_name, value),
                                 TypeKind::Nothing),
                             true))
                     },

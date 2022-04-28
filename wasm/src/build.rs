@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, Function, FunctionSection, ImportSection, Instruction, MemorySection, MemoryType, Module, TypeSection, ValType};
-use common::ast::types::TypeKind;
+use common::ast::types::{ClassKind, ClassType, TypeKind};
 use common::errors::LangError;
 use core::parser::ModuleLoader;
 use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData};
@@ -165,6 +165,17 @@ pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
         TypeKind::Nothing => vec![],
         TypeKind::Vector(_) => vec![ValType::I32],
         TypeKind::Function(_) => todo!(),
-        TypeKind::Object(_) => vec![ValType::I32],
+        TypeKind::Object(obj) => convert_class(obj),
+    }
+}
+
+pub(crate) fn convert_class(class_type: &Arc<ClassType>) -> Vec<ValType> {
+    if let ClassKind::Data = class_type.kind {
+        convert_types(&class_type.fields
+            .iter()
+            .map(|(_, type_)| type_.clone())
+            .collect())
+    } else {
+        vec![ValType::I32]
     }
 }
