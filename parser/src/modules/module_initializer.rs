@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use common::ast::types::{ClassType, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use common::ast::types::{ClassKind, ClassType, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{DeclarationModule, ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token};
@@ -183,12 +183,20 @@ impl ModuleInitializer {
             },
             TokenKind::Class => {
                 /*
-                class ClassName:
+                class (data)? ClassName:
                     var attr1 int = 0
                     var attr2 str = "no"
 
                     func method1() (type): {body}
                 */
+
+                let kind = match tokens.peek() {
+                    Some(Token { kind: TokenKind::Data, start: _, end: _ }) => {
+                        tokens.pop();
+                        ClassKind::Data
+                    },
+                    _ => ClassKind::Normal,
+                };
 
                 // <name>
                 let name = match tokens.pop() {
@@ -201,11 +209,11 @@ impl ModuleInitializer {
                 expect_indent!(tokens);
 
                 if declaration {
-                    let class_type = Self::parse_class_declaration(tokens, module, &name)?;
+                    let class_type = Self::parse_class_declaration(tokens, module, &name, kind)?;
 
                     Ok(DeclarationParseAction::ClassDeclaration(class_type))
                 } else {
-                    let class = Self::parse_class_definition(tokens, module, &name)?;
+                    let class = Self::parse_class_definition(tokens, module, &name, kind)?;
 
                     Ok(DeclarationParseAction::Class(name, class))
                 }
@@ -215,7 +223,7 @@ impl ModuleInitializer {
         }
     }
 
-    fn parse_class_declaration(tokens: &mut Tokens, module: ModuleUID, name: &String) -> Result<ClassType, LangError> {
+    fn parse_class_declaration(tokens: &mut Tokens, module: ModuleUID, name: &String, kind: ClassKind) -> Result<ClassType, LangError> {
         let mut fields = Vec::new();
         let mut methods = Vec::new();
 
@@ -248,12 +256,13 @@ impl ModuleInitializer {
         Ok(ClassType {
             name: name.clone(),
             module,
+            kind,
             fields,
             methods,
         })
     }
 
-    fn parse_class_definition(tokens: &mut Tokens, module: ModuleUID, name: &String) -> Result<ParsableClass, LangError> {
+    fn parse_class_definition(tokens: &mut Tokens, module: ModuleUID, name: &String, kind: ClassKind) -> Result<ParsableClass, LangError> {
         let mut fields = Vec::new();
         let mut functions = Vec::new();
         let mut function_types = Vec::new();
@@ -292,6 +301,7 @@ impl ModuleInitializer {
         let class_type = Arc::new(ClassType {
             name: name.clone(),
             module,
+            kind,
             fields,
             methods: function_types,
         });

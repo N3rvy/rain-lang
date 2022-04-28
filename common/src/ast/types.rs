@@ -3,12 +3,19 @@ use crate::module::ModuleUID;
 use super::ASTBody;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
+pub enum ClassKind {
+    Normal,
+    Data,
+}
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
+
+#[derive(Debug, PartialEq)]
 pub struct ClassType {
     pub name: String,
     pub module: ModuleUID,
+    pub kind: ClassKind,
     pub fields: Vec<(String, TypeKind)>,
     pub methods: Vec<(String, FunctionType)>,
 }

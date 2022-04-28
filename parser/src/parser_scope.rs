@@ -321,6 +321,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Indent |
             TokenKind::Import |
             TokenKind::Class |
+            TokenKind::Data |
             TokenKind::Dedent => return Err(LangError::new_parser_unexpected_token(&token)),
         };
         

@@ -84,6 +84,7 @@ impl<'a> ModuleParser<'a> {
         let class_type = Arc::new(ClassType {
         name: name.clone(),
         module: uid,
+        kind: class.class_type.kind.clone(),
         fields: class.class_type.fields.clone(),
         methods: vec![],
         });
@@ -164,6 +165,7 @@ impl<'a> ModuleParser<'a> {
             let class_type = Arc::new(ClassType {
                 methods,
                 name: name.clone(),
+                kind: class.class_type.kind.clone(),
                 module: uid,
                 fields: class.class_type.fields.clone(),
             });

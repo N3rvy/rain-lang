@@ -26,6 +26,7 @@ pub enum TokenKind {
     Function,
     Variable,
     Class,
+    Data,
     Return,
     Break,
     If,
