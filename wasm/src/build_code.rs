@@ -675,7 +675,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         TypeKind::Nothing => 0,
                         TypeKind::Vector(_) => 4,
                         TypeKind::Object(_) => 4,
-                        TypeKind::Function(_) => 0, // This is because functions are not fields
+                        TypeKind::Function(_) => 4,
                     }
                 }
 
@@ -709,17 +709,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         field_type = type_.clone();
                         break
                     }
-                    offset += match type_ {
-                        TypeKind::Unknown => 0,
-                        TypeKind::Int => 4,
-                        TypeKind::Float => 4,
-                        TypeKind::String => 4,
-                        TypeKind::Bool => 4,
-                        TypeKind::Nothing => 0,
-                        TypeKind::Vector(_) => 4,
-                        TypeKind::Object(_) => 4,
-                        TypeKind::Function(_) => 0, // This is because functions are not fields
-                    }
+                    offset += Self::get_type_byte_size(type_) as u64;
                 }
 
                 self.build_statement(value)?;
@@ -787,17 +777,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::ConstructClass { parameters, class_type } => {
                 let size = class_type.fields
                     .iter()
-                    .map(|(_, type_)| match type_ {
-                        TypeKind::Int => 4,
-                        TypeKind::Float => 4,
-                        TypeKind::String => 4,
-                        TypeKind::Bool => 4,
-                        TypeKind::Vector(_) => 4,
-                        TypeKind::Object(_) => 4,
-                        TypeKind::Nothing => 0,
-                        TypeKind::Unknown => 0,
-                        TypeKind::Function(_) => 0, // This is because functions are not fields
-                    })
+                    .map(|(_, type_)| Self::get_type_byte_size(type_) as i32)
                     .sum();
 
                 self.build_memory_alloc(size)?;
@@ -865,6 +845,20 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 ))
             },
             None => None,
+        }
+    }
+
+    fn get_type_byte_size(type_: &TypeKind) -> usize {
+        match type_ {
+            TypeKind::Int => 4,
+            TypeKind::Float => 4,
+            TypeKind::String => 4,
+            TypeKind::Bool => 4,
+            TypeKind::Vector(_) => 4,
+            TypeKind::Object(_) => 4,
+            TypeKind::Nothing => 0,
+            TypeKind::Unknown => 0,
+            TypeKind::Function(_) => 4,
         }
     }
 
