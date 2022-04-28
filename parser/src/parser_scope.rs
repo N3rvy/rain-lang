@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use common::constants::CLASS_CONSTRUCTOR_NAME;
 use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
-use crate::utils::TokensExtensions;
+use crate::utils::{parse_type_option, TokensExtensions};
 use crate::{expect_token, errors::ParsingErrorHelper, expect_indent, utils::parse_parameter_names};
 use crate::parser_module_scope::{ParserModuleScope, ScopeGetResult};
 
@@ -97,7 +97,7 @@ impl<'a> ParserScope<'a> {
                 let (param_names, param_types) = parse_parameter_names(tokens)?;
 
                 // return type?
-                let ret_type = self.parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
+                let ret_type = parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
                 
                 // Indentation
                 expect_indent!(tokens);
@@ -149,7 +149,7 @@ impl<'a> ParserScope<'a> {
                 };
 
                 // ?(type)
-                let assign_type = self.parse_type_option(tokens);
+                let assign_type = parse_type_option(tokens);
 
                 // =
                 expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Assign));

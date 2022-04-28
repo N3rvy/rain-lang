@@ -212,17 +212,6 @@ impl<'a> ParserScope<'a> {
         Ok(body)
     }
 
-    pub fn parse_type_option(&self, tokens: &mut Tokens) -> Option<TypeKind> {
-        // type
-        match tokens.peek() {
-            Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => {
-                tokens.pop();
-                Some(tk)
-            },
-            _ => None
-        }
-    }
-    
     pub fn predict_math_result(kind: MathOperatorKind, type_a: &TypeKind, type_b: &TypeKind) -> TypeKind {
         match kind {
             MathOperatorKind::Plus => {
@@ -331,6 +320,17 @@ pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
         Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(tk),
         Some(token) => Err(LangError::new_parser_unexpected_token(&token)),
         None => Err(LangError::new_parser_end_of_file()),
+    }
+}
+
+pub fn parse_type_option(tokens: &mut Tokens) -> Option<TypeKind> {
+    // type
+    match tokens.peek() {
+        Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => {
+            tokens.pop();
+            Some(tk)
+        },
+        _ => None
     }
 }
 

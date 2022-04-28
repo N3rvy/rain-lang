@@ -6,7 +6,7 @@ use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use crate::errors::ParsingErrorHelper;
 use crate::{expect_indent, expect_token};
-use crate::utils::{parse_parameter_names, parse_type_error, TokensExtensions};
+use crate::utils::{parse_parameter_names, parse_type_error, parse_type_option, TokensExtensions};
 
 pub struct VariableDeclaration {
     pub type_kind: TypeKind,
@@ -361,7 +361,7 @@ impl ModuleInitializer {
         let (_, param_types) = parse_parameter_names(tokens)?;
 
         // (type)
-        let ret_type = parse_type_error(tokens)?;
+        let ret_type = parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
 
         let func_type = FunctionType(param_types, Box::new(ret_type));
 
@@ -384,7 +384,7 @@ impl ModuleInitializer {
         let (param_names, param_types) = parse_parameter_names(tokens)?;
 
         // (type)
-        let ret_type = parse_type_error(tokens)?;
+        let ret_type = parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
         let func_type = FunctionType(param_types, Box::new(ret_type));
 
         expect_indent!(tokens);
