@@ -240,6 +240,13 @@ impl ModuleInitializer {
                     fields.push((name, type_));
                 },
                 TokenKind::Function => {
+                    if let ClassKind::Data = kind {
+                        return Err(
+                            LangError::parser(
+                                &token,
+                                ParserErrorKind::Unsupported("Methods in data classes are not currently supported".to_string())))
+                    }
+
                     let (name, func_type) = Self::parse_function_declaration(tokens)?;
 
                     methods.push((
@@ -280,6 +287,13 @@ impl ModuleInitializer {
                     fields.push((name, type_));
                 },
                 TokenKind::Function => {
+                    if let ClassKind::Data = kind {
+                        return Err(
+                            LangError::parser(
+                                &token,
+                                ParserErrorKind::Unsupported("Methods in data classes are not currently supported".to_string())))
+                    }
+
                     let (name, decl) = Self::parse_function(tokens)?;
 
                     function_types.push((
