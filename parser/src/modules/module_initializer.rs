@@ -233,8 +233,9 @@ impl ModuleInitializer {
             };
 
             match token.kind {
-                TokenKind::Variable => {
-                    let (name, type_) = Self::parse_variable_definition(tokens)?;
+                TokenKind::Symbol(name) => {
+                    // (type)
+                    let type_ = parse_type_error(tokens)?;
 
                     fields.push((name, type_));
                 },
@@ -280,8 +281,9 @@ impl ModuleInitializer {
             };
 
             match token.kind {
-                TokenKind::Variable => {
-                    let (name, type_) = Self::parse_variable_definition(tokens)?;
+                TokenKind::Symbol(name) => {
+                    // (type)
+                    let type_ = parse_type_error(tokens)?;
 
                     fields.push((name, type_));
                 },
@@ -323,21 +325,6 @@ impl ModuleInitializer {
             class_type,
             functions,
         })
-    }
-
-    fn parse_variable_definition(tokens: &mut Tokens) -> Result<(String, TypeKind), LangError> {
-        let token = tokens.pop_err()?;
-
-        // <name>
-        let name = match token.kind {
-            TokenKind::Symbol(name) => name,
-            _ => return Err(LangError::new_parser_unexpected_token(&token)),
-        };
-
-        // (type)
-        let type_kind = parse_type_error(tokens)?;
-
-        Ok((name, type_kind))
     }
 
     fn parse_variable(tokens: &mut Tokens) -> Result<(String, VariableDeclaration), LangError> {
