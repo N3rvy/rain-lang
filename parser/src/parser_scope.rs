@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 use common::errors::ParserErrorKind;
 use common::tokens::{TokenKind, Token};
-use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, Function, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
+use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::constants::CLASS_CONSTRUCTOR_NAME;
 use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::{parse_type_option, TokensExtensions};
-use crate::{expect_token, errors::ParsingErrorHelper, expect_indent, utils::parse_parameter_names};
+use crate::{expect_token, errors::ParsingErrorHelper, expect_open_body};
 use crate::parser_module_scope::{ParserModuleScope, ScopeGetResult};
 
 pub enum ScopeParent<'a> {
@@ -81,64 +81,6 @@ impl<'a> ParserScope<'a> {
         let token = token.unwrap();
         
         let result = match &token.kind {
-            TokenKind::Function => {
-                let next= tokens.pop_err()?;
-
-                let name = match next.kind {
-                    TokenKind::Symbol(name) => {
-                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
-                        Some(name)
-                    },
-                    TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open) => None,
-                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
-                };
-
-                // ...)
-                let (param_names, param_types) = parse_parameter_names(tokens)?;
-
-                // return type?
-                let ret_type = parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
-                
-                // Indentation
-                expect_indent!(tokens);
-
-                // creating the child scope
-                let body_scope = self.new_child();
-                // declaring the argument types
-                for i in 0..param_names.len() {
-                    body_scope.declare(param_names[i].clone(), param_types[i].clone());
-                }
-
-                // ...}
-                let body = body_scope.parse_body(tokens)?;
-
-                if !body_scope.eval_type.borrow().is_compatible(&ret_type) {
-                    return Err(LangError::wrong_type(&token, &body_scope.eval_type.borrow(), &ret_type));
-                }
-                
-                let eval_type = TypeKind::Function(FunctionType(param_types.clone(), Box::new(ret_type)));
-
-                let func_literal = ASTNode::new(
-                    NodeKind::new_function_literal(
-                        Function::new(body, param_names, false)),
-                    eval_type.clone(),
-                );
-
-                match name {
-                    Some(name) => {
-                        self.declare(name.clone(), eval_type);
-
-                        ASTNode::new(
-                            NodeKind::new_variable_decl(
-                                name,
-                                func_literal,
-                            ),
-                            TypeKind::Nothing
-                        )
-                    },
-                    None => func_literal,
-                }
-            },
             TokenKind::Variable => {
                 // name
                 let name = tokens.pop_err()?;
@@ -174,7 +116,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Symbol(name) => {
                 match self.get(name) {
                     ScopeGetResult::Class(_, class_type) => {
-                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                        expect_open_body!(tokens);
 
                         let parameters = self.parse_parameter_values(tokens)?;
 
@@ -266,8 +208,8 @@ impl<'a> ParserScope<'a> {
             TokenKind::If => {
                 // condition
                 let condition = self.parse_statement(tokens)?;
-                // Indent
-                expect_indent!(tokens);
+                // {
+                expect_open_body!(tokens);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -293,7 +235,7 @@ impl<'a> ParserScope<'a> {
                 let max = self.parse_statement(tokens)?;
                 
                 // {
-                expect_indent!(tokens);
+                expect_open_body!(tokens);
                 
                 // ...}
                 let for_scope = self.new_child();
@@ -306,7 +248,7 @@ impl<'a> ParserScope<'a> {
                 // condition 
                 let condition = self.parse_statement(tokens)?;
                 // {
-                expect_indent!(tokens);
+                expect_open_body!(tokens);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
                 
@@ -318,11 +260,10 @@ impl<'a> ParserScope<'a> {
             TokenKind::BoolOperator(_) |
             TokenKind::MathOperator(_) |
             TokenKind::Type(_) |
-            TokenKind::Indent |
             TokenKind::Import |
             TokenKind::Class |
-            TokenKind::Data |
-            TokenKind::Dedent => return Err(LangError::new_parser_unexpected_token(&token)),
+            TokenKind::Function |
+            TokenKind::Data => return Err(LangError::new_parser_unexpected_token(&token)),
         };
         
 

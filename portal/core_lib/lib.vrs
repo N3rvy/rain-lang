@@ -1,7 +1,8 @@
 
 var __internal_memory_alloc_inc int = 4
 
-func __internal_memory_alloc(size int) int:
+func __internal_memory_alloc(size int) int {
     var loc = __internal_memory_alloc_inc
     __internal_memory_alloc_inc = __internal_memory_alloc_inc + size
     return loc
+}

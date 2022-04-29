@@ -5,7 +5,7 @@ use common::module::{DeclarationModule, ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::{Tokens, TokenSnapshot};
 use crate::errors::ParsingErrorHelper;
-use crate::{expect_indent, expect_token};
+use crate::{expect_open_body, expect_token};
 use crate::utils::{parse_parameter_names, parse_type_error, parse_type_option, TokensExtensions};
 
 pub struct VariableDeclaration {
@@ -205,8 +205,7 @@ impl ModuleInitializer {
                     None => return Err(LangError::new_parser_end_of_file()),
                 };
 
-                // :
-                expect_indent!(tokens);
+                expect_open_body!(tokens);
 
                 if declaration {
                     let class_type = Self::parse_class_declaration(tokens, module, &name, kind)?;
@@ -255,7 +254,7 @@ impl ModuleInitializer {
                     ));
                 },
                 TokenKind::NewLine => (),
-                TokenKind::Dedent => break,
+                TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
                 _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
             }
         }
@@ -307,7 +306,7 @@ impl ModuleInitializer {
                     ));
                 },
                 TokenKind::NewLine => (),
-                TokenKind::Dedent => break,
+                TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
                 _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken))
             }
         }
@@ -411,11 +410,12 @@ impl ModuleInitializer {
         let ret_type = parse_type_option(tokens).unwrap_or(TypeKind::Nothing);
         let func_type = FunctionType(param_types, Box::new(ret_type));
 
-        expect_indent!(tokens);
+        // {
+        expect_open_body!(tokens);
 
-        // {body}
+        // body}
         let body = tokens.snapshot();
-        Self::pop_until_dedent(tokens);
+        Self::pop_body(tokens)?;
 
         Ok((
             name,
@@ -427,23 +427,25 @@ impl ModuleInitializer {
         ))
     }
 
-    fn pop_until_dedent(tokens: &mut Tokens) {
-        let mut indentations = 0;
+    fn pop_body(tokens: &mut Tokens) -> Result<(), LangError> {
+        let mut open_parenthesis = 1;
 
         loop {
             match tokens.pop() {
-                Some(Token { kind: TokenKind::Indent, start: _, end: _ }) => indentations += 1,
-                Some(Token { kind: TokenKind::Dedent, start: _, end: _ }) => {
-                    if indentations == 0 {
+                Some(Token { kind: TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open), start: _, end: _ }) => open_parenthesis += 1,
+                Some(Token { kind: TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close), start: _, end: _ }) => {
+                    open_parenthesis -= 1;
+
+                    if open_parenthesis == 0 {
                         break;
                     }
-
-                    indentations -= 1;
                 },
                 None => break,
                 Some(_) => (),
             }
         }
+
+        Ok(())
     }
 
     fn pop_until_newline(tokens: &mut Tokens) {

@@ -1,6 +1,6 @@
 use std::str::Chars;
 
-use common::{errors::{LangError, TokenizerErrorKind}, tokens::{Token, TokenKind}};
+use common::{errors::LangError, tokens::{Token, TokenKind}};
 
 use crate::{resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens};
 
@@ -10,18 +10,16 @@ pub struct Tokenizer<'a> {
     chars: Chars<'a>,
     last_token_pos: usize,
     pos: usize,
-    pub(crate) indentation_stack: Vec<u32>,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn tokenize(source: &'a String) -> Result<Tokens, LangError> {
         let mut tokenizer = Self {
-            current_resolver: Box::new(WhitespaceResolver::new(0)), // TODO: Maybe there is a preattier way (without the maybe but i am too lazy to do it right now)
+            current_resolver: Box::new(WhitespaceResolver::new()),
             tokens: Vec::new(),
             chars: source.chars(),
             last_token_pos: 0,
             pos: 0,
-            indentation_stack: vec![0],
         };
 
         loop {
@@ -74,41 +72,6 @@ impl<'a> Tokenizer<'a> {
             AddResult::ChangeWithoutToken(char) => {
                 self.current_resolver = self.resolver_from_char(char);
 
-                self.tokenize_char(char)
-            },
-            AddResult::ChangeIndentation(new_indent, char) => {
-                if new_indent < self.indentation_stack.last().unwrap().clone() {
-                    // In case multiple dedentation occur in a single one
-
-                    // Already popping one
-                    self.indentation_stack.pop();
-
-                    loop {
-                        self.push_token(TokenKind::Dedent);
-
-                        match self.indentation_stack.last() {
-                            Some(indent) => {
-                                // If we are now at the same indentation level simply exit the loop
-                                if indent.clone() == new_indent {
-                                    break
-                                }
-
-                                // Otherwise pop the indentaion from the stack
-                                self.indentation_stack.pop();
-                            },
-                            None => return Err(
-                                LangError::tokenizer(
-                                    self.tokens.last().unwrap(),
-                                    TokenizerErrorKind::InvalidIndent)),
-                        };
-
-                    }
-                } else {
-                    self.push_token(TokenKind::Indent);
-                    self.indentation_stack.push(new_indent);
-                }
-
-                self.current_resolver = self.resolver_from_char(char);
                 self.tokenize_char(char)
             },
             AddResult::ChangeChars(token, chars) => {

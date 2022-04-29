@@ -16,11 +16,9 @@ macro_rules! expect_token {
 }
 
 #[macro_export]
-macro_rules! expect_indent {
-    ($token: expr) => {
-        expect_token!($token.pop(), TokenKind::Operator(OperatorKind::Colon));
-        expect_token!($token.pop(), TokenKind::NewLine);
-        expect_token!($token.pop(), TokenKind::Indent);
+macro_rules! expect_open_body {
+    ($tokens: expr) => {
+        expect_token!($tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Open));
     };
 }
 
@@ -111,7 +109,7 @@ impl<'a> ParserScope<'a> {
             };
                 
             let result = match token.kind {
-                TokenKind::Dedent => break,
+                TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
                 TokenKind::NewLine => { tokens.pop(); continue },
                 _ => self.parse_statement(tokens)?,
             };

@@ -12,8 +12,6 @@ pub enum AddResult {
     End(TokenKind),
     /// The operation whent ok, there is a leftover character but no token is generated
     ChangeWithoutToken(char),
-    /// The operation whent ok, the indentation changed and there is a leftover character
-    ChangeIndentation(u32, char),
     /// The operation whent ok, the token in ended and there is a leftover character
     Change(TokenKind, char),
     /// The operation whent ok, the token in ended and there are leftover characters
@@ -29,7 +27,7 @@ pub trait Resolver {
 impl<'a> Tokenizer<'a> {
     pub fn resolver_from_char(&'a self, char: char) -> Box<dyn Resolver> {
         match char {
-            c if c.is_whitespace() => Box::new(WhitespaceResolver::new(self.indentation_stack.last().unwrap().clone())),
+            c if c.is_whitespace() => Box::new(WhitespaceResolver::new()),
             '0'..='9' => Box::new(NumberResolver::new()),
             '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => Box::new(OperatorResolver::new()),
             '(' | ')' | '[' | ']' | '{' | '}' => Box::new(ParenthesisResolver::new()),

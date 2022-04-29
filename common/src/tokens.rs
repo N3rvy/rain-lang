@@ -21,8 +21,6 @@ impl Token {
 #[derive(Clone, Debug)]
 pub enum TokenKind {
     NewLine,
-    Indent,
-    Dedent,
     Function,
     Variable,
     Class,
