@@ -116,7 +116,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Symbol(name) => {
                 match self.get(name) {
                     ScopeGetResult::Class(_, class_type) => {
-                        expect_open_body!(tokens);
+                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
 
                         let parameters = self.parse_parameter_values(tokens)?;
 
