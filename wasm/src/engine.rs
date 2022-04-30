@@ -1,7 +1,6 @@
 use core::{Engine, EngineBuildSource, parser::{ModuleLoader, ModuleImporter}, LangError};
 use std::sync::Arc;
 use common::{module::{Module, ModuleUID, ModuleIdentifier}, errors::BuildErrorKind};
-use core::parser::ModuleKind;
 use core::reexport::anyhow::Result;
 use crate::module::WasmModule;
 use crate::build::WasmBuilder;

@@ -1,6 +1,7 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use common::errors::ParserErrorKind;
-use common::tokens::{TokenKind, Token};
+use common::tokens::{TokenKind, Token, PrimitiveType};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
 use common::constants::CLASS_CONSTRUCTOR_NAME;
@@ -157,7 +158,7 @@ impl<'a> ParserScope<'a> {
                     ScopeGetResult::None => return Err(LangError::parser(&token, ParserErrorKind::VarNotFound)),
                 }
             }
-            TokenKind::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.clone().into()),
+            TokenKind::Literal(value) => ASTNode::new(NodeKind::new_literal(value.clone()), value.borrow().into()),
             TokenKind::Parenthesis(kind, state) => {
                 match (kind, state) {
                     (ParenthesisKind::Round, ParenthesisState::Open) => {
@@ -254,7 +255,7 @@ impl<'a> ParserScope<'a> {
                 
                 ASTNode::new(NodeKind::new_while_statement(condition, body), TypeKind::Nothing)
             },
-            TokenKind::Type(TypeKind::Nothing) => ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing),
+            TokenKind::Type(PrimitiveType::Nothing) => ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing),
             TokenKind::NewLine => self.parse_statement(tokens)?,
             TokenKind::Operator(_) |
             TokenKind::BoolOperator(_) |

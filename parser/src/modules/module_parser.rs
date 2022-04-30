@@ -30,13 +30,12 @@ impl<'a> ModuleParser<'a> {
     }
 
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
-        let module_scope = self.create_scope(&module, uid, importer);
+        let module_scope = self.create_scope(&module, uid, importer)?;
 
         let mut features = HashMap::new();
 
         for (name, var) in &module.variables {
-
-            let metadata = Self::convert_parsable_type(&module_scope, &var.type_kind)?;
+            let metadata = module_scope.convert_parsable_type(&var.type_kind)?;
 
             let data = match var.body {
                 Some(body) => {
@@ -66,7 +65,7 @@ impl<'a> ModuleParser<'a> {
 
         for (name, func) in &module.functions {
 
-            let metadata = Self::convert_parsable_func_type(&module_scope, &func.func_type)?;
+            let metadata = module_scope.convert_parsable_func_type(&func.func_type)?;
 
             let data = match func.body {
                 Some(body) => {
@@ -80,7 +79,7 @@ impl<'a> ModuleParser<'a> {
                         &mut tokens,
                         &scope,
                         &func.params,
-                        Self::convert_parsable_func_type(&module_scope, &func.func_type)?,
+                        module_scope.convert_parsable_func_type(&func.func_type)?,
                         false)?;
 
                     if !scope.eval_type.borrow().is_compatible(&metadata.1) {
@@ -105,8 +104,8 @@ impl<'a> ModuleParser<'a> {
             let mut methods = Vec::new();
             let mut method_types = Vec::new();
 
-            for (name, method) in class.methods {
-                let metadata = Self::convert_parsable_func_type(&module_scope, &method.func_type)?;
+            for (name, method) in &class.methods {
+                let metadata = module_scope.convert_parsable_func_type(&method.func_type)?;
 
                 let data = match method.body {
                     Some(body) => {
@@ -120,7 +119,7 @@ impl<'a> ModuleParser<'a> {
                             &mut tokens,
                             &scope,
                             &method.params,
-                            Self::convert_parsable_func_type(&module_scope, &method.func_type)?,
+                            module_scope.convert_parsable_func_type(&method.func_type)?,
                             false)?;
 
                         if !scope.eval_type.borrow().is_compatible(&metadata.1) {
@@ -151,7 +150,7 @@ impl<'a> ModuleParser<'a> {
             for (name, field) in &class.fields {
                 fields.push((
                     name.clone(),
-                    Self::convert_parsable_type(&module_scope, &field)?,
+                    module_scope.convert_parsable_type(&field)?,
                 ));
             }
 
@@ -183,30 +182,41 @@ impl<'a> ModuleParser<'a> {
         Ok(module)
     }
 
-    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> ParserModuleScope {
+    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ParserModuleScope, LangError> {
         let mut scope = ParserModuleScope::new(uid);
 
         // Declaring every type into the scope
         for (name, var) in &module.variables {
-            scope.declare_var(name.clone(), var.type_kind.clone());
+            scope.declare_var(name.clone(), scope.convert_parsable_type(&var.type_kind)?);
         }
 
         for (name, func) in &module.functions {
-            scope.declare_func(name.clone(), func.func_type.clone());
+            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type)?);
         }
 
         for (name, class) in &module.classes {
-            let methods = class.functions
-                .iter()
-                .map(|(name, func)| (name.clone(), func.func_type.clone()))
-                .collect();
+            let mut methods = Vec::new();
+            for (name, func) in &class.methods {
+                methods.push((
+                    name.clone(),
+                    scope.convert_parsable_func_type(&func.func_type)?,
+                ));
+            }
+
+            let mut fields = Vec::new();
+            for (name, field) in &class.fields {
+                fields.push((
+                    name.clone(),
+                    scope.convert_parsable_type(&field)?,
+                ));
+            }
 
             let class_type = Arc::new(ClassType {
                 methods,
                 name: name.clone(),
-                kind: class.class_type.kind.clone(),
+                kind: class.kind.clone(),
                 module: uid,
-                fields: class.class_type.fields.clone(),
+                fields,
             });
 
             scope.declare_class(name.clone(), class_type);
@@ -227,14 +237,21 @@ impl<'a> ModuleParser<'a> {
 
             for (name, def) in definitions {
                 match def {
-                    GlobalDeclarationKind::Var(type_) => scope.declare_external_var(name.clone(), uid, type_),
-                    GlobalDeclarationKind::Func(type_) => scope.declare_external_func(name.clone(), uid, type_),
+                    GlobalDeclarationKind::Var(type_)=> scope.declare_external_var(
+                        name.clone(),
+                        uid,
+                        scope.convert_parsable_type(&type_)?),
+                    GlobalDeclarationKind::Func(type_) => scope.declare_external_func(
+                        name.clone(),
+
+                        uid,
+                        scope.convert_parsable_func_type(&type_)?),
                     GlobalDeclarationKind::Class(type_) => scope.declare_external_class(name.clone(), uid, type_),
                 }
             }
         }
 
-        scope
+        Ok(scope)
     }
 
     fn parse_variable_value(tokens: &mut Tokens) -> Result<LiteralKind, LangError> {
@@ -271,57 +288,4 @@ impl<'a> ModuleParser<'a> {
 
         Ok(Function::new(body, params.clone(), is_method))
     }
-
-    fn convert_parsable_func_type(scope: &ParserModuleScope, func_type: &ParsableFunctionType) -> Result<FunctionType, LangError> {
-        let mut params = Vec::new();
-
-        for param in &func_type.0 {
-            params.push(Self::convert_type(scope, param.clone())?);
-        }
-
-        Ok(FunctionType(params, Box::new(Self::convert_type(scope, func_type.1.clone())?)))
-    }
-
-    fn convert_parsable_type(scope: &ParserModuleScope, type_: &ParsableType) -> Result<TypeKind, LangError> {
-        Ok(match type_ {
-            ParsableType::Unknown => TypeKind::Unknown,
-            ParsableType::Nothing => TypeKind::Nothing,
-            ParsableType::Int => TypeKind::Int,
-            ParsableType::Float => TypeKind::Float,
-            ParsableType::Bool => TypeKind::Bool,
-            ParsableType::String => TypeKind::String,
-            ParsableType::Vector(type_) => TypeKind::Vector(Box::new(Self::convert_parsable_type(type_.as_ref())?)),
-            ParsableType::Function((params, return_type)) => {
-                let mut params_types = Vec::new();
-
-                for parm in params {
-                    params_types.push(Self::convert_parsable_type(scope, parm.as_ref())?);
-                }
-
-                TypeKind::Func(
-                    Box::new(Self::convert_type(scope, return_type)?)
-                )
-            },
-            ParsableType::Custom(name) => {
-                // TODO: This need a token position in case of error
-
-                let uid = ModuleUID::from_string(name.clone());
-
-                match scope.get_declaration(uid, name) {
-                    Some(declaration) => match declaration {
-                        GlobalDeclarationKind::Var(type_) => type_.clone(),
-                        _ => return Err(LangError::parser(
-                            &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
-                            ParserErrorKind::UnexpectedError(
-                                "convert_parsable_type: custom type is not a variable".to_string()))),
-                    },
-                    None => return Err(
-                        LangError::parser(
-                            &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
-                            ParserErrorKind::VarNotFound)),
-                }
-            },
-        })
-    }
-
 }

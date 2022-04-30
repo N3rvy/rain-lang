@@ -61,7 +61,9 @@ impl ModuleLoader {
 
             modules.push(module.clone());
 
-            self.insert_module(*uid, module);
+            self.modules
+                .borrow_mut()
+                .insert(*uid, module);
         }
 
         // Loading the main module

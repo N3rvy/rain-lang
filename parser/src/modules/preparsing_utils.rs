@@ -11,7 +11,7 @@ pub fn preparse_type_error(tokens: &mut Tokens) -> Result<ParsableType, LangErro
 
     // type
     match token.kind {
-        TokenKind::Type(tk) => Ok(tk.into()),
+        TokenKind::Type(tk) => Ok(ParsableType::from(&tk)),
         TokenKind::Symbol(name) => Ok(ParsableType::Custom(name)),
         _ => Err(LangError::new_parser_unexpected_token(&token)),
     }
@@ -25,7 +25,7 @@ pub fn preparse_type_option(tokens: &mut Tokens) -> Option<ParsableType> {
 
     // type
     match token.kind {
-        TokenKind::Type(tk) => Some(tk.into()),
+        TokenKind::Type(tk) => Some(ParsableType::from(&tk)),
         TokenKind::Symbol(name) => Some(ParsableType::Custom(name)),
         _ => None,
     }

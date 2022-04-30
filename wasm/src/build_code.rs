@@ -4,7 +4,7 @@ use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind};
 use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module, FunctionDefinition};
-use core::parser::{ModuleLoader, ModuleKind};
+use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
 use common::constants::CLASS_CONSTRUCTOR_NAME;

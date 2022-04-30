@@ -13,8 +13,7 @@ pub mod external_module;
 
 pub mod parser {
     pub use parser::modules::module_importer::ModuleImporter;
-    pub use parser::modules::module_preparser::ParsableModule;
-    pub use parser::modules::module_loader::{ModuleLoader, ModuleKind};
+    pub use parser::modules::module_loader::ModuleLoader;
 }
 
 pub mod reexport {
