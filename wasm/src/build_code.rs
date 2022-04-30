@@ -102,11 +102,18 @@ impl<'a> ModuleBuilder<'a> {
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
 
+        // TODO: This is momentary, but it should be done in a better way, anyway globals will gonna be removed
         for (name, feature) in &module.features {
             match feature {
                 ModuleFeature::Variable(var @ VariableDefinition { data: Some(ref data), .. }) => {
                     self.insert_var(name, &var.metadata, data)?;
-                },
+                }
+                _ => (),
+            }
+        }
+
+        for (name, feature) in &module.features {
+            match feature {
                 ModuleFeature::Function(func @ FunctionDefinition { data: Some(ref data), .. }) => {
                     let contains_func = self.function_names
                         .iter()
