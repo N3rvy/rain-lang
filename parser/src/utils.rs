@@ -315,7 +315,7 @@ impl<'a> ParserScope<'a> {
 pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
     // type
     match tokens.pop() {
-        Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(tk),
+        Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(tk.into()),
         Some(token) => Err(LangError::new_parser_unexpected_token(&token)),
         None => Err(LangError::new_parser_end_of_file()),
     }
@@ -326,51 +326,8 @@ pub fn parse_type_option(tokens: &mut Tokens) -> Option<TypeKind> {
     match tokens.peek() {
         Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => {
             tokens.pop();
-            Some(tk)
+            Some(tk.into())
         },
         _ => None
     }
-}
-
-/** Parses a list of parameter names (something like "(arg0, arg1, arg2)").
- * It consumes only the last parenthesis and expectes the first token to be the first argument,
-     in this case it will be "arg0"
-    */ 
-pub fn parse_parameter_names(tokens: &mut Tokens) -> Result<(Vec<String>, Vec<TypeKind>), LangError> {
-    let mut names = Vec::new();
-    let mut types = Vec::new();
-    let mut next_is_argument = true;
-    
-    loop {
-        let token = match tokens.pop() {
-            Some(token) => token,
-            None => return Err(LangError::new_parser_end_of_file()),
-        };
-        
-        match &token.kind {
-            TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close) => break,
-            TokenKind::Symbol(name) => {
-                if next_is_argument {
-                    next_is_argument = false;
-
-                    let t = parse_type_error(tokens)?;
-
-                    names.push(name.clone());
-                    types.push(t);
-                } else {
-                    return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedComma));
-                }
-            },
-            TokenKind::Operator(OperatorKind::Comma) => {
-                if next_is_argument {
-                    return Err(LangError::parser(&token, ParserErrorKind::ParametersExpectedParam));
-                } else {
-                    next_is_argument = true;
-                }
-            },
-            _ => return Err(LangError::new_parser_unexpected_token(&token)),
-        };
-    }
-
-    Ok((names, types))
 }

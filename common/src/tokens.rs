@@ -1,4 +1,4 @@
-use crate::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, TypeKind, LiteralKind, ParenthesisKind, ParenthesisState};
+use crate::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, LiteralKind, ParenthesisKind, ParenthesisState};
 
 
 #[derive(Clone, Debug)]
@@ -34,8 +34,17 @@ pub enum TokenKind {
     Operator(OperatorKind),
     BoolOperator(BoolOperatorKind),
     MathOperator(MathOperatorKind),
-    Type(TypeKind),
+    Type(PrimitiveType),
     Symbol(String),
     Literal(LiteralKind),
     Parenthesis(ParenthesisKind, ParenthesisState)
+}
+
+#[derive(Clone, Debug)]
+pub enum PrimitiveType {
+    Nothing,
+    Int,
+    Float,
+    Bool,
+    String,
 }

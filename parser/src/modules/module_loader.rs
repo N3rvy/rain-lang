@@ -8,9 +8,10 @@ use common::module::{DeclarationModule, Module, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
-use crate::modules::module_initializer::{ParsableModule, ModuleInitializer};
+use crate::modules::module_preparser::ModulePreParser;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
+use crate::modules::parsing_types::ParsableModule;
 
 // TODO: Move this to the core crate
 
@@ -38,14 +39,14 @@ impl ModuleLoader {
             .insert(uid, module);
     }
 
-    pub fn load_module_with_source(&mut self, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
+    pub fn load_module_with_source(&mut self, id: ModuleIdentifier, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
         -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)>
     {
         let tokens = match Tokenizer::tokenize(&source) {
             Ok(tokens) => tokens,
             Err(err) => return Err(anyhow!(format_error(source, err))),
         };
-        let parsable_module = match ModuleInitializer::initialize_module(tokens, uid) {
+        let parsable_module = match ModulePreParser::prepare_module(tokens, id, uid) {
             Ok(module) => module,
             Err(err) => return Err(anyhow!(format_error(source, err)))
         };
@@ -94,7 +95,7 @@ impl ModuleLoader {
         _importer: &impl ModuleImporter
     ) -> Result<Arc<DeclarationModule>, LangError> {
         let tokens = Tokenizer::tokenize(&source)?;
-        let decl_module = Arc::new(ModuleInitializer::parse_declaration_module(tokens, id, uid)?);
+        let decl_module = Arc::new(ModulePreParser::parse_declaration_module(tokens, id, uid)?);
 
         self.modules
             .borrow_mut()
@@ -187,7 +188,7 @@ impl ModuleLoader {
             };
             let tokens = Tokenizer::tokenize(&source)?;
 
-            let parsable_module = match ModuleInitializer::initialize_module(tokens, uid) {
+            let parsable_module = match ModulePreParser::prepare_module(tokens, uid) {
                 Ok(module) => module,
                 Err(err) => return Err(anyhow!(format_error(&source, err)))
             };

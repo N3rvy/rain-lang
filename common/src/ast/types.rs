@@ -1,5 +1,6 @@
 use std::{sync::Arc, fmt::Debug};
 use crate::module::ModuleUID;
+use crate::tokens::PrimitiveType;
 use super::ASTBody;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -90,6 +91,18 @@ pub enum TypeKind {
     Vector(Box<TypeKind>),
     Function(FunctionType),
     Object(Arc<ClassType>),
+}
+
+impl From<&PrimitiveType> for TypeKind {
+    fn from(primitive: &PrimitiveType) -> Self {
+        match primitive {
+            PrimitiveType::Int => TypeKind::Int,
+            PrimitiveType::Float => TypeKind::Float,
+            PrimitiveType::String => TypeKind::String,
+            PrimitiveType::Bool => TypeKind::Bool,
+            PrimitiveType::Nothing => TypeKind::Nothing,
+        }
+    }
 }
 
 impl TypeKind {

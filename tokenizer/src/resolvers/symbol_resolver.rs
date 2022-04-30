@@ -1,4 +1,5 @@
 use common::{ast::types::{LiteralKind, OperatorKind, TypeKind}, tokens::TokenKind};
+use common::tokens::PrimitiveType;
 use super::resolver::{Resolver, AddResult};
 
 pub struct SymbolResolver {
@@ -26,12 +27,11 @@ impl SymbolResolver {
             "while" => TokenKind::While,
             "import" => TokenKind::Import,
 
-            "int" => TokenKind::Type(TypeKind::Int),
-            "float" => TokenKind::Type(TypeKind::Float),
-            "bool" => TokenKind::Type(TypeKind::Bool),
-            "str" => TokenKind::Type(TypeKind::String),
-            "none" => TokenKind::Type(TypeKind::Nothing),
-            "any" => TokenKind::Type(TypeKind::Unknown),
+            "int" => TokenKind::Type(PrimitiveType::Int),
+            "float" => TokenKind::Type(PrimitiveType::Float),
+            "bool" => TokenKind::Type(PrimitiveType::Bool),
+            "str" => TokenKind::Type(PrimitiveType::String),
+            "none" => TokenKind::Type(PrimitiveType::Nothing),
 
             "true" => TokenKind::Literal(LiteralKind::Bool(true)),
             "false" => TokenKind::Literal(LiteralKind::Bool(false)),
