@@ -81,15 +81,15 @@ impl<'a> ModuleBuilder<'a> {
                         builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), &func.metadata)?;
                     },
                     ModuleFeature::Variable(VariableDefinition { data: None, .. }) => todo!(),
-                    ModuleFeature::Class(_) => {
-                        // for (method_name, method_type) in &class.metadata.methods {
-                        //     let name = format!("{}::{}", class_name, method_name);
-                        //
-                        //     builder.function_names.push(name.clone());
-                        //     builder.functions.push((method_type.0.clone(), (*method_type.1).clone()));
-                        //
-                        //     builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), method_type)?;
-                        // }
+                    ModuleFeature::Class(class) => {
+                        for (method_name, method) in &class.data.methods {
+                            let name = format!("{}::{}", class.metadata.name, method_name);
+
+                            builder.function_names.push(name.clone());
+                            builder.functions.push((method.metadata.0.clone(), (*method.metadata.1).clone()));
+
+                            builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), &method.metadata)?;
+                        }
                     },
                     _ => (),
                 }
