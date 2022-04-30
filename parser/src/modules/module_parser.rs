@@ -184,15 +184,6 @@ impl<'a> ModuleParser<'a> {
     fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ParserModuleScope, LangError> {
         let mut scope = ParserModuleScope::new(uid);
 
-        // Declaring every type into the scope
-        for (name, var) in &module.variables {
-            scope.declare_var(name.clone(), scope.convert_parsable_type(&var.type_kind)?);
-        }
-
-        for (name, func) in &module.functions {
-            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type)?);
-        }
-
         for (name, class) in &module.classes {
             let mut methods = Vec::new();
             for (name, func) in &class.methods {
@@ -211,14 +202,23 @@ impl<'a> ModuleParser<'a> {
             }
 
             let class_type = Arc::new(ClassType {
-                methods,
                 name: name.clone(),
                 kind: class.kind.clone(),
                 module: uid,
                 fields,
+                methods,
             });
 
             scope.declare_class(name.clone(), class_type);
+        }
+
+        // Declaring every type into the scope
+        for (name, var) in &module.variables {
+            scope.declare_var(name.clone(), scope.convert_parsable_type(&var.type_kind)?);
+        }
+
+        for (name, func) in &module.functions {
+            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type)?);
         }
 
         for import in &module.imports {

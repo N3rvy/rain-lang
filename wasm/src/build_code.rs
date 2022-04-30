@@ -82,7 +82,6 @@ impl<'a> ModuleBuilder<'a> {
                     },
                     ModuleFeature::Variable(VariableDefinition { data: None, .. }) => todo!(),
                     ModuleFeature::Class(_) => {
-                        todo!();
                         // for (method_name, method_type) in &class.metadata.methods {
                         //     let name = format!("{}::{}", class_name, method_name);
                         //
