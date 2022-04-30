@@ -32,7 +32,7 @@ pub enum ParserErrorKind {
 
 #[derive(Debug)]
 pub enum BuildErrorKind {
-    UnexpectedError,
+    UnexpectedError(String),
     Unsupported(String),
     ClassNotFound(String),
     FuncNotFound(String),
@@ -202,7 +202,7 @@ fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String
 
 pub fn format_build(kind: BuildErrorKind) -> String {
     match kind {
-        BuildErrorKind::UnexpectedError => "Unexpected error".to_string(),
+        BuildErrorKind::UnexpectedError(err) => format!("Unexpected error ({})", err),
         BuildErrorKind::Unsupported(feature) => format!("Unsupported feature ({})", feature),
         BuildErrorKind::ClassNotFound(class_name) => format!("Class not found ({})", class_name),
         BuildErrorKind::FuncNotFound(name) => format!("Function not found ({})", name),

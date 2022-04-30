@@ -39,12 +39,12 @@ impl EngineBuildSource for WasmEngine {
     fn build_module_source(&self, uid: ModuleUID) -> Result<Vec<u8>, LangError> {
         let module = match self.module_loader.get_module(uid) {
             Some(module) => module,
-            None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError("build_module_souce: Module not found".to_string()))),
         };
 
         let core_module = match self.module_loader.get_module(ModuleUID::from_string("core".to_string())) {
             Some(module) => module,
-            None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError("build_module_souce: Core module not found".to_string()))),
         };
 
         let builder = WasmBuilder::new(&self.module_loader, module, core_module);

@@ -273,7 +273,7 @@ impl<'a> ModuleBuilder<'a> {
     fn load_func(&mut self, func: &FunctionDefinition, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
         let data = match &func.data {
             Some(data) => data,
-            None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError("load_func: Tried to load a function with no data".to_string()))),
         };
 
         self.insert_func(name.as_ref(), &func.metadata, data)?;
@@ -397,7 +397,9 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VariableRef { module: _, name } => {
                 let (var_type, var_kind) = match self.get_var(name) {
                     Some((vr, vk)) => (vr, vk),
-                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError(
+                        "build_statement(VariableRef): Variable not found".to_string(),
+                    ))),
                 };
 
                 self.type_stack.push(var_type.clone());
@@ -421,7 +423,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::VariableAsgn { name, value } => {
                 let (local_type, var_kind) = match self.get_var(name) {
                     Some((lt, vk)) => (lt, vk),
-                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError("build_statement(VariableAsgn): Variable not found".to_string()))),
                 };
 
                 match var_kind {
@@ -664,7 +666,9 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                         let class_type = match self.type_stack.pop().unwrap() {
                             TypeKind::Object(obj) => obj,
-                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                            _ => return Err(LangError::build(
+                                BuildErrorKind::UnexpectedError(
+                                    format!("Expected object type, got {:?}", self.type_stack.pop().unwrap())))),
                         };
 
                         let mut field_type = TypeKind::Unknown;
@@ -679,7 +683,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         }
 
                         if matches!(field_type, TypeKind::Unknown) {
-                            return Err(LangError::build(BuildErrorKind::UnexpectedError));
+                            return Err(LangError::build(BuildErrorKind::UnexpectedError(
+                                format!("Field {} not found in class {}", field_name, class_type.name))));
                         }
 
                         self.build_mem_load(&field_type, MemArg {
@@ -695,7 +700,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                             NodeKind::VariableRef { module: _, name } => {
                                 let (var_type, var_kind) = match self.get_var(name) {
                                     Some(var) => var,
-                                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                                    None => return Err(LangError::build(
+                                        BuildErrorKind::UnexpectedError("Variable not found".to_string()))),
                                 };
 
                                 match var_kind {
@@ -760,7 +766,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                         let class_type = match self.type_stack.pop().unwrap() {
                             TypeKind::Object(obj) => obj,
-                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                            _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("Expected object type".to_string()))),
                         };
 
                         let mut field_type = TypeKind::Unknown;
@@ -791,7 +797,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                             NodeKind::VariableRef { module: _, name } => {
                                 let (var_type, var_kind) = match self.get_var(name) {
                                     Some(var) => var,
-                                    None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+                                    None => return Err(LangError::build(
+                                        BuildErrorKind::UnexpectedError("build_statement(FieldAsgn, Data): Variable not found".to_string()))),
                                 };
 
                                 match var_kind {
@@ -944,7 +951,6 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 }
             },
         }
-
         Ok(())
     }
 
