@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::fmt::{Display, Debug};
 use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
@@ -144,7 +144,7 @@ fn format_token(source: &String, token: &Token) -> String {
     let col_end = col + (token.end - token.start);
 
     let error_preview: String = source.lines()
-        .skip(row - 2)
+        .skip(max(row, 2) - 2)
         .take(3)
         .enumerate()
         .map(|(i, line)| {

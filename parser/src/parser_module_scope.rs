@@ -80,7 +80,7 @@ impl ParserModuleScope {
                 // TODO: This need a token position in case of error
 
                 match self.globals.get(name) {
-                    Some(GlobalKind::Var(_, type_)) => type_.clone(),
+                    Some(GlobalKind::Class(_, type_)) => TypeKind::Object(type_.clone()),
                     _ => return Err(LangError::parser(
                         &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
                         ParserErrorKind::UnexpectedError(
