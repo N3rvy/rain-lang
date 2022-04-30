@@ -81,7 +81,7 @@ impl<'a> ModuleBuilder<'a> {
                         builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), &func.metadata)?;
                     },
                     ModuleFeature::Variable(VariableDefinition { data: None, .. }) => todo!(),
-                    ModuleFeature::Class(class) => {
+                    ModuleFeature::Class(_) => {
                         todo!();
                         // for (method_name, method_type) in &class.metadata.methods {
                         //     let name = format!("{}::{}", class_name, method_name);

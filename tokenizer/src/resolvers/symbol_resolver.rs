@@ -1,4 +1,4 @@
-use common::{ast::types::{LiteralKind, OperatorKind, TypeKind}, tokens::TokenKind};
+use common::{ast::types::{LiteralKind, OperatorKind}, tokens::TokenKind};
 use common::tokens::PrimitiveType;
 use super::resolver::{Resolver, AddResult};
 

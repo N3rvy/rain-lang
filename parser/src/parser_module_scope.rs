@@ -5,7 +5,6 @@ use common::ast::types::{ClassType, FunctionType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::ModuleUID;
 use common::tokens::{Token, TokenKind};
-use crate::modules::module_loader::GlobalDeclarationKind;
 use crate::parser_scope::ParserScope;
 
 pub enum ScopeGetResult {

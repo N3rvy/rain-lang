@@ -2,7 +2,6 @@ use std::env;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::PathBuf;
-use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 use crate::{Args, Engine, EngineBuildSource, ReplImporter};
@@ -39,7 +38,7 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     let mut file = File::create(&path)?;
     file.write_all(wasm.as_slice())?;
 
-    println!("Build successfull! Output file at {}", path.to_str().unwrap());
+    println!("Build successful! Output file at {}", path.to_str().unwrap());
 
     Ok(())
 }

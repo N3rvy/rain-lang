@@ -4,12 +4,11 @@ use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, 
 use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
-use common::tokens::{Token, TokenKind};
+use common::tokens::TokenKind;
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_loader::{GlobalDeclarationKind, ModuleLoaderContext};
-use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
 use crate::modules::parsable_types::ParsableModule;
 use crate::parser_scope::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;

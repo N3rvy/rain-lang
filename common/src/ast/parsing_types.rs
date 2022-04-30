@@ -1,6 +1,5 @@
-use crate::ast::types::{ClassKind, FunctionType, LiteralKind, TypeKind};
-use crate::module::{ModuleIdentifier, ModuleUID};
-use crate::tokens::{PrimitiveType, TokenSnapshot};
+use crate::ast::types::{FunctionType, LiteralKind, TypeKind};
+use crate::tokens::PrimitiveType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsableFunctionType(pub Vec<ParsableType>, pub Box<ParsableType>);

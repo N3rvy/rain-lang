@@ -312,15 +312,6 @@ impl<'a> ParserScope<'a> {
     }
 }
 
-pub fn parse_type_error(tokens: &mut Tokens) -> Result<TypeKind, LangError> {
-    // type
-    match tokens.pop() {
-        Some(Token { kind: TokenKind::Type(tk), start: _, end: _ }) => Ok(TypeKind::from(&tk)),
-        Some(token) => Err(LangError::new_parser_unexpected_token(&token)),
-        None => Err(LangError::new_parser_end_of_file()),
-    }
-}
-
 pub fn parse_type_option(tokens: &mut Tokens) -> Option<TypeKind> {
     // type
     match tokens.peek() {

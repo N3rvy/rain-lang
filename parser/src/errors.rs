@@ -1,5 +1,4 @@
 use common::{errors::{LangError, ParserErrorKind}, tokens::{TokenKind, Token}, ast::types::TypeKind};
-use common::ast::parsing_types::ParsableType;
 
 pub trait ParsingErrorHelper {
     fn new_parser_unexpected_token(token: &Token) -> Self;

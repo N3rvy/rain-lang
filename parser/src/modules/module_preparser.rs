@@ -1,15 +1,14 @@
-use std::sync::Arc;
-use common::ast::types::{ClassKind, ClassType, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
+use common::ast::types::{ClassKind, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ModuleIdentifier, ModuleUID};
-use common::tokens::{TokenKind, Token, PrimitiveType};
+use common::tokens::{TokenKind, Token};
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::{expect_open_body, expect_token};
 use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
 use crate::modules::parsable_types::{ParsableClass, ParsableFunction, ParsableModule, ParsableVariable};
 use crate::modules::preparsing_utils::{preparse_parameter_names, preparse_type_error, preparse_type_option};
-use crate::utils::{parse_type_error, parse_type_option, TokensExtensions};
+use crate::utils::TokensExtensions;
 
 /// First step of a module parsing, this can either create a `ParsableModule` or a `DeclarationModule`.
 /// `ParsableModule` when the module is a definition module, this will contain
@@ -60,7 +59,9 @@ impl ModulePreParser {
         })
     }
 
-    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID) -> Result<DeclarationParseAction, LangError> {
+    fn parse_declaration(tokens: &mut Tokens, _: ModuleUID) -> Result<DeclarationParseAction, LangError> {
+        // TODO: Why is module_uid not used?
+
         let token = tokens.pop_err()?;
 
         match token.kind {

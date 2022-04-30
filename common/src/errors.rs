@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::fmt::{Display, Debug};
 use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
-use crate::ast::parsing_types::ParsableType;
 
 #[derive(Debug)]
 pub enum TokenizerErrorKind {
