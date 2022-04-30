@@ -16,7 +16,6 @@ where
     type Module: EngineModule<Engine = Self>;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID>;
-    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID>;
     fn insert_module(&mut self, module: Arc<Module>) -> Result<()>;
 
     fn module_loader(&mut self) -> &mut ModuleLoader;

@@ -20,14 +20,6 @@ impl Engine for WasmEngine {
         Ok(uid)
     }
 
-    fn load_def_module(&mut self, import_identifier: impl Into<String>, module_id: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
-        let (uid, _) = self
-            .module_loader()
-            .load_declaration_module(&ModuleIdentifier(import_identifier.into()), &ModuleIdentifier(module_id.into()), importer)?;
-
-        Ok(uid)
-    }
-
     fn insert_module(&mut self, _module: Arc<Module>) -> Result<()> {
         Ok(())
     }
@@ -55,12 +47,7 @@ impl EngineBuildSource for WasmEngine {
             None => return Err(LangError::build(BuildErrorKind::UnexpectedError))
         };
 
-        match (module, core_module) {
-            (ModuleKind::Definition(module), ModuleKind::Definition(core_module)) => {
-                let builder = WasmBuilder::new(&self.module_loader, module, core_module);
-                builder.build()
-            },
-            _ => Err(LangError::build(BuildErrorKind::UnexpectedError)),
-        }
+        let builder = WasmBuilder::new(&self.module_loader, module, core_module);
+        builder.build()
     }
 }

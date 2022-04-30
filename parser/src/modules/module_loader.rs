@@ -98,25 +98,25 @@ impl ModuleLoader {
     //
     //     Ok(decl_module)
     // }
-    //
-    // pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
-    //     let uid = match importer.get_unique_identifier(id) {
-    //         Some(uid) => uid,
-    //         None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
-    //     };
-    //
-    //     // If cached then simply return
-    //     if self.modules.borrow().contains_key(&uid) {
-    //         return Ok((uid, Vec::new()))
-    //     }
-    //
-    //     let source = match importer.load_module(id, false) {
-    //         Some(source) => source,
-    //         None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
-    //     };
-    //
-    //     self.load_module_with_source(uid, &source, importer)
-    // }
+
+    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
+        let uid = match importer.get_unique_identifier(id) {
+            Some(uid) => uid,
+            None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
+        };
+
+        // If cached then simply return
+        if self.modules.borrow().contains_key(&uid) {
+            return Ok((uid, Vec::new()))
+        }
+
+        let source = match importer.load_module(id, false) {
+            Some(source) => source,
+            None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
+        };
+
+        self.load_module_with_source(id.clone(), uid, &source, importer)
+    }
 
     // pub fn load_declaration_module(
     //     &mut self,

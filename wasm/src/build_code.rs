@@ -3,7 +3,7 @@ use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind};
 use common::errors::{LangError, BuildErrorKind};
-use common::module::{ModuleUID, Module, FunctionDefinition};
+use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, VariableDefinition};
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
@@ -68,23 +68,32 @@ impl<'a> ModuleBuilder<'a> {
             function_imports: Vec::new(),
         };
 
-        for def_module in module_loader.declaration_modules() {
-            for (class_name, class_type) in &def_module.classes {
-                for (method_name, func_type) in &class_type.methods {
-                    let name = format!("{}::{}", class_name, method_name);
+        // TODO: This is not how it should be done
+        // This loads all the declaration ad imports
+        for module in module_loader.modules() {
 
-                    builder.function_names.push(name.clone());
-                    builder.functions.push((func_type.0.clone(), (*func_type.1).clone()));
+            for (name, feature) in &module.features {
+                match feature {
+                    ModuleFeature::Function(func @ FunctionDefinition { data: None, .. }) => {
+                        builder.function_names.push(name.clone());
+                        builder.functions.push((func.metadata.0.clone(), (*func.metadata.1).clone()));
 
-                    builder.insert_imported_func(def_module.id.0.as_ref(), name.as_ref(), func_type)?;
+                        builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), &func.metadata)?;
+                    },
+                    ModuleFeature::Variable(VariableDefinition { data: None, .. }) => todo!(),
+                    ModuleFeature::Class(class) => {
+                        todo!();
+                        // for (method_name, method_type) in &class.metadata.methods {
+                        //     let name = format!("{}::{}", class_name, method_name);
+                        //
+                        //     builder.function_names.push(name.clone());
+                        //     builder.functions.push((method_type.0.clone(), (*method_type.1).clone()));
+                        //
+                        //     builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), method_type)?;
+                        // }
+                    },
+                    _ => (),
                 }
-            }
-
-            for (name, type_) in &def_module.functions {
-                builder.function_names.push(name.clone());
-                builder.functions.push((type_.0.clone(), *type_.1.clone()));
-
-                builder.insert_imported_func(def_module.id.0.as_ref(), name.as_ref(), type_)?;
             }
         }
 
@@ -92,23 +101,29 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     pub fn insert_module(&mut self, module: Arc<Module>) -> Result<(), LangError> {
-        for (name, var) in &module.variables {
-            self.insert_var(name, &var.metadata, &var.data)?;
-        }
 
-        for (name, func) in &module.functions {
-            let contains_func = self.function_names
-                .iter()
-                .any(|n| n == name);
-            
-            if contains_func {
-                continue
+        for (name, feature) in &module.features {
+            match feature {
+                ModuleFeature::Variable(var @ VariableDefinition { data: Some(ref data), .. }) => {
+                    self.insert_var(name, &var.metadata, data)?;
+                },
+                ModuleFeature::Function(func @ FunctionDefinition { data: Some(ref data), .. }) => {
+                    let contains_func = self.function_names
+                        .iter()
+                        .any(|n| n == name);
+
+                    if contains_func {
+                        continue
+                    }
+
+                    self.insert_func(name, &func.metadata, data)?;
+
+                    self.function_names.push(name.clone());
+                    self.functions.push((func.metadata.0.clone(), (*func.metadata.1).clone()));
+                }
+                ModuleFeature::Class(_) => {}
+                _ => (),
             }
-
-            self.insert_func(name, &func.metadata, &func.data)?;
-
-            self.function_names.push(name.clone());
-            self.functions.push((func.metadata.0.clone(), (*func.metadata.1).clone()));
         }
 
         Ok(())
@@ -206,19 +221,15 @@ impl<'a> ModuleBuilder<'a> {
             },
             None => {
                 let module = self.module_loader
-                    .get_module(module_uid);
+                    .get_module(module_uid)
+                    .ok_or(LangError::build(BuildErrorKind::ModuleNotFound(module_uid)))?;
 
-                match module {
-                    Some(ModuleKind::Definition(module)) => {
-                        let func = match module.get_func_feature(name) {
-                            Some(f) => f,
-                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
-                        };
+                let func = match module.get_func_feature(name) {
+                    Some(f) => f,
+                    None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
+                };
 
-                        self.load_func(func, name)
-                    },
-                    _ => Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
-                }
+                self.load_func(func, name)
             },
         }
     }
@@ -241,30 +252,31 @@ impl<'a> ModuleBuilder<'a> {
             },
             None => {
                 let module = self.module_loader
-                    .get_module(module_uid);
+                    .get_module(module_uid)
+                    .ok_or(LangError::build(BuildErrorKind::ModuleNotFound(module_uid)))?;
 
-                match module {
-                    Some(ModuleKind::Definition(module)) => {
-                        let class = match module.get_class_feature(class_name) {
-                            Some(f) => f,
-                            None => return Err(LangError::build(BuildErrorKind::ClassNotFound(class_name.clone()))),
-                        };
+                let class = match module.get_class_feature(class_name) {
+                    Some(f) => f,
+                    None => return Err(LangError::build(BuildErrorKind::ClassNotFound(class_name.clone()))),
+                };
 
-                        let func = match class.get_method_def(name) {
-                            Some(f) => f,
-                            None => return Err(LangError::build(BuildErrorKind::FuncNotFound(func_name.clone()))),
-                        };
+                let func = match class.get_method_def(name) {
+                    Some(f) => f,
+                    None => return Err(LangError::build(BuildErrorKind::FuncNotFound(func_name.clone()))),
+                };
 
-                        self.load_func(&func, &func_name)
-                    },
-                    _ => Err(LangError::build(BuildErrorKind::ModuleNotFound(module_uid))),
-                }
+                self.load_func(&func, &func_name)
             },
         }
     }
 
     fn load_func(&mut self, func: &FunctionDefinition, name: &String) -> Result<(u32, &Vec<TypeKind>, &TypeKind), LangError> {
-        self.insert_func(name.as_ref(), &func.metadata, &func.data)?;
+        let data = match &func.data {
+            Some(data) => data,
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError)),
+        };
+
+        self.insert_func(name.as_ref(), &func.metadata, data)?;
 
         self.function_names.push(name.clone());
         self.functions.push((

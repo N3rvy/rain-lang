@@ -3,7 +3,7 @@ use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::PathBuf;
 use common::constants::DECLARATION_IMPORT_PREFIX;
-use common::module::ModuleUID;
+use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 use crate::{Args, Engine, EngineBuildSource, ReplImporter};
 use crate::config::Config;
@@ -23,17 +23,11 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     // Loading core lib
     engine.module_loader()
         .load_module_with_source(
+            ModuleIdentifier("core".to_string()),
             ModuleUID::from_string("core".to_string()),
             &include_str!("../core_lib/lib.vrs").to_string(),
             &importer,
         )?;
-
-    for file_name in config.declarations.iter() {
-        engine.load_def_module(
-            file_name,
-            DECLARATION_IMPORT_PREFIX.to_string() + file_name,
-            &importer)?;
-    }
 
     // Creating the module from the source file
     let module = engine
