@@ -3,7 +3,7 @@ use common::errors::{LangError, ParserErrorKind};
 use common::tokens::{Token, TokenKind};
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
-use crate::modules::parsing_types::ParsableType;
+use common::ast::parsing_types::ParsableType;
 use crate::utils::TokensExtensions;
 
 pub fn preparse_type_error(tokens: &mut Tokens) -> Result<ParsableType, LangError> {

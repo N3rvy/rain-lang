@@ -1,5 +1,5 @@
 use std::{sync::Arc, fmt::Debug};
-use crate::module::ModuleUID;
+use crate::module::{FunctionDefinition, ModuleUID};
 use crate::tokens::PrimitiveType;
 use super::ASTBody;
 
@@ -124,8 +124,8 @@ impl TypeKind {
     }
 }
 
-impl From<LiteralKind> for TypeKind {
-    fn from(literal_kind: LiteralKind) -> Self {
+impl From<&LiteralKind> for TypeKind {
+    fn from(literal_kind: &LiteralKind) -> Self {
         match literal_kind {
             LiteralKind::Nothing => Self::Nothing,
             LiteralKind::Int(_) => Self::Int,
@@ -137,7 +137,7 @@ impl From<LiteralKind> for TypeKind {
 }
 
 pub struct Class {
-    pub functions: Vec<(String, Arc<Function>)>,
+    pub methods: Vec<(String, FunctionDefinition)>,
 }
 
 impl Debug for Class {
@@ -147,8 +147,8 @@ impl Debug for Class {
 }
 
 impl Class {
-    pub fn new(functions: Vec<(String, Arc<Function>)>) -> Self {
-        Self { functions }
+    pub fn new(methods: Vec<(String, FunctionDefinition)>) -> Self {
+        Self { methods }
     }
 }
 

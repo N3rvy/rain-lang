@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use common::ast::types::{ClassKind, ClassType, FunctionType, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
-use common::module::{DeclarationModule, ModuleIdentifier, ModuleUID};
+use common::module::{ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token, PrimitiveType};
-use tokenizer::iterator::{Tokens, TokenSnapshot};
+use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::{expect_open_body, expect_token};
-use crate::modules::parsing_types::{ParsableClass, ParsableFunction, ParsableFunctionType, ParsableModule, ParsableType, ParsableVariable};
+use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
+use crate::modules::parsable_types::{ParsableClass, ParsableFunction, ParsableModule, ParsableVariable};
 use crate::modules::preparsing_utils::{preparse_parameter_names, preparse_type_error, preparse_type_option};
 use crate::utils::{parse_type_error, parse_type_option, TokensExtensions};
 
@@ -201,7 +202,7 @@ impl ModulePreParser {
                 tokens.pop();
 
                 let body = tokens.snapshot();
-                Self::pop_until_newline(tokens)?;
+                Self::pop_until_newline(tokens);
 
                 Some(body)
             },

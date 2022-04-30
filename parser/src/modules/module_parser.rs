@@ -1,14 +1,16 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
 use common::constants::DECLARATION_IMPORT_PREFIX;
 use common::errors::{LangError, ParserErrorKind};
-use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleUID, VariableDefinition};
-use common::tokens::TokenKind;
+use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
+use common::tokens::{Token, TokenKind};
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_loader::{GlobalDeclarationKind, ModuleLoaderContext};
-use crate::modules::parsing_types::ParsableModule;
+use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
+use crate::modules::parsable_types::ParsableModule;
 use crate::parser_scope::ParserScope;
 use crate::parser_module_scope::ParserModuleScope;
 use crate::utils::TokensExtensions;
@@ -28,117 +30,154 @@ impl<'a> ModuleParser<'a> {
     }
 
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
-        let scope = self.create_scope(&module, uid, importer);
+        let module_scope = self.create_scope(&module, uid, importer);
 
-        let mut variables = Vec::new();
+        let mut features = HashMap::new();
+
         for (name, var) in &module.variables {
-            let mut tokens = module.tokens.new_clone(var.body);
 
-            let token = &tokens.peek().unwrap();
-            let value = Self::parse_variable_value(&mut tokens)?;
-            let value_type = TypeKind::from(value.clone());
+            let metadata = Self::convert_parsable_type(&module_scope, &var.type_kind)?;
 
-            if !value_type.is_compatible(&var.type_kind) {
-                return Err(LangError::wrong_type(&token, &var.type_kind, &value_type));
-            }
+            let data = match var.body {
+                Some(body) => {
+                    let mut tokens = module.tokens.new_clone(body);
+                    let token = &tokens.peek().unwrap();
+                    let data = Self::parse_variable_value(&mut tokens)?;
 
-            variables.push((
-                name.clone(),
-                VariableDefinition {
-                    data: value,
-                    metadata: var.type_kind.clone(),
+                    let data_type = TypeKind::from(&data);
+
+                    if data_type.is_compatible(&metadata) {
+                        return Err(LangError::wrong_type(&token, &metadata, &data_type));
+                    }
+
+                    Some(data)
                 },
-            ));
-        }
+                None => None,
+            };
 
-        let mut functions = Vec::new();
-        for (name, func) in &module.functions {
-            let mut tokens = module.tokens.new_clone(func.body);
-
-            let scope = scope.new_child();
-
-            let token = &tokens.peek().unwrap();
-
-            let value = Self::parse_function_value(
-                &mut tokens,
-                &scope,
-                &func.params,
-                func.func_type.clone(),
-                false)?;
-
-            if !scope.eval_type.borrow().is_compatible(func.func_type.1.as_ref()) {
-                return Err(LangError::wrong_type(&token, &scope.eval_type.borrow(), &func.func_type.1));
-            }
-
-            functions.push((
+            features.insert(
                 name.clone(),
-                FunctionDefinition {
-                    data: value,
-                    metadata: func.func_type.clone(),
-                }));
+                ModuleFeature::Variable(VariableDefinition {
+                    data,
+                    metadata,
+                })
+            );
         }
 
-        let mut classes = Vec::new();
+        for (name, func) in &module.functions {
+
+            let metadata = Self::convert_parsable_func_type(&module_scope, &func.func_type)?;
+
+            let data = match func.body {
+                Some(body) => {
+                    let mut tokens = module.tokens.new_clone(body);
+
+                    let scope = module_scope.new_child();
+
+                    let token = &tokens.peek().unwrap();
+
+                    let data = Self::parse_function_value(
+                        &mut tokens,
+                        &scope,
+                        &func.params,
+                        Self::convert_parsable_func_type(&module_scope, &func.func_type)?,
+                        false)?;
+
+                    if !scope.eval_type.borrow().is_compatible(&metadata.1) {
+                        return Err(LangError::wrong_type(&token, &metadata.1, &scope.eval_type.into_inner()));
+                    }
+
+                    Some(data)
+                },
+                None => None,
+            };
+
+            features.insert(
+                name.clone(),
+                ModuleFeature::Function(FunctionDefinition {
+                    data,
+                    metadata,
+                })
+            );
+        }
 
         for (name, class) in &module.classes {
-        let class_type = Arc::new(ClassType {
-        name: name.clone(),
-        module: uid,
-        kind: class.class_type.kind.clone(),
-        fields: class.class_type.fields.clone(),
-        methods: vec![],
-        });
+            let mut methods = Vec::new();
+            let mut method_types = Vec::new();
 
-        let scope = scope.new_child();
+            for (name, method) in class.methods {
+                let metadata = Self::convert_parsable_func_type(&module_scope, &method.func_type)?;
 
-            let mut functions = Vec::new();
-            let mut function_types = Vec::new();
+                let data = match method.body {
+                    Some(body) => {
+                        let mut tokens = module.tokens.new_clone(body);
 
-            for (name, func) in &class.functions {
-                let mut tokens = module.tokens.new_clone(func.body);
+                        let scope = module_scope.new_child();
 
-                let mut params = func.params.clone();
-                let mut type_ = func.func_type.clone();
+                        let token = &tokens.peek().unwrap();
 
-                params.insert(0, "self".to_string());
-                type_.0.insert(0, TypeKind::Object(class_type.clone()));
+                        let data = Self::parse_function_value(
+                            &mut tokens,
+                            &scope,
+                            &method.params,
+                            Self::convert_parsable_func_type(&module_scope, &method.func_type)?,
+                            false)?;
 
-                let func = Self::parse_function_value(&mut tokens, &scope, &params, type_.clone(), true)?;
+                        if !scope.eval_type.borrow().is_compatible(&metadata.1) {
+                            return Err(LangError::wrong_type(&token, &metadata.1, &scope.eval_type.into_inner()));
+                        }
 
-                functions.push((
+                        Some(data)
+                    },
+                    None => None,
+                };
+
+                methods.push((
                     name.clone(),
-                    func,
+                    FunctionDefinition {
+                        data,
+                        metadata: metadata.clone(),
+                    }
                 ));
 
-                function_types.push((
+                method_types.push((
                     name.clone(),
-                    type_.clone(),
+                    metadata,
                 ));
             }
 
-            unsafe {
-                // This should not be done but... IDC, it is safe (the last words before the disaster...)
-                // TODO: This also causes recursion so maybe change in the future (just maybe...)
-                let method_ptr = &class_type.methods as *const Vec<(String, FunctionType)> as *mut Vec<(String, FunctionType)>;
-                *method_ptr = function_types;
+            let mut fields = Vec::new();
+
+            for (name, field) in &class.fields {
+                fields.push((
+                    name.clone(),
+                    Self::convert_parsable_type(&module_scope, &field)?,
+                ));
             }
 
-            classes.push((
+            let class_type = Arc::new(ClassType {
+                name: name.clone(),
+                module: uid,
+                kind: class.kind.clone(),
+                fields,
+                methods: method_types,
+            });
+
+            features.insert(
                 name.clone(),
-                ClassDefinition {
-                    data: Class::new(functions),
+                ModuleFeature::Class(ClassDefinition {
+                    data: Class::new(methods),
                     metadata: class_type,
-                }
-            ))
+                })
+            );
         }
 
         let module = Module {
+            id: module.id.clone(),
             uid,
 
             imports: Vec::new(),
-            functions,
-            variables,
-            classes,
+            features,
         };
 
         Ok(module)
@@ -231,6 +270,58 @@ impl<'a> ModuleParser<'a> {
         let body = scope.parse_body(tokens)?;
 
         Ok(Function::new(body, params.clone(), is_method))
+    }
+
+    fn convert_parsable_func_type(scope: &ParserModuleScope, func_type: &ParsableFunctionType) -> Result<FunctionType, LangError> {
+        let mut params = Vec::new();
+
+        for param in &func_type.0 {
+            params.push(Self::convert_type(scope, param.clone())?);
+        }
+
+        Ok(FunctionType(params, Box::new(Self::convert_type(scope, func_type.1.clone())?)))
+    }
+
+    fn convert_parsable_type(scope: &ParserModuleScope, type_: &ParsableType) -> Result<TypeKind, LangError> {
+        Ok(match type_ {
+            ParsableType::Unknown => TypeKind::Unknown,
+            ParsableType::Nothing => TypeKind::Nothing,
+            ParsableType::Int => TypeKind::Int,
+            ParsableType::Float => TypeKind::Float,
+            ParsableType::Bool => TypeKind::Bool,
+            ParsableType::String => TypeKind::String,
+            ParsableType::Vector(type_) => TypeKind::Vector(Box::new(Self::convert_parsable_type(type_.as_ref())?)),
+            ParsableType::Function((params, return_type)) => {
+                let mut params_types = Vec::new();
+
+                for parm in params {
+                    params_types.push(Self::convert_parsable_type(scope, parm.as_ref())?);
+                }
+
+                TypeKind::Func(
+                    Box::new(Self::convert_type(scope, return_type)?)
+                )
+            },
+            ParsableType::Custom(name) => {
+                // TODO: This need a token position in case of error
+
+                let uid = ModuleUID::from_string(name.clone());
+
+                match scope.get_declaration(uid, name) {
+                    Some(declaration) => match declaration {
+                        GlobalDeclarationKind::Var(type_) => type_.clone(),
+                        _ => return Err(LangError::parser(
+                            &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
+                            ParserErrorKind::UnexpectedError(
+                                "convert_parsable_type: custom type is not a variable".to_string()))),
+                    },
+                    None => return Err(
+                        LangError::parser(
+                            &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
+                            ParserErrorKind::VarNotFound)),
+                }
+            },
+        })
     }
 
 }

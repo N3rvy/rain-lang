@@ -210,7 +210,7 @@ impl<'a> ModuleBuilder<'a> {
 
                 match module {
                     Some(ModuleKind::Definition(module)) => {
-                        let func = match module.get_func_def(name) {
+                        let func = match module.get_func_feature(name) {
                             Some(f) => f,
                             None => return Err(LangError::build(BuildErrorKind::FuncNotFound(name.clone()))),
                         };
@@ -245,7 +245,7 @@ impl<'a> ModuleBuilder<'a> {
 
                 match module {
                     Some(ModuleKind::Definition(module)) => {
-                        let class = match module.get_class_def(class_name) {
+                        let class = match module.get_class_feature(class_name) {
                             Some(f) => f,
                             None => return Err(LangError::build(BuildErrorKind::ClassNotFound(class_name.clone()))),
                         };

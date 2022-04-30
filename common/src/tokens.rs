@@ -1,5 +1,7 @@
 use crate::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, LiteralKind, ParenthesisKind, ParenthesisState};
 
+#[derive(Clone, Copy, Debug)]
+pub struct TokenSnapshot(pub usize);
 
 #[derive(Clone, Debug)]
 pub struct Token {

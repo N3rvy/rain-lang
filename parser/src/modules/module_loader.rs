@@ -4,26 +4,21 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{ClassType, FunctionType, TypeKind};
 use common::constants::DECLARATION_IMPORT_PREFIX;
-use common::module::{DeclarationModule, Module, ModuleUID};
+use common::module::{Module, ModuleFeature, ModuleUID};
 use common::errors::{LangError, LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
 use crate::modules::module_preparser::ModulePreParser;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
-use crate::modules::parsing_types::ParsableModule;
+use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
+use crate::modules::parsable_types::ParsableModule;
 
 // TODO: Move this to the core crate
 
-#[derive(Clone)]
-pub enum ModuleKind {
-    Definition(Arc<Module>),
-    Declaration(Arc<DeclarationModule>),
-}
-
 /// This handles the loading and dependency loading of modules
 pub struct ModuleLoader {
-    modules: RefCell<HashMap<ModuleUID, ModuleKind>>,
+    modules: RefCell<HashMap<ModuleUID, Arc<Module>>>,
 }
 
 impl ModuleLoader {
@@ -33,7 +28,7 @@ impl ModuleLoader {
         }
     }
 
-    pub fn insert_module(&mut self, uid: ModuleUID, module: ModuleKind) {
+    pub fn insert_module(&mut self, uid: ModuleUID, module: Arc<Module>) {
         self.modules
             .borrow_mut()
             .insert(uid, module);
@@ -66,9 +61,7 @@ impl ModuleLoader {
 
             modules.push(module.clone());
 
-            self.modules
-                .borrow_mut()
-                .insert(*uid, ModuleKind::Definition(module));
+            self.insert_module(*uid, module);
         }
 
         // Loading the main module
@@ -82,72 +75,72 @@ impl ModuleLoader {
 
         self.modules
             .borrow_mut()
-            .insert(uid, ModuleKind::Definition(module));
+            .insert(uid, module);
 
         Ok((uid, modules))
     }
 
-    pub fn load_declaration_module_with_source(
-        &mut self,
-        id: ModuleIdentifier,
-        uid: ModuleUID,
-        source: &String,
-        _importer: &impl ModuleImporter
-    ) -> Result<Arc<DeclarationModule>, LangError> {
-        let tokens = Tokenizer::tokenize(&source)?;
-        let decl_module = Arc::new(ModulePreParser::parse_declaration_module(tokens, id, uid)?);
+    // pub fn load_declaration_module_with_source(
+    //     &mut self,
+    //     id: ModuleIdentifier,
+    //     uid: ModuleUID,
+    //     source: &String,
+    //     _importer: &impl ModuleImporter
+    // ) -> Result<Arc<DeclarationModule>, LangError> {
+    //     let tokens = Tokenizer::tokenize(&source)?;
+    //     let decl_module = Arc::new(ModulePreParser::parse_declaration_module(tokens, id, uid)?);
+    //
+    //     self.modules
+    //         .borrow_mut()
+    //         .insert(uid, ModuleKind::Declaration(decl_module.clone()));
+    //
+    //     Ok(decl_module)
+    // }
+    //
+    // pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
+    //     let uid = match importer.get_unique_identifier(id) {
+    //         Some(uid) => uid,
+    //         None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
+    //     };
+    //
+    //     // If cached then simply return
+    //     if self.modules.borrow().contains_key(&uid) {
+    //         return Ok((uid, Vec::new()))
+    //     }
+    //
+    //     let source = match importer.load_module(id, false) {
+    //         Some(source) => source,
+    //         None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
+    //     };
+    //
+    //     self.load_module_with_source(uid, &source, importer)
+    // }
 
-        self.modules
-            .borrow_mut()
-            .insert(uid, ModuleKind::Declaration(decl_module.clone()));
-
-        Ok(decl_module)
-    }
-
-    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
-        let uid = match importer.get_unique_identifier(id) {
-            Some(uid) => uid,
-            None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
-        };
-
-        // If cached then simply return
-        if self.modules.borrow().contains_key(&uid) {
-            return Ok((uid, Vec::new()))
-        }
-
-        let source = match importer.load_module(id, false) {
-            Some(source) => source,
-            None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
-        };
-
-        self.load_module_with_source(uid, &source, importer)
-    }
-
-    pub fn load_declaration_module(
-        &mut self,
-        id: &ModuleIdentifier,
-        module_id: &ModuleIdentifier,
-        importer: &impl ModuleImporter
-    ) -> anyhow::Result<(ModuleUID, Option<Arc<DeclarationModule>>)> {
-        let module_uid = ModuleUID::from_string(module_id.0.clone());
-
-        // If cached then simply return
-        if self.modules.borrow().contains_key(&module_uid) {
-            return Ok((module_uid, None))
-        }
-
-        let source = match importer.load_module(id, true) {
-            Some(source) => source,
-            None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
-        };
-
-        let res = self.load_declaration_module_with_source(module_id.clone(), module_uid, &source, importer);
-
-        match res {
-            Ok(res) => Ok((module_uid, Some(res))),
-            Err(err) => Err(anyhow!(format_error(&source, err))),
-        }
-    }
+    // pub fn load_declaration_module(
+    //     &mut self,
+    //     id: &ModuleIdentifier,
+    //     module_id: &ModuleIdentifier,
+    //     importer: &impl ModuleImporter
+    // ) -> anyhow::Result<(ModuleUID, Option<Arc<Module>>)> {
+    //     let module_uid = ModuleUID::from_string(module_id.0.clone());
+    //
+    //     // If cached then simply return
+    //     if self.modules.borrow().contains_key(&module_uid) {
+    //         return Ok((module_uid, None))
+    //     }
+    //
+    //     let source = match importer.load_module(id, true) {
+    //         Some(source) => source,
+    //         None => return Err(anyhow!(format_load(LoadErrorKind::LoadModuleError(id.0.clone()))))
+    //     };
+    //
+    //     let res = self.load_declaration_module_with_source(module_id.clone(), module_uid, &source, importer);
+    //
+    //     match res {
+    //         Ok(res) => Ok((module_uid, Some(res))),
+    //         Err(err) => Err(anyhow!(format_error(&source, err))),
+    //     }
+    // }
 
     fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> anyhow::Result<ModuleLoaderContext> {
         let mut modules = Vec::new();
@@ -188,7 +181,7 @@ impl ModuleLoader {
             };
             let tokens = Tokenizer::tokenize(&source)?;
 
-            let parsable_module = match ModulePreParser::prepare_module(tokens, uid) {
+            let parsable_module = match ModulePreParser::prepare_module(tokens, import.clone(), uid) {
                 Ok(module) => module,
                 Err(err) => return Err(anyhow!(format_error(&source, err)))
             };
@@ -201,20 +194,7 @@ impl ModuleLoader {
         Ok(())
     }
 
-    pub fn declaration_modules(&self) -> Vec<Arc<DeclarationModule>> {
-        self.modules
-            .borrow()
-            .iter()
-            .filter_map(|(_, module)| {
-                match module {
-                    ModuleKind::Declaration(decl_module) => Some(decl_module.clone()),
-                    ModuleKind::Definition(_) => None,
-                }
-            })
-            .collect()
-    }
-
-    pub fn modules(&self) -> Vec<ModuleKind> {
+    pub fn modules(&self) -> Vec<Arc<Module>> {
         self.modules
             .borrow()
             .iter()
@@ -222,7 +202,7 @@ impl ModuleLoader {
             .collect()
     }
 
-    pub fn get_module(&self, uid: ModuleUID) -> Option<ModuleKind> {
+    pub fn get_module(&self, uid: ModuleUID) -> Option<Arc<Module>> {
         self.modules
             .borrow()
             .get(&uid)
@@ -231,8 +211,8 @@ impl ModuleLoader {
 }
 
 pub enum GlobalDeclarationKind {
-    Var(TypeKind),
-    Func(FunctionType),
+    Var(ParsableType),
+    Func(ParsableFunctionType),
     Class(Arc<ClassType>),
 }
 
@@ -256,40 +236,33 @@ impl<'a> ModuleLoaderContext<'a> {
                     .chain(module.variables
                         .iter()
                         .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.type_kind.clone()))))
-                    .chain(module.classes
-                        .iter()
-                        .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.class_type.clone()))))
+                    // .chain(module.classes
+                    //     .iter()
+                    //     .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.class_type.clone()))))
                     .collect()
             },
             None => {
                 self.module_loader
                     .get_module(module_uid)
-                    .and_then(|module| {
-                        match module {
-                            ModuleKind::Definition(module) => {
-                                Some(module.functions
-                                    .iter()
-                                    .map(|(name, func)| (name.clone(), GlobalDeclarationKind::Func(func.metadata.clone())))
-                                    .chain(module.variables
-                                        .iter()
-                                        .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.metadata.clone()))))
-                                    .chain(module.classes
-                                        .iter()
-                                        .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.metadata.clone()))))
-                                    .collect())
-                            },
-                            ModuleKind::Declaration(module) => {
-                                Some(module.functions
-                                    .iter()
-                                    .map(|(name, func_type)| (name.clone(), GlobalDeclarationKind::Func(func_type.clone())))
-                                    .chain(module.classes
-                                        .iter()
-                                        .map(|(name, class_type)| (name.clone(), GlobalDeclarationKind::Class(class_type.clone()))))
-                                    .collect())
-                            }
-                        }
+                    .map(|module| {
+                        module.features
+                            .iter()
+                            .map(|(name, feature)| match feature {
+                                ModuleFeature::Function(func)=> (
+                                    name.clone(),
+                                    GlobalDeclarationKind::Func(ParsableFunctionType::from(&func.metadata))),
+
+                                ModuleFeature::Variable(var) => (
+                                    name.clone(),
+                                    GlobalDeclarationKind::Var(ParsableType::from(&var.metadata))),
+
+                                ModuleFeature::Class(class) => (
+                                    name.clone(),
+                                    GlobalDeclarationKind::Class(class.metadata.clone())),
+                            })
+                            .collect()
                     })
-                    .unwrap_or_else(|| Vec::new())
+                    .unwrap_or(Vec::new())
             }
         }
     }

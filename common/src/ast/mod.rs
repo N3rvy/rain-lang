@@ -2,9 +2,10 @@ use std::sync::Arc;
 use crate::ast::types::ClassType;
 use crate::module::ModuleUID;
 
-use self::types::{TypeKind, LiteralKind, MathOperatorKind, BoolOperatorKind, ReturnKind, Function};
+use self::types::{BoolOperatorKind, Function, LiteralKind, MathOperatorKind, ReturnKind, TypeKind};
 
 pub mod types;
+pub mod parsing_types;
 
 
 pub type ASTBody = Vec<ASTNode>;
