@@ -19,7 +19,10 @@ pub fn preparse_type_error(tokens: &mut Tokens) -> Result<ParsableType, LangErro
 
 pub fn preparse_type_option(tokens: &mut Tokens) -> Option<ParsableType> {
     let token = match tokens.peek() {
-        Some(token) => token,
+        Some(token) => {
+            tokens.pop();
+            token
+        },
         None => return None,
     };
 

@@ -45,7 +45,7 @@ impl<'a> ModuleParser<'a> {
 
                     let data_type = TypeKind::from(&data);
 
-                    if data_type.is_compatible(&metadata) {
+                    if !data_type.is_compatible(&metadata) {
                         return Err(LangError::wrong_type(&token, &metadata, &data_type));
                     }
 
