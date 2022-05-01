@@ -80,7 +80,8 @@ impl<'a> ModuleBuilder<'a> {
 
                         builder.insert_imported_func(module.id.0.as_ref(), name.as_ref(), &func.metadata)?;
                     },
-                    ModuleFeature::Variable(VariableDefinition { data: None, .. }) => todo!(),
+                    ModuleFeature::Variable(VariableDefinition { data: None, .. })
+                        => return Err(LangError::build(BuildErrorKind::Unsupported("Variable declaration not yet supported".to_string()))),
                     ModuleFeature::Class(class) => {
                         for (method_name, method) in &class.data.methods {
                             let name = format!("{}::{}", class.metadata.name, method_name);
