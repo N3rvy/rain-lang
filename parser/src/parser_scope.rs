@@ -9,10 +9,10 @@ use common::module::ModuleUID;
 use tokenizer::iterator::Tokens;
 use crate::utils::{parse_type_option, TokensExtensions};
 use crate::{expect_token, errors::ParsingErrorHelper, expect_open_body};
-use crate::parser_module_scope::{ParserModuleScope, ScopeGetResult};
+use crate::parser_module_scope::{ModuleParserScope, ScopeGetResult};
 
 pub enum ScopeParent<'a> {
-    Module(&'a ParserModuleScope),
+    Module(&'a ModuleParserScope),
     Scope(&'a ParserScope<'a>),
 }
 
@@ -27,7 +27,7 @@ pub struct ParserScope<'a> {
 }
 
 impl<'a> ParserScope<'a> {
-    pub fn new_module_child(module: &'a ParserModuleScope) -> Self {
+    pub fn new_module_child(module: &'a ModuleParserScope) -> Self {
         Self {
             parent: ScopeParent::Module(module),
             eval_type: RefCell::new(TypeKind::Nothing),
@@ -123,6 +123,7 @@ impl<'a> ParserScope<'a> {
 
                         // TODO: Make this a bit better
                         let constructor = class_type.methods
+                            .borrow()
                             .iter()
                             .find(|(name, _)| name == CLASS_CONSTRUCTOR_NAME)
                             .cloned();
@@ -149,7 +150,7 @@ impl<'a> ParserScope<'a> {
 
                         ASTNode::new(
                             NodeKind::new_construct_class(parameters, class_type.clone()),
-                            TypeKind::Object(class_type.clone()))
+                            TypeKind::Class(class_type.clone()))
                     },
                     ScopeGetResult::Ref(uid, type_) => {
                         let var_ref = NodeKind::new_variable_ref(uid, name.clone());
@@ -376,12 +377,12 @@ impl<'a> ParserScope<'a> {
                 };
                 
                 match &node.eval_type {
-                    TypeKind::Object(class_type) => {
-                        let field_type = match class_type.fields.iter().find(|(name, _)| name == field_name) {
+                    TypeKind::Class(class_type) => {
+                        let field_type = match class_type.fields.borrow().iter().find(|(name, _)| name == field_name) {
                             Some((_, t)) => t.clone(),
                             None => {
                                 // If the field doesn't exist search for a method
-                                match class_type.methods.iter().find(|(name, _)| name == field_name) {
+                                match class_type.methods.borrow().iter().find(|(name, _)| name == field_name) {
                                     Some((_, ft)) => TypeKind::Function(ft.clone()),
                                     None => return Err(LangError::parser(&token, ParserErrorKind::FieldDoesntExist)),
                                 }

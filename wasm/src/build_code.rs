@@ -672,7 +672,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         self.build_statement(variable)?;
 
                         let class_type = match self.type_stack.pop().unwrap() {
-                            TypeKind::Object(obj) => obj,
+                            TypeKind::Class(obj) => obj,
                             _ => return Err(LangError::build(
                                 BuildErrorKind::UnexpectedError(
                                     format!("Expected object type, got {:?}", self.type_stack.pop().unwrap())))),
@@ -681,7 +681,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         let mut field_type = TypeKind::Unknown;
 
                         let mut offset = 0;
-                        for (name, type_) in &class_type.fields {
+                        for (name, type_) in class_type.fields.borrow().iter() {
                             if field_name == name {
                                 field_type = type_.clone();
                                 break
@@ -716,7 +716,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                                         let mut field_type = TypeKind::Nothing;
                                         let mut idx_offset = 0u32;
 
-                                        for (name, type_) in &class_type.fields {
+                                        for (name, type_) in class_type.fields.borrow().iter() {
                                             if name == field_name {
                                                 field_type = type_.clone();
                                                 break
@@ -740,7 +740,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                                         let mut field_type = TypeKind::Nothing;
                                         let mut offset = 0;
 
-                                        for (name, type_) in &class_type.fields {
+                                        for (name, type_) in class_type.fields.borrow().iter() {
                                             if name == field_name {
                                                 field_type = type_.clone();
                                                 break
@@ -772,14 +772,14 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         self.build_statement(variable)?;
 
                         let class_type = match self.type_stack.pop().unwrap() {
-                            TypeKind::Object(obj) => obj,
+                            TypeKind::Class(obj) => obj,
                             _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("Expected object type".to_string()))),
                         };
 
                         let mut field_type = TypeKind::Unknown;
 
                         let mut offset = 0;
-                        for (name, type_) in &class_type.fields {
+                        for (name, type_) in class_type.fields.borrow().iter() {
                             if field_name == name {
                                 field_type = type_.clone();
                                 break
@@ -813,7 +813,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                                         let mut field_type = TypeKind::Nothing;
                                         let mut idx_offset = 0u32;
 
-                                        for (name, type_) in &class_type.fields {
+                                        for (name, type_) in class_type.fields.borrow().iter() {
                                             if name == field_name {
                                                 field_type = type_.clone();
                                                 break
@@ -839,7 +839,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                                         let mut field_type = TypeKind::Nothing;
                                         let mut offset = 0;
 
-                                        for (name, type_) in &class_type.fields {
+                                        for (name, type_) in class_type.fields.borrow().iter() {
                                             if name == field_name {
                                                 field_type = type_.clone();
                                                 break
@@ -919,13 +919,14 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 match &class_type.kind {
                     ClassKind::Normal => {
                         let size = class_type.fields
+                            .borrow()
                             .iter()
                             .map(|(_, type_)| Self::get_type_byte_size(type_) as i32)
                             .sum();
 
                         self.build_memory_alloc(size)?;
 
-                        if let Some((_, _)) = class_type.methods.iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
+                        if let Some((_, _)) = class_type.methods.borrow().iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
                             // TODO: Support multiple allocations in the same method
                             let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
                             let id = *ids.index(0);
@@ -946,14 +947,14 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                             self.instructions.push(Instruction::LocalGet(id));
                         }
 
-                        self.type_stack.push(TypeKind::Object(class_type.clone()));
+                        self.type_stack.push(TypeKind::Class(class_type.clone()));
                     },
                     ClassKind::Data => {
                         for type_ in convert_class(class_type) {
                             self.build_default_value(type_);
                         }
 
-                        self.type_stack.push(TypeKind::Object(class_type.clone()));
+                        self.type_stack.push(TypeKind::Class(class_type.clone()));
                     },
                 }
             },
@@ -1006,7 +1007,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             TypeKind::String => 4,
             TypeKind::Bool => 4,
             TypeKind::Vector(_) => 4,
-            TypeKind::Object(_) => 4,
+            TypeKind::Class(_) => 4,
             TypeKind::Nothing => 0,
             TypeKind::Unknown => 0,
             TypeKind::Function(_) => 4,

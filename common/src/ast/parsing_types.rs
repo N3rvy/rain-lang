@@ -58,7 +58,7 @@ impl From<&TypeKind> for ParsableType {
                     Box::new(ParsableType::from(func_type.1.as_ref())),
                 ))
             }
-            TypeKind::Object(class_type) => ParsableType::Custom(class_type.name.to_string()),
+            TypeKind::Class(class_type) => ParsableType::Custom(class_type.name.to_string()),
         }
     }
 }

@@ -59,7 +59,7 @@ impl ModulePreParser {
         })
     }
 
-    fn parse_declaration(tokens: &mut Tokens, _: ModuleUID) -> Result<DeclarationParseAction, LangError> {
+    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID) -> Result<DeclarationParseAction, LangError> {
         // TODO: Why is module_uid not used?
 
         let token = tokens.pop_err()?;
@@ -126,7 +126,7 @@ impl ModulePreParser {
                 // {
                 expect_open_body!(tokens);
 
-                let class = Self::parse_class_declaration(tokens, kind)?;
+                let class = Self::parse_class_declaration(tokens, kind, name.clone(), module)?;
 
                 Ok(DeclarationParseAction::Class(name, class))
             },
@@ -135,7 +135,7 @@ impl ModulePreParser {
         }
     }
 
-    fn parse_class_declaration(tokens: &mut Tokens, kind: ClassKind) -> Result<ParsableClass, LangError> {
+    fn parse_class_declaration(tokens: &mut Tokens, kind: ClassKind, name: String, module: ModuleUID) -> Result<ParsableClass, LangError> {
         let mut fields = Vec::new();
         let mut methods = Vec::new();
 
@@ -175,6 +175,9 @@ impl ModulePreParser {
 
         Ok(ParsableClass {
             kind,
+            name,
+            module,
+
             fields,
             methods,
         })

@@ -17,6 +17,9 @@ pub struct ParsableFunction {
 
 pub struct ParsableClass {
     pub kind: ClassKind,
+    pub name: String,
+    pub module: ModuleUID,
+
     pub fields: Vec<(String, ParsableType)>,
     pub methods: Vec<(String, ParsableFunction)>
 }

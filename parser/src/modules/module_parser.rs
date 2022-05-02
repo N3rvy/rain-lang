@@ -1,31 +1,67 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
-use common::constants::DECLARATION_IMPORT_PREFIX;
-use common::errors::{LangError, ParserErrorKind};
+use common::errors::{BuildErrorKind, LangError, LoadErrorKind, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
 use common::tokens::TokenKind;
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
-use crate::modules::module_loader::{GlobalDeclarationKind, ModuleLoaderContext};
+use crate::modules::module_loader::ModuleLoader;
 use crate::modules::parsable_types::ParsableModule;
 use crate::parser_scope::ParserScope;
-use crate::parser_module_scope::ParserModuleScope;
+use crate::parser_module_scope::{GlobalKind, ModuleParserScope};
 use crate::utils::TokensExtensions;
+
+pub struct ParsingModule {
+    pub types: HashMap<String, Arc<ClassType>>,
+    pub module: Arc<ParsableModule>,
+
+    // Indicates whether the module is loaded or not (this means that all the types are already parsed)
+    pub loaded: Cell<bool>,
+}
 
 /// This struct finalizes parsing for the `ParsableModule`s.
 /// It's job is to go through every declaration inside a `ParsableModule`
 /// and through parsing it converts it to a definition
 pub struct ModuleParser<'a> {
-    loader_context: &'a ModuleLoaderContext<'a>,
+    pub module_loader: &'a ModuleLoader,
+    pub modules: HashMap<ModuleUID, ParsingModule>,
+    pub parsable_modules: Vec<Arc<ParsableModule>>,
 }
 
 impl<'a> ModuleParser<'a> {
-    pub fn new(loader_context: &'a ModuleLoaderContext) -> Self {
-        Self {
-            loader_context
+    pub fn new(module_loader: &'a ModuleLoader, modules: Vec<Arc<ParsableModule>>) -> Self {
+        let mut parser = Self {
+            module_loader,
+            modules: HashMap::new(),
+            parsable_modules: modules,
+        };
+        // Loading all the types (classes)
+        // This only adds the types but they will not contain neither methods nor fields
+        for module in &parser.parsable_modules {
+            let mut types = HashMap::new();
+
+            for (name, class) in &module.classes {
+                let class_type = Arc::new(ClassType {
+                    name: class.name.clone(),
+                    module: class.module,
+                    kind: class.kind.clone(),
+                    fields: Default::default(),
+                    methods: Default::default(),
+                });
+                types.insert(name.clone(), class_type);
+            }
+
+            parser.modules.insert(module.uid, ParsingModule {
+                types,
+                module: module.clone(),
+                loaded: Cell::new(false),
+            });
         }
+
+        parser
     }
 
     pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
@@ -100,8 +136,12 @@ impl<'a> ModuleParser<'a> {
         }
 
         for (name, class) in &module.classes {
+            let class_type = match module_scope.globals.get(name) {
+                Some(GlobalKind::Class(_, metadata)) => metadata.clone(),
+                _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("parse_module: variable is not a class".to_string()))),
+            };
+
             let mut methods = Vec::new();
-            let mut method_types = Vec::new();
 
             for (name, method) in &class.methods {
                 let metadata = module_scope.convert_parsable_func_type(&method.func_type)?;
@@ -138,28 +178,18 @@ impl<'a> ModuleParser<'a> {
                     }
                 ));
 
-                method_types.push((
-                    name.clone(),
-                    metadata,
-                ));
+                class_type.methods
+                    .borrow_mut()
+                    .push((name.clone(), metadata));
             }
-
-            let mut fields = Vec::new();
 
             for (name, field) in &class.fields {
-                fields.push((
-                    name.clone(),
-                    module_scope.convert_parsable_type(&field)?,
-                ));
+                class_type.fields
+                    .borrow_mut()
+                    .push((
+                        name.clone(),
+                        module_scope.convert_parsable_type(&field)?));
             }
-
-            let class_type = Arc::new(ClassType {
-                name: name.clone(),
-                module: uid,
-                kind: class.kind.clone(),
-                fields,
-                methods: method_types,
-            });
 
             features.insert(
                 name.clone(),
@@ -181,10 +211,22 @@ impl<'a> ModuleParser<'a> {
         Ok(module)
     }
 
-    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ParserModuleScope, LangError> {
-        let mut scope = ParserModuleScope::new(uid);
+    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ModuleParserScope, LangError> {
+        let mut scope = ModuleParserScope::new(uid);
 
+        let parsing_module = match self.modules.get(&uid) {
+            Some(module) => module,
+            None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
+        };
+
+        // Adds all the types to the scope (they still don't contain anything)
         for (name, class) in &module.classes {
+            let class_type = match parsing_module.types.get(name)
+            {
+                Some(class) => class.clone(),
+                _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: variable is not a class".to_string()))),
+            };
+
             let mut methods = Vec::new();
             for (name, func) in &class.methods {
                 methods.push((
@@ -201,16 +243,48 @@ impl<'a> ModuleParser<'a> {
                 ));
             }
 
-            let class_type = Arc::new(ClassType {
-                name: name.clone(),
-                kind: class.kind.clone(),
-                module: uid,
-                fields,
-                methods,
-            });
-
             scope.declare_class(name.clone(), class_type);
         }
+
+        for import in &module.imports {
+            let uid = match importer.get_unique_identifier(import) {
+                Some(uid) => uid,
+                None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone()))),
+            };
+
+            let parsing_module = match self.modules.get(&uid) {
+                Some(module) => module,
+                None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
+            };
+
+            for (name, _) in &parsing_module.module.classes {
+                let class = parsing_module.types.get(name).unwrap();
+
+                scope.declare_external_class(name.clone(), uid, class.clone());
+            }
+        }
+
+        // If the module is not loaded the load all the classes in it
+        if !parsing_module.loaded.get() {
+            // This adds all the values
+            for (name, parsable_class) in &module.classes {
+                let class = scope.get_class(name)?;
+
+                let mut methods = class.methods.borrow_mut();
+                let mut fields = class.fields.borrow_mut();
+
+                for (name, method) in &parsable_class.methods {
+                    let func = scope.convert_parsable_func_type(&method.func_type)?;
+                    methods.push((name.clone(), func));
+                }
+
+                for (name, field) in &parsable_class.fields {
+                    let field = scope.convert_parsable_type(&field)?;
+                    fields.push((name.clone(), field));
+                }
+            }
+        }
+
 
         // Declaring every type into the scope
         for (name, var) in &module.variables {
@@ -222,31 +296,22 @@ impl<'a> ModuleParser<'a> {
         }
 
         for import in &module.imports {
-            // TODO: This is horrible please fix
-            let uid = if import.0.starts_with(DECLARATION_IMPORT_PREFIX) {
-                ModuleUID::from_string(import.0.clone())
-            } else {
-                match importer.get_unique_identifier(import) {
-                    Some(uid) => uid,
-                    None => continue,
-                }
+            let uid = match importer.get_unique_identifier(import) {
+                Some(uid) => uid,
+                None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone()))),
             };
 
-            let definitions = self.loader_context.get_declarations(uid);
+            let parsing_module = match self.modules.get(&uid) {
+                Some(module) => module,
+                None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
+            };
 
-            for (name, def) in definitions {
-                match def {
-                    GlobalDeclarationKind::Var(type_)=> scope.declare_external_var(
-                        name.clone(),
-                        uid,
-                        scope.convert_parsable_type(&type_)?),
-                    GlobalDeclarationKind::Func(type_) => scope.declare_external_func(
-                        name.clone(),
+            for (name, var) in &parsing_module.module.variables {
+                scope.declare_external_var(name.clone(), uid, scope.convert_parsable_type(&var.type_kind)?);
+            }
 
-                        uid,
-                        scope.convert_parsable_func_type(&type_)?),
-                    GlobalDeclarationKind::Class(type_) => scope.declare_external_class(name.clone(), uid, type_),
-                }
+            for (name, func) in &parsing_module.module.functions {
+                scope.declare_external_func(name.clone(), uid, scope.convert_parsable_func_type(&func.func_type)?);
             }
         }
 

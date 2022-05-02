@@ -1,4 +1,5 @@
 use std::{sync::Arc, fmt::Debug};
+use std::cell::RefCell;
 use crate::module::{FunctionDefinition, ModuleUID};
 use crate::tokens::PrimitiveType;
 use super::ASTBody;
@@ -17,9 +18,12 @@ pub struct ClassType {
     pub name: String,
     pub module: ModuleUID,
     pub kind: ClassKind,
-    pub fields: Vec<(String, TypeKind)>,
-    pub methods: Vec<(String, FunctionType)>,
+    pub fields: RefCell<Vec<(String, TypeKind)>>,
+    pub methods: RefCell<Vec<(String, FunctionType)>>,
 }
+
+unsafe impl Send for ClassType {}
+unsafe impl Sync for ClassType {}
 
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
@@ -90,7 +94,7 @@ pub enum TypeKind {
     Nothing,
     Vector(Box<TypeKind>),
     Function(FunctionType),
-    Object(Arc<ClassType>),
+    Class(Arc<ClassType>),
 }
 
 impl From<&PrimitiveType> for TypeKind {

@@ -165,13 +165,14 @@ pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
         TypeKind::Nothing => vec![],
         TypeKind::Vector(_) => vec![ValType::I32],
         TypeKind::Function(_) => todo!(),
-        TypeKind::Object(obj) => convert_class(obj),
+        TypeKind::Class(obj) => convert_class(obj),
     }
 }
 
 pub(crate) fn convert_class(class_type: &Arc<ClassType>) -> Vec<ValType> {
     if let ClassKind::Data = class_type.kind {
         convert_types(&class_type.fields
+            .borrow()
             .iter()
             .map(|(_, type_)| type_.clone())
             .collect())

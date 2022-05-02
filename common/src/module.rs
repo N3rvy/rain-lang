@@ -37,6 +37,7 @@ pub struct ClassDefinition {
 impl ClassDefinition {
     pub fn get_method_def(&self, name: &String) -> Option<FunctionDefinition> {
         let metadata = self.metadata.methods
+            .borrow()
             .iter()
             .find(|(n, _)| n == name)?
             .1.clone();

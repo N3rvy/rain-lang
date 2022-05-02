@@ -3,8 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::ClassType;
-use common::constants::DECLARATION_IMPORT_PREFIX;
-use common::module::{Module, ModuleFeature, ModuleUID};
+use common::module::{Module, ModuleUID};
 use common::errors::{LoadErrorKind, format_load, format_error};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
@@ -42,18 +41,17 @@ impl ModuleLoader {
             Err(err) => return Err(anyhow!(format_error(source, err))),
         };
         let parsable_module = match ModulePreParser::prepare_module(tokens, id, uid) {
-            Ok(module) => module,
+            Ok(module) => Arc::new(module),
             Err(err) => return Err(anyhow!(format_error(source, err)))
         };
-        let context = self.create_context(&parsable_module, importer)?;
-        let parser = ModuleParser::new(&context);
+        let parser = self.create_parser(parsable_module.clone(), importer)?;
 
         // Return result vector
         let mut modules = Vec::new();
 
         // Loading all the dependencies
-        for (uid, parsable_module) in &context.modules {
-            let module = match parser.parse_module(parsable_module, *uid, importer) {
+        for (uid, parsable_module) in &parser.modules {
+            let module = match parser.parse_module(&parsable_module.module, *uid, importer) {
                 Ok(module) => module,
                 Err(err) => return Err(anyhow!(format_error(source, err))),
             };
@@ -144,33 +142,27 @@ impl ModuleLoader {
     //     }
     // }
 
-    fn create_context(&self, module: &ParsableModule, importer: &impl ModuleImporter) -> anyhow::Result<ModuleLoaderContext> {
+    fn create_parser(&self, module: Arc<ParsableModule>, importer: &impl ModuleImporter) -> anyhow::Result<ModuleParser> {
         let mut modules = Vec::new();
+
+        modules.push(module.clone());
 
         self.load_imports(&mut modules, &module, importer)?;
 
-        Ok(ModuleLoaderContext {
-            module_loader: self,
-            modules,
-        })
+        Ok(ModuleParser::new(self, modules))
     }
 
     fn load_imports(
         &self,
-        vec: &mut Vec<(ModuleUID, ParsableModule)>,
-        module: &ParsableModule,
+        vec: &mut Vec<Arc<ParsableModule>>,
+        module: &Arc<ParsableModule>,
         importer: &impl ModuleImporter,
     ) -> anyhow::Result<()> {
 
         for import in &module.imports {
-            // TODO: This is horrible please fix
-            let uid = if import.0.starts_with(DECLARATION_IMPORT_PREFIX) {
-                ModuleUID::from_string(import.0.clone())
-            } else {
-                match importer.get_unique_identifier(import) {
-                    Some(uid) => uid,
-                    None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
-                }
+            let uid = match importer.get_unique_identifier(import) {
+                Some(uid) => uid,
+                None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
             };
 
             if self.modules.borrow().contains_key(&uid) {
@@ -184,13 +176,13 @@ impl ModuleLoader {
             let tokens = Tokenizer::tokenize(&source)?;
 
             let parsable_module = match ModulePreParser::prepare_module(tokens, import.clone(), uid) {
-                Ok(module) => module,
+                Ok(module) => Arc::new(module),
                 Err(err) => return Err(anyhow!(format_error(&source, err)))
             };
 
             self.load_imports(vec, &parsable_module, importer)?;
 
-            vec.push((uid, parsable_module));
+            vec.push(parsable_module);
         }
 
         Ok(())
@@ -216,56 +208,4 @@ pub enum GlobalDeclarationKind {
     Var(ParsableType),
     Func(ParsableFunctionType),
     Class(Arc<ClassType>),
-}
-
-/// This contains the `ParsableModule`s used for loading a module's dependencies
-pub struct ModuleLoaderContext<'a> {
-    module_loader: &'a ModuleLoader,
-    modules: Vec<(ModuleUID, ParsableModule)>,
-}
-
-impl<'a> ModuleLoaderContext<'a> {
-    pub fn get_declarations(&self, module_uid: ModuleUID) -> Vec<(String, GlobalDeclarationKind)> {
-        let module = self.modules
-            .iter()
-            .find(|(uid, _)| *uid == module_uid);
-
-        match module {
-            Some((_, module)) => {
-                module.functions
-                    .iter()
-                    .map(|(name, func)| (name.clone(), GlobalDeclarationKind::Func(func.func_type.clone())))
-                    .chain(module.variables
-                        .iter()
-                        .map(|(name, var)| (name.clone(), GlobalDeclarationKind::Var(var.type_kind.clone()))))
-                    // .chain(module.classes
-                    //     .iter()
-                    //     .map(|(name, class)| (name.clone(), GlobalDeclarationKind::Class(class.class_type.clone()))))
-                    .collect()
-            },
-            None => {
-                self.module_loader
-                    .get_module(module_uid)
-                    .map(|module| {
-                        module.features
-                            .iter()
-                            .map(|(name, feature)| match feature {
-                                ModuleFeature::Function(func)=> (
-                                    name.clone(),
-                                    GlobalDeclarationKind::Func(ParsableFunctionType::from(&func.metadata))),
-
-                                ModuleFeature::Variable(var) => (
-                                    name.clone(),
-                                    GlobalDeclarationKind::Var(ParsableType::from(&var.metadata))),
-
-                                ModuleFeature::Class(class) => (
-                                    name.clone(),
-                                    GlobalDeclarationKind::Class(class.metadata.clone())),
-                            })
-                            .collect()
-                    })
-                    .unwrap_or(Vec::new())
-            }
-        }
-    }
 }

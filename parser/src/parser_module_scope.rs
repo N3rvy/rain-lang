@@ -13,18 +13,18 @@ pub enum ScopeGetResult {
     None,
 }
 
-enum GlobalKind {
+pub enum GlobalKind {
     Var(ModuleUID, TypeKind),
     Func(ModuleUID, FunctionType),
     Class(ModuleUID, Arc<ClassType>),
 }
 
-pub struct ParserModuleScope {
+pub struct ModuleParserScope {
     pub uid: ModuleUID,
-    globals: HashMap<String, GlobalKind>,
+    pub globals: HashMap<String, GlobalKind>,
 }
 
-impl ParserModuleScope {
+impl ModuleParserScope {
     pub fn new(module_uid: ModuleUID) -> Self {
         Self {
             uid: module_uid,
@@ -80,7 +80,7 @@ impl ParserModuleScope {
                 // TODO: This need a token position in case of error
 
                 match self.globals.get(name) {
-                    Some(GlobalKind::Class(_, type_)) => TypeKind::Object(type_.clone()),
+                    Some(GlobalKind::Class(_, type_)) => TypeKind::Class(type_.clone()),
                     _ => return Err(LangError::parser(
                         &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
                         ParserErrorKind::UnexpectedError(
@@ -118,5 +118,15 @@ impl ParserModuleScope {
     pub fn declare_external_class(&mut self, name: String, module: ModuleUID, class_type: Arc<ClassType>) {
         self.globals
             .insert(name, GlobalKind::Class(module, class_type));
+    }
+
+    pub fn get_class(&mut self, name: &String) -> Result<Arc<ClassType>, LangError> {
+        match self.globals.get(name) {
+            Some(GlobalKind::Class(_, class_type)) => Ok(class_type.clone()),
+            _ => return Err(LangError::parser(
+                &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
+                ParserErrorKind::UnexpectedError(
+                    "get_class: class not found".to_string()))),
+        }
     }
 }
