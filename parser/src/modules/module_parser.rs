@@ -4,7 +4,7 @@ use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
 use common::errors::{BuildErrorKind, LangError, LoadErrorKind, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
-use common::tokens::TokenKind;
+use common::tokens::{Token, TokenKind};
 use tokenizer::iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
@@ -64,8 +64,15 @@ impl<'a> ModuleParser<'a> {
         parser
     }
 
-    pub fn parse_module(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
-        let module_scope = self.create_scope(&module, uid, importer)?;
+    pub fn parse_module(&self, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
+        let module = match self.modules.get(&uid) {
+            Some(module) => &module.module,
+            None => return Err(LangError::parser(
+                &Token::new(TokenKind::NewLine, 0, 0),
+                ParserErrorKind::UnexpectedError("parse_module: Module not found".to_string()))),
+        };
+
+        let module_scope = self.create_scope(module, uid, importer)?;
 
         let mut features = HashMap::new();
 

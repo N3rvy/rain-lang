@@ -46,36 +46,33 @@ impl ModuleLoader {
         };
         let parser = self.create_parser(parsable_module.clone(), importer)?;
 
-        // Return result vector
-        let mut modules = Vec::new();
-
-        // Loading all the dependencies
-        for (uid, parsable_module) in &parser.modules {
-            let module = match parser.parse_module(&parsable_module.module, *uid, importer) {
-                Ok(module) => module,
-                Err(err) => return Err(anyhow!(format_error(source, err))),
-            };
-            let module = Arc::new(module);
-
-            modules.push(module.clone());
-
-            self.modules
-                .borrow_mut()
-                .insert(*uid, module);
-        }
-
         // Loading the main module
-        let module = match parser.parse_module(&parsable_module, uid, importer) {
-            Ok(module) => module,
+        let module = match parser.parse_module(uid, importer) {
+            Ok(module) => Arc::new(module),
             Err(err) => return Err(anyhow!(format_error(source, err))),
         };
-        let module = Arc::new(module);
 
         self.modules
             .borrow_mut()
             .insert(uid, module.clone());
 
-        Ok((module, modules))
+        // Loading all the dependencies
+        let mut dependencies = Vec::new();
+
+        for import_uid in &module.imports {
+            let module = match parser.parse_module(*import_uid, importer) {
+                Ok(module) => Arc::new(module),
+                Err(err) => return Err(anyhow!(format_error(source, err))),
+            };
+
+            dependencies.push(module.clone());
+
+            self.modules
+                .borrow_mut()
+                .insert(*import_uid, module);
+        }
+
+        Ok((module, dependencies))
     }
 
     // pub fn load_declaration_module_with_source(
