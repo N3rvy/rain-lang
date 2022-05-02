@@ -13,11 +13,11 @@ impl Engine for WasmEngine {
     type Module = WasmModule;
 
     fn load_module(&mut self, identifier: impl Into<String>, importer: &impl ModuleImporter) -> Result<ModuleUID> {
-        let (uid, _) = self
+        let (module, _) = self
             .module_loader()
             .load_module(&ModuleIdentifier(identifier.into()), importer)?;
 
-        Ok(uid)
+        Ok(module.uid)
     }
 
     fn insert_module(&mut self, _module: Arc<Module>) -> Result<()> {

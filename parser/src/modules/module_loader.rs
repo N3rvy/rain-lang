@@ -34,7 +34,7 @@ impl ModuleLoader {
     }
 
     pub fn load_module_with_source(&mut self, id: ModuleIdentifier, uid: ModuleUID, source: &String, importer: &impl ModuleImporter)
-        -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)>
+        -> anyhow::Result<(Arc<Module>, Vec<Arc<Module>>)>
     {
         let tokens = match Tokenizer::tokenize(&source) {
             Ok(tokens) => tokens,
@@ -71,13 +71,11 @@ impl ModuleLoader {
         };
         let module = Arc::new(module);
 
-        modules.push(module.clone());
-
         self.modules
             .borrow_mut()
-            .insert(uid, module);
+            .insert(uid, module.clone());
 
-        Ok((uid, modules))
+        Ok((module, modules))
     }
 
     // pub fn load_declaration_module_with_source(
@@ -97,15 +95,15 @@ impl ModuleLoader {
     //     Ok(decl_module)
     // }
 
-    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(ModuleUID, Vec<Arc<Module>>)> {
+    pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(Arc<Module>, Vec<Arc<Module>>)> {
         let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
             None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(id.0.clone()))))
         };
 
         // If cached then simply return
-        if self.modules.borrow().contains_key(&uid) {
-            return Ok((uid, Vec::new()))
+        if let Some(module) = self.modules.borrow().get(&uid) {
+            return Ok((module.clone(), Vec::new()))
         }
 
         let source = match importer.load_module(id, false) {

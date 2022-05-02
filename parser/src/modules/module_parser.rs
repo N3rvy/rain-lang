@@ -220,28 +220,12 @@ impl<'a> ModuleParser<'a> {
         };
 
         // Adds all the types to the scope (they still don't contain anything)
-        for (name, class) in &module.classes {
+        for (name, _) in &module.classes {
             let class_type = match parsing_module.types.get(name)
             {
                 Some(class) => class.clone(),
                 _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: variable is not a class".to_string()))),
             };
-
-            let mut methods = Vec::new();
-            for (name, func) in &class.methods {
-                methods.push((
-                    name.clone(),
-                    scope.convert_parsable_func_type(&func.func_type)?,
-                ));
-            }
-
-            let mut fields = Vec::new();
-            for (name, field) in &class.fields {
-                fields.push((
-                    name.clone(),
-                    scope.convert_parsable_type(&field)?,
-                ));
-            }
 
             scope.declare_class(name.clone(), class_type);
         }
@@ -283,6 +267,8 @@ impl<'a> ModuleParser<'a> {
                     fields.push((name.clone(), field));
                 }
             }
+
+            parsing_module.loaded.set(true);
         }
 
 
