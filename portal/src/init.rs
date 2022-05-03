@@ -31,8 +31,8 @@ pub fn init(args: Args) -> anyhow::Result<()> {
 
     let mut main_file = File::create(&main_path)?;
     main_file.write_all(br#"
-func main() none:
-    return
+func main() {
+}
     "#)?;
 
     println!("Main file created at {}", main_path.to_str().unwrap());
