@@ -66,7 +66,7 @@ impl<'a> ModuleParser<'a> {
 
     pub fn parse_module(&self, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
         let module = match self.modules.get(&uid) {
-            Some(module) => &module.module,
+            Some(module) => module,
             None => return Err(LangError::parser(
                 &Token::new(TokenKind::NewLine, 0, 0),
                 ParserErrorKind::UnexpectedError("parse_module: Module not found".to_string()))),
@@ -76,12 +76,12 @@ impl<'a> ModuleParser<'a> {
 
         let mut features = HashMap::new();
 
-        for (name, var) in &module.variables {
+        for (name, var) in &module.module.variables {
             let metadata = module_scope.convert_parsable_type(&var.type_kind)?;
 
             let data = match var.body {
                 Some(body) => {
-                    let mut tokens = module.tokens.new_clone(body);
+                    let mut tokens = module.module.tokens.new_clone(body);
                     let token = &tokens.peek().unwrap();
                     let data = Self::parse_variable_value(&mut tokens)?;
 
@@ -105,13 +105,13 @@ impl<'a> ModuleParser<'a> {
             );
         }
 
-        for (name, func) in &module.functions {
+        for (name, func) in &module.module.functions {
 
             let metadata = module_scope.convert_parsable_func_type(&func.func_type)?;
 
             let data = match func.body {
                 Some(body) => {
-                    let mut tokens = module.tokens.new_clone(body);
+                    let mut tokens = module.module.tokens.new_clone(body);
 
                     let scope = module_scope.new_child();
 
@@ -142,7 +142,7 @@ impl<'a> ModuleParser<'a> {
             );
         }
 
-        for (name, class) in &module.classes {
+        for (name, class) in &module.module.classes {
             let class_type = match module_scope.globals.get(name) {
                 Some(GlobalKind::Class(_, metadata)) => metadata.clone(),
                 _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("parse_module: variable is not a class".to_string()))),
@@ -155,7 +155,7 @@ impl<'a> ModuleParser<'a> {
 
                 let data = match method.body {
                     Some(body) => {
-                        let mut tokens = module.tokens.new_clone(body);
+                        let mut tokens = module.module.tokens.new_clone(body);
 
                         let scope = module_scope.new_child();
 
@@ -208,7 +208,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         let module = Module {
-            id: module.id.clone(),
+            id: module.module.id.clone(),
             uid,
 
             imports: Vec::new(),
@@ -218,13 +218,10 @@ impl<'a> ModuleParser<'a> {
         Ok(module)
     }
 
-    fn create_scope(&self, module: &ParsableModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ModuleParserScope, LangError> {
+    fn create_scope(&self, parsing_module: &ParsingModule, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<ModuleParserScope, LangError> {
         let mut scope = ModuleParserScope::new(uid);
 
-        let parsing_module = match self.modules.get(&uid) {
-            Some(module) => module,
-            None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
-        };
+        let module = &parsing_module.module;
 
         // Adds all the types to the scope (they still don't contain anything)
         for (name, _) in &module.classes {
@@ -256,28 +253,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         // If the module is not loaded the load all the classes in it
-        if !parsing_module.loaded.get() {
-            // This adds all the values
-            for (name, parsable_class) in &module.classes {
-                let class = scope.get_class(name)?;
-
-                let mut methods = class.methods.borrow_mut();
-                let mut fields = class.fields.borrow_mut();
-
-                for (name, method) in &parsable_class.methods {
-                    let func = scope.convert_parsable_func_type(&method.func_type)?;
-                    methods.push((name.clone(), func));
-                }
-
-                for (name, field) in &parsable_class.fields {
-                    let field = scope.convert_parsable_type(&field)?;
-                    fields.push((name.clone(), field));
-                }
-            }
-
-            parsing_module.loaded.set(true);
-        }
-
+        Self::load_parsing_module(&mut scope, parsing_module)?;
 
         // Declaring every type into the scope
         for (name, var) in &module.variables {
@@ -299,6 +275,9 @@ impl<'a> ModuleParser<'a> {
                 None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
             };
 
+            // If the module is not loaded the load all the classes in it
+            Self::load_parsing_module(&mut scope, parsing_module)?;
+
             for (name, var) in &parsing_module.module.variables {
                 scope.declare_external_var(name.clone(), uid, scope.convert_parsable_type(&var.type_kind)?);
             }
@@ -309,6 +288,31 @@ impl<'a> ModuleParser<'a> {
         }
 
         Ok(scope)
+    }
+
+    fn load_parsing_module(scope: &mut ModuleParserScope, parsing_module: &ParsingModule) -> Result<(), LangError> {
+        if !parsing_module.loaded.get() {
+            // This adds all the values
+            for (name, parsable_class) in &parsing_module.module.classes {
+                let class = scope.get_class(name)?;
+
+                let mut methods = class.methods.borrow_mut();
+                let mut fields = class.fields.borrow_mut();
+
+                for (name, method) in &parsable_class.methods {
+                    let func = scope.convert_parsable_func_type(&method.func_type)?;
+                    methods.push((name.clone(), func));
+                }
+
+                for (name, field) in &parsable_class.fields {
+                    let field = scope.convert_parsable_type(&field)?;
+                    fields.push((name.clone(), field));
+                }
+            }
+
+            parsing_module.loaded.set(true);
+        }
+        Ok(())
     }
 
     fn parse_variable_value(tokens: &mut Tokens) -> Result<LiteralKind, LangError> {
