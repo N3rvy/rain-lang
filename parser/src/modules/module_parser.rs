@@ -107,7 +107,7 @@ impl<'a> ModuleParser<'a> {
 
         for (name, func) in &module.module.functions {
 
-            let metadata = module_scope.convert_parsable_func_type(&func.func_type)?;
+            let metadata = module_scope.convert_parsable_func_type(&func.func_type, None)?;
 
             let data = match func.body {
                 Some(body) => {
@@ -121,7 +121,7 @@ impl<'a> ModuleParser<'a> {
                         &mut tokens,
                         &scope,
                         &func.params,
-                        module_scope.convert_parsable_func_type(&func.func_type)?,
+                        module_scope.convert_parsable_func_type(&func.func_type, None)?,
                         false)?;
 
                     if !scope.eval_type.borrow().is_compatible(&metadata.1) {
@@ -151,7 +151,7 @@ impl<'a> ModuleParser<'a> {
             let mut methods = Vec::new();
 
             for (name, method) in &class.methods {
-                let metadata = module_scope.convert_parsable_func_type(&method.func_type)?;
+                let metadata = module_scope.convert_parsable_func_type(&method.func_type, None)?;
 
                 let data = match method.body {
                     Some(body) => {
@@ -165,7 +165,7 @@ impl<'a> ModuleParser<'a> {
                             &mut tokens,
                             &scope,
                             &method.params,
-                            module_scope.convert_parsable_func_type(&method.func_type)?,
+                            module_scope.convert_parsable_func_type(&method.func_type, None)?,
                             false)?;
 
                         if !scope.eval_type.borrow().is_compatible(&metadata.1) {
@@ -271,7 +271,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         for (name, func) in &module.functions {
-            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type)?);
+            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type, None)?);
         }
 
         for import in &module.imports {
@@ -293,7 +293,7 @@ impl<'a> ModuleParser<'a> {
             }
 
             for (name, func) in &parsing_module.module.functions {
-                scope.declare_external_func(name.clone(), uid, scope.convert_parsable_func_type(&func.func_type)?);
+                scope.declare_external_func(name.clone(), uid, scope.convert_parsable_func_type(&func.func_type, None)?);
             }
         }
 
@@ -310,7 +310,7 @@ impl<'a> ModuleParser<'a> {
                 let mut fields = class.fields.borrow_mut();
 
                 for (name, method) in &parsable_class.methods {
-                    let func = scope.convert_parsable_func_type(&method.func_type)?;
+                    let func = scope.convert_parsable_func_type(&method.func_type, Some(class.clone()))?;
                     methods.push((name.clone(), func));
                 }
 

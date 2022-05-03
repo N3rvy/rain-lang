@@ -13,13 +13,19 @@ pub enum ClassKind {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct ClassType {
     pub name: String,
     pub module: ModuleUID,
     pub kind: ClassKind,
     pub fields: RefCell<Vec<(String, TypeKind)>>,
     pub methods: RefCell<Vec<(String, FunctionType)>>,
+}
+
+impl PartialEq for ClassType {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.module == other.module
+    }
 }
 
 unsafe impl Send for ClassType {}
