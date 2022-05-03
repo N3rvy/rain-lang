@@ -27,29 +27,24 @@ fn main() -> anyhow::Result<()> {
 
 struct ReplImporter {
     src_dir: PathBuf,
-    declaration_dir: PathBuf,
 }
 
 impl ReplImporter {
-    fn get_path(&self, identifier: &ModuleIdentifier, declaration: bool) -> PathBuf {
-        if declaration {
-            self.declaration_dir.join(identifier.0.clone() + ".d.vrs")
-        } else {
-            self.src_dir.join(identifier.0.clone() + ".vrs")
-        }
+    fn get_path(&self, identifier: &ModuleIdentifier) -> PathBuf {
+        self.src_dir.join(identifier.0.clone() + ".vrs")
     }
 }
 
 impl ModuleImporter for ReplImporter {
     fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
-        let path = self.get_path(identifier, false);
+        let path = self.get_path(identifier);
 
         let path = fs::canonicalize(&path).ok()?;
         Some(ModuleUID::from_string(path.to_str().unwrap().to_string()))
     }
 
-    fn load_module(&self, identifier: &ModuleIdentifier, declaration: bool) -> Option<String> {
-        let path = self.get_path(identifier, declaration);
+    fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
+        let path = self.get_path(identifier);
 
         std::fs::read_to_string(path.to_str()?).ok()
     }

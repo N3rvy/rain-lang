@@ -21,9 +21,6 @@ pub fn init(args: Args) -> anyhow::Result<()> {
     config_file.write_all(config_str.as_bytes())?;
     println!("Config file created at {}", config_path.to_str().unwrap());
 
-    if config.declaration_dir != "" {
-        fs::create_dir_all(config.declaration_dir.clone())?;
-    }
     fs::create_dir_all(config.src_dir.clone())?;
 
     let main_path = Path::new(&config.src_dir).join(Path::new(&config.main));

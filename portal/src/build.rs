@@ -16,7 +16,6 @@ pub fn build(args: Args) -> anyhow::Result<()> {
 
     let importer = ReplImporter {
         src_dir: PathBuf::from(&config.src_dir),
-        declaration_dir: PathBuf::from(&config.declaration_dir),
     };
 
     // Loading core lib
