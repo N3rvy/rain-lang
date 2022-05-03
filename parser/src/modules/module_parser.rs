@@ -207,11 +207,21 @@ impl<'a> ModuleParser<'a> {
             );
         }
 
+        let mut imports = Vec::new();
+        for import in &module.module.imports {
+            let uid = match importer.get_unique_identifier(import) {
+                Some(uid) => uid,
+                None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone()))),
+            };
+
+            imports.push(uid);
+        }
+
         let module = Module {
             id: module.module.id.clone(),
             uid,
 
-            imports: Vec::new(),
+            imports,
             features,
         };
 

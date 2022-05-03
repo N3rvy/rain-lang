@@ -84,6 +84,8 @@ impl<'a> ModuleBuilder<'a> {
                         => return Err(LangError::build(BuildErrorKind::Unsupported("Variable declaration not yet supported".to_string()))),
                     ModuleFeature::Class(class) => {
                         for (method_name, method) in &class.data.methods {
+                            if let Some(_) = method.data { continue }
+
                             let name = format!("{}::{}", class.metadata.name, method_name);
 
                             builder.function_names.push(name.clone());
