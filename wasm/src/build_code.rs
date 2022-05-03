@@ -1,13 +1,13 @@
 use std::ops::Index;
 use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
 use common::ast::{ASTNode, NodeKind};
-use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind};
+use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind, ClassType};
 use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, VariableDefinition};
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
-use common::constants::CLASS_CONSTRUCTOR_NAME;
+use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
@@ -178,7 +178,8 @@ impl<'a> ModuleBuilder<'a> {
             name.to_string(),
             func_type.0.clone(),
             func.parameters.clone(),
-            *func_type.1.clone());
+            *func_type.1.clone(),
+            func.method.clone());
 
         for node in &func.body {
             code_builder.build_statement(&node)?;
@@ -331,12 +332,20 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
     pub fn new(
         module_builder: &'a mut ModuleBuilder<'b>,
         name: String,
-        params: Vec<TypeKind>,
-        param_names: Vec<String>,
+        mut params: Vec<TypeKind>,
+        mut param_names: Vec<String>,
         ret: TypeKind,
+        method: Option<Arc<ClassType>>,
     ) -> Self {
         let mut id_accumulator = 0u32;
         let mut local_ids = Vec::with_capacity(params.len());
+
+        // TODO: Fix code duplication
+        if let Some(method) = method {
+            param_names.push(CLASS_SELF_REFERENCE.to_string());
+            params.push(TypeKind::Class(method));
+        }
+
         for param in &params {
             let len = convert_type(param).len() as u32;
             let ids = (id_accumulator..id_accumulator + len).collect();

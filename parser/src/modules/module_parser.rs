@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
+use common::constants::CLASS_SELF_REFERENCE;
 use common::errors::{BuildErrorKind, LangError, LoadErrorKind, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
 use common::tokens::{Token, TokenKind};
@@ -107,7 +108,7 @@ impl<'a> ModuleParser<'a> {
 
         for (name, func) in &module.module.functions {
 
-            let metadata = module_scope.convert_parsable_func_type(&func.func_type, None)?;
+            let metadata = module_scope.convert_parsable_func_type(&func.func_type)?;
 
             let data = match func.body {
                 Some(body) => {
@@ -121,8 +122,8 @@ impl<'a> ModuleParser<'a> {
                         &mut tokens,
                         &scope,
                         &func.params,
-                        module_scope.convert_parsable_func_type(&func.func_type, None)?,
-                        false)?;
+                        metadata.clone(),
+                        None)?;
 
                     if !scope.eval_type.borrow().is_compatible(&metadata.1) {
                         return Err(LangError::wrong_type(&token, &metadata.1, &scope.eval_type.into_inner()));
@@ -151,7 +152,7 @@ impl<'a> ModuleParser<'a> {
             let mut methods = Vec::new();
 
             for (name, method) in &class.methods {
-                let metadata = module_scope.convert_parsable_func_type(&method.func_type, None)?;
+                let metadata = module_scope.convert_parsable_func_type(&method.func_type)?;
 
                 let data = match method.body {
                     Some(body) => {
@@ -165,8 +166,8 @@ impl<'a> ModuleParser<'a> {
                             &mut tokens,
                             &scope,
                             &method.params,
-                            module_scope.convert_parsable_func_type(&method.func_type, None)?,
-                            false)?;
+                            metadata.clone(),
+                            Some(class_type.clone()))?;
 
                         if !scope.eval_type.borrow().is_compatible(&metadata.1) {
                             return Err(LangError::wrong_type(&token, &metadata.1, &scope.eval_type.into_inner()));
@@ -271,7 +272,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         for (name, func) in &module.functions {
-            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type, None)?);
+            scope.declare_func(name.clone(), scope.convert_parsable_func_type(&func.func_type)?);
         }
 
         for import in &module.imports {
@@ -293,7 +294,7 @@ impl<'a> ModuleParser<'a> {
             }
 
             for (name, func) in &parsing_module.module.functions {
-                scope.declare_external_func(name.clone(), uid, scope.convert_parsable_func_type(&func.func_type, None)?);
+                scope.declare_external_func(name.clone(), uid, scope.convert_parsable_func_type(&func.func_type)?);
             }
         }
 
@@ -310,7 +311,7 @@ impl<'a> ModuleParser<'a> {
                 let mut fields = class.fields.borrow_mut();
 
                 for (name, method) in &parsable_class.methods {
-                    let func = scope.convert_parsable_func_type(&method.func_type, Some(class.clone()))?;
+                    let func = scope.convert_parsable_func_type(&method.func_type)?;
                     methods.push((name.clone(), func));
                 }
 
@@ -341,7 +342,7 @@ impl<'a> ModuleParser<'a> {
         scope: &ParserScope,
         params: &Vec<String>,
         func_type: FunctionType,
-        is_method: bool
+        method: Option<Arc<ClassType>>,
     ) -> Result<Arc<Function>, LangError> {
         if params.len() != func_type.0.len() {
             return Err(
@@ -351,12 +352,16 @@ impl<'a> ModuleParser<'a> {
                         "parse_function_value: different params lenghts".to_string())));
         }
 
+        if let Some(ref method) = method {
+            scope.declare(CLASS_SELF_REFERENCE.to_string(), TypeKind::Class(method.clone()));
+        }
+
         for i in 0..params.len() {
             scope.declare(params[i].clone(), func_type.0[i].clone());
         }
 
         let body = scope.parse_body(tokens)?;
 
-        Ok(Function::new(body, params.clone(), is_method))
+        Ok(Function::new(body, params.clone(), method))
     }
 }

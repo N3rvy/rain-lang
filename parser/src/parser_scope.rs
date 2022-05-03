@@ -345,7 +345,7 @@ impl<'a> ParserScope<'a> {
                     TypeKind::Function(FunctionType(arg_types, ret_value)) => (arg_types, ret_value),
                     _ => return Err(LangError::parser(&token, ParserErrorKind::NotCallable)),
                 };
-                
+
                 // Check parameters types
                 if parameters.len() != arg_types.len() {
                     return Err(LangError::parser(&token, ParserErrorKind::InvalidArgCount(arg_types.len())))

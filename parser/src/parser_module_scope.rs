@@ -46,12 +46,8 @@ impl ModuleParserScope {
         }
     }
 
-    pub fn convert_parsable_func_type(&self, func_type: &ParsableFunctionType, method: Option<Arc<ClassType>>) -> Result<FunctionType, LangError> {
+    pub fn convert_parsable_func_type(&self, func_type: &ParsableFunctionType) -> Result<FunctionType, LangError> {
         let mut params = Vec::new();
-
-        if let Some(method) = method {
-            params.push(TypeKind::Class(method));
-        }
 
         for param in &func_type.0 {
             params.push(self.convert_parsable_type(param)?);
