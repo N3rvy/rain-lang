@@ -340,10 +340,9 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
         let mut id_accumulator = 0u32;
         let mut local_ids = Vec::with_capacity(params.len());
 
-        // TODO: Fix code duplication
         if let Some(method) = method {
-            param_names.push(CLASS_SELF_REFERENCE.to_string());
-            params.push(TypeKind::Class(method));
+            param_names.insert(0, CLASS_SELF_REFERENCE.to_string());
+            params.insert(0, TypeKind::Class(method));
         }
 
         for param in &params {
