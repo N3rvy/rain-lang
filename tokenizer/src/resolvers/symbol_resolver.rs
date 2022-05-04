@@ -27,11 +27,11 @@ impl SymbolResolver {
             "while" => TokenKind::While,
             "import" => TokenKind::Import,
 
-            "int" => TokenKind::Type(PrimitiveType::Int),
-            "float" => TokenKind::Type(PrimitiveType::Float),
-            "bool" => TokenKind::Type(PrimitiveType::Bool),
-            "str" => TokenKind::Type(PrimitiveType::String),
-            "none" => TokenKind::Type(PrimitiveType::Nothing),
+            "Int" => TokenKind::Type(PrimitiveType::Int),
+            "Float" => TokenKind::Type(PrimitiveType::Float),
+            "Bool" => TokenKind::Type(PrimitiveType::Bool),
+            "String" => TokenKind::Type(PrimitiveType::String),
+            "None" => TokenKind::Type(PrimitiveType::Nothing),
 
             "true" => TokenKind::Literal(LiteralKind::Bool(true)),
             "false" => TokenKind::Literal(LiteralKind::Bool(false)),
