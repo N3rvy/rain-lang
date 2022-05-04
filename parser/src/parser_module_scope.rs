@@ -120,7 +120,7 @@ impl ModuleParserScope {
             .insert(name, GlobalKind::Class(module, class_type));
     }
 
-    pub fn get_class(&mut self, name: &String) -> Result<Arc<ClassType>, LangError> {
+    pub fn get_class(&self, name: &String) -> Result<Arc<ClassType>, LangError> {
         match self.globals.get(name) {
             Some(GlobalKind::Class(_, class_type)) => Ok(class_type.clone()),
             _ => return Err(LangError::parser(

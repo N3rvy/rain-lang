@@ -12,7 +12,7 @@ use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_loader::ModuleLoader;
 use crate::modules::parsable_types::ParsableModule;
 use crate::parser_scope::ParserScope;
-use crate::parser_module_scope::{GlobalKind, ModuleParserScope};
+use crate::parser_module_scope::ModuleParserScope;
 use crate::utils::TokensExtensions;
 
 pub struct ParsingModule {
@@ -144,10 +144,7 @@ impl<'a> ModuleParser<'a> {
         }
 
         for (name, class) in &module.module.classes {
-            let class_type = match module_scope.globals.get(name) {
-                Some(GlobalKind::Class(_, metadata)) => metadata.clone(),
-                _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("parse_module: variable is not a class".to_string()))),
-            };
+            let class_type = module_scope.get_class(name)?;
 
             let mut methods = Vec::new();
 
@@ -185,18 +182,6 @@ impl<'a> ModuleParser<'a> {
                         metadata: metadata.clone(),
                     }
                 ));
-
-                class_type.methods
-                    .borrow_mut()
-                    .push((name.clone(), metadata));
-            }
-
-            for (name, field) in &class.fields {
-                class_type.fields
-                    .borrow_mut()
-                    .push((
-                        name.clone(),
-                        module_scope.convert_parsable_type(&field)?));
             }
 
             features.insert(
