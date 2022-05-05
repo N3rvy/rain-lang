@@ -20,7 +20,6 @@ pub fn preparse_type_error(tokens: &mut Tokens) -> Result<ParsableType, LangErro
 pub fn preparse_type_option(tokens: &mut Tokens) -> Option<ParsableType> {
     let token = match tokens.peek() {
         Some(token) => {
-            tokens.pop();
             token
         },
         None => return None,
@@ -28,8 +27,14 @@ pub fn preparse_type_option(tokens: &mut Tokens) -> Option<ParsableType> {
 
     // type
     match token.kind {
-        TokenKind::Type(tk) => Some(ParsableType::from(&tk)),
-        TokenKind::Symbol(name) => Some(ParsableType::Custom(name)),
+        TokenKind::Type(tk) => {
+            tokens.pop();
+            Some(ParsableType::from(&tk))
+        }
+        TokenKind::Symbol(name) =>{
+            tokens.pop();
+            Some(ParsableType::Custom(name))
+        }
         _ => None,
     }
 }
