@@ -2,6 +2,7 @@ use core::parser::ModuleImporter;
 use core::{Engine, EngineBuildSource};
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn build_from_code(code: &str) -> Vec<u8> {
