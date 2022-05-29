@@ -23,7 +23,7 @@ pub fn build(args: Args) -> anyhow::Result<()> {
         .load_module_with_source(
             ModuleIdentifier("core".to_string()),
             ModuleUID::from_string("core".to_string()),
-            &include_str!("../core_lib/lib.vrs").to_string(),
+            &include_str!("../../core_lib/lib.vrs").to_string(),
             &importer,
         )?;
 
