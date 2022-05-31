@@ -1,4 +1,5 @@
 use common::{ast::types::{LiteralKind, OperatorKind}, tokens::TokenKind};
+use common::ast::types::Attribute;
 use common::tokens::PrimitiveType;
 use super::resolver::{Resolver, AddResult};
 
@@ -17,7 +18,6 @@ impl SymbolResolver {
         match self.chars.as_str() {
             "func" => TokenKind::Function,
             "class" => TokenKind::Class,
-            "data" => TokenKind::Data,
             "var" => TokenKind::Variable,
             "return" => TokenKind::Return,
             "break" => TokenKind::Break,
@@ -26,6 +26,8 @@ impl SymbolResolver {
             "for" => TokenKind::For,
             "while" => TokenKind::While,
             "import" => TokenKind::Import,
+
+            "data" => TokenKind::Attribute(Attribute::Data),
 
             "Int" => TokenKind::Type(PrimitiveType::Int),
             "Float" => TokenKind::Type(PrimitiveType::Float),

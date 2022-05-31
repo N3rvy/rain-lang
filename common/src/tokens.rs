@@ -1,4 +1,4 @@
-use crate::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, LiteralKind, ParenthesisKind, ParenthesisState};
+use crate::ast::types::{OperatorKind, BoolOperatorKind, MathOperatorKind, LiteralKind, ParenthesisKind, ParenthesisState, Attribute};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TokenSnapshot(pub usize);
@@ -26,7 +26,7 @@ pub enum TokenKind {
     Function,
     Variable,
     Class,
-    Data,
+    Attribute(Attribute),
     Return,
     Break,
     If,

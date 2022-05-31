@@ -5,6 +5,11 @@ use crate::tokens::PrimitiveType;
 use super::ASTBody;
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum Attribute {
+    Data,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum ClassKind {
     Normal,
     Data,

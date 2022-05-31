@@ -265,7 +265,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Import |
             TokenKind::Class |
             TokenKind::Function |
-            TokenKind::Data => return Err(LangError::new_parser_unexpected_token(&token)),
+            TokenKind::Attribute(_) => return Err(LangError::new_parser_unexpected_token(&token)),
         };
         
 

@@ -2,6 +2,7 @@ use std::cmp::{max, min};
 use std::fmt::{Display, Debug};
 use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
+use crate::ast::types::Attribute;
 
 #[derive(Debug)]
 pub enum TokenizerErrorKind {
@@ -28,6 +29,7 @@ pub enum ParserErrorKind {
     NotCallable,
     NotIndexable,
     InvalidArgCount(usize),
+    InvalidAttribute(Attribute),
 }
 
 #[derive(Debug)]
@@ -195,6 +197,7 @@ fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String
         ParserErrorKind::NotCallable => "Variable is not callable".to_string(),
         ParserErrorKind::NotIndexable => "Variable is not indexable".to_string(),
         ParserErrorKind::InvalidArgCount(expected) => format!("Expected {} parameters", expected),
+        ParserErrorKind::InvalidAttribute(attribute) => format!("Invalid attribute ({:?})", attribute),
     };
 
     res + "\n" + &err

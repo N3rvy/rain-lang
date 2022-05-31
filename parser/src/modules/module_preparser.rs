@@ -1,4 +1,4 @@
-use common::ast::types::{ClassKind, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState};
+use common::ast::types::{Attribute, ClassKind, LiteralKind, OperatorKind, ParenthesisKind, ParenthesisState};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token};
@@ -28,7 +28,7 @@ impl ModulePreParser {
         loop {
             if !tokens.has_next() { break }
 
-            let result = Self::parse_declaration(&mut tokens, uid);
+            let result = Self::parse_declaration(&mut tokens, uid, &mut Vec::new());
             match result {
                 Ok(DeclarationParseAction::Import(path)) => {
                     imports.push(ModuleIdentifier(path));
@@ -59,14 +59,20 @@ impl ModulePreParser {
         })
     }
 
-    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID) -> Result<DeclarationParseAction, LangError> {
-        // TODO: Why is module_uid not used?
+    fn parse_declaration(tokens: &mut Tokens, module: ModuleUID, attributes: &mut Vec<Attribute>) -> Result<DeclarationParseAction, LangError> {
 
         let token = tokens.pop_err()?;
 
         match token.kind {
             TokenKind::Import => {
                 // import [path]
+
+                // Should not have any attributes (at least for now)
+                for attribute in attributes {
+                    return match attribute {
+                        _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    }
+                }
 
                 // [path]
                 let path = match tokens.pop_err()?.kind {
@@ -82,6 +88,14 @@ impl ModulePreParser {
             TokenKind::Variable => {
                 // Definition:  var <name> (type) = [value]
                 // Declaration: var <name> (type)
+
+                // Should not have any attributes (at least for now)
+                for attribute in attributes {
+                    return match attribute {
+                        _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    }
+                }
+
                 let (name, decl) = Self::parse_variable(tokens)?;
 
                 Ok(DeclarationParseAction::Variable(name, decl))
@@ -89,6 +103,13 @@ impl ModulePreParser {
             TokenKind::Function => {
                 // Definition:  func <name>((<param_name> (type))*) (type) {body}
                 // Declaration: func <name>((<param_name> (type))*) (type)
+
+                // Should not have any attributes (at least for now)
+                for attribute in attributes {
+                    return match attribute {
+                        _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    }
+                }
 
                 let (name, func) = Self::parse_function(tokens)?;
 
@@ -107,14 +128,13 @@ impl ModulePreParser {
                 }
                 */
 
-                // (data)?
-                let kind = match tokens.peek() {
-                    Some(Token { kind: TokenKind::Data, start: _, end: _ }) => {
-                        tokens.pop();
-                        ClassKind::Data
-                    },
-                    _ => ClassKind::Normal,
-                };
+                let mut kind = ClassKind::Normal;
+                for attribute in attributes {
+                    match attribute {
+                        Attribute::Data => kind = ClassKind::Data,
+                        // _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    }
+                }
 
                 // <name>
                 let name = match tokens.pop() {
@@ -130,6 +150,10 @@ impl ModulePreParser {
 
                 Ok(DeclarationParseAction::Class(name, class))
             },
+            TokenKind::Attribute(attribute) => {
+                attributes.push(attribute);
+                Self::parse_declaration(tokens, module, attributes)
+            }
             TokenKind::NewLine => Ok(DeclarationParseAction::Nothing),
             _ => Err(LangError::new_parser_unexpected_token(&token)),
         }
