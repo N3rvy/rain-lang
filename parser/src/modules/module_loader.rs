@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::types::ClassType;
 use common::module::{Module, ModuleUID};
-use common::errors::{LoadErrorKind, format_load, format_error};
+use common::errors::{LoadErrorKind, format_load, LangErrorFormat};
 use common::module::ModuleIdentifier;
 use tokenizer::tokenizer::Tokenizer;
 use crate::modules::module_preparser::ModulePreParser;
@@ -38,18 +38,18 @@ impl ModuleLoader {
     {
         let tokens = match Tokenizer::tokenize(&source) {
             Ok(tokens) => tokens,
-            Err(err) => return Err(anyhow!(format_error(source, err))),
+            Err(err) => return Err(err.format(&source)),
         };
         let parsable_module = match ModulePreParser::prepare_module(tokens, id, uid) {
             Ok(module) => Arc::new(module),
-            Err(err) => return Err(anyhow!(format_error(source, err)))
+            Err(err) => return Err(err.format(&source))
         };
         let parser = self.create_parser(parsable_module.clone(), importer)?;
 
         // Loading the main module
         let module = match parser.parse_module(uid, importer) {
             Ok(module) => Arc::new(module),
-            Err(err) => return Err(anyhow!(format_error(source, err))),
+            Err(err) => return Err(err.format(&source)),
         };
 
         self.modules
@@ -62,7 +62,7 @@ impl ModuleLoader {
         for import_uid in &module.imports {
             let module = match parser.parse_module(*import_uid, importer) {
                 Ok(module) => Arc::new(module),
-                Err(err) => return Err(anyhow!(format_error(source, err))),
+                Err(err) => return Err(err.format(&source)),
             };
 
             dependencies.push(module.clone());
@@ -172,7 +172,7 @@ impl ModuleLoader {
 
             let parsable_module = match ModulePreParser::prepare_module(tokens, import.clone(), uid) {
                 Ok(module) => Arc::new(module),
-                Err(err) => return Err(anyhow!(format_error(&source, err)))
+                Err(err) => return Err(err.format(&source))
             };
 
             self.load_imports(vec, &parsable_module, importer)?;

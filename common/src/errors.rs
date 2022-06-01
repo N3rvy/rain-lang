@@ -1,5 +1,6 @@
 use std::cmp::{max, min};
 use std::fmt::{Display, Debug};
+#[cfg(feature = "colored")]
 use colored::Colorize;
 use crate::{tokens::Token, ast::types::TypeKind, module::ModuleUID};
 use crate::ast::types::Attribute;
@@ -125,13 +126,21 @@ impl Display for LangError {
     }
 }
 
-pub fn format_error(source: &String, err: LangError) -> String {
-    match err {
-        LangError::Tokenizer { token, kind } => format_tokenizer(source, token, kind),
-        LangError::Parser { token, kind } => format_parser(source, token, kind),
-        LangError::Build { kind } => format_build(kind),
-        LangError::Load { kind } => format_load(kind),
-        LangError::Runtime { kind } => format_runtime(kind),
+pub trait LangErrorFormat {
+    fn format(self, source: &String) -> anyhow::Error;
+}
+
+impl LangErrorFormat for LangError {
+    fn format(self, source: &String) -> anyhow::Error {
+        let msg = match self {
+            LangError::Tokenizer { token, kind } => format_tokenizer(source, token, kind),
+            LangError::Parser { token, kind } => format_parser(source, token, kind),
+            LangError::Build { kind } => format_build(kind),
+            LangError::Load { kind } => format_load(kind),
+            LangError::Runtime { kind } => format_runtime(kind),
+        };
+
+        anyhow::anyhow!(msg)
     }
 }
 
@@ -157,7 +166,10 @@ fn format_token(source: &String, token: &Token) -> String {
                 let err = &line[col..col_end];
                 let after = &line[col_end..];
 
-                format!("{}{}{}\n", before, err.red().underline(), after)
+                #[cfg(feature = "colored")]
+                return format!("{}{}{}\n", before, err.red().underline(), after);
+                #[cfg(not(feature = "colored"))]
+                return format!("{}{}{}\n", before, err, after);
             } else {
                 format!("{}\n", line)
             }

@@ -1,3 +1,4 @@
+use wasm_bindgen::__rt::IntoJsResult;
 use core::parser::ModuleImporter;
 use core::{Engine, EngineBuildSource};
 use common::module::{ModuleIdentifier, ModuleUID};
@@ -15,50 +16,64 @@ pub fn add_module(id: &str, module: &str) {
 }
 
 #[wasm_bindgen]
-pub fn init_engine() {
+pub fn init_engine() -> Result<(), JsValue> {
     unsafe {
         let mut engine = WasmEngine::new();
 
-        engine.module_loader()
+        match engine.module_loader()
             .load_module_with_source(
                 ModuleIdentifier("core".to_string()),
                 ModuleUID::from_string("core".to_string()),
                 &include_str!("../../core_lib/lib.vrs").to_string(),
                 &PanicImporter,
-            ).expect("Error while loading core module :-|");
+            ) {
+            Err(err) => return Err(JsValue::from(err.to_string())),
+            _ => ()
+        }
 
         for (id, module) in &MODULES {
-            engine.module_loader()
+            match engine.module_loader()
                 .load_module_with_source(
                     ModuleIdentifier(id.to_string()),
                     ModuleUID::from_string(id.to_string()),
                     module,
                     &PanicImporter,
-                ).expect("Error while loading imported module :-|");
+                ) {
+                Err(err) => return Err(JsValue::from(err.to_string())),
+                _ => ()
+            }
         }
 
         ENGINE = Some(engine);
+
+        Ok(())
     }
 }
 
 #[wasm_bindgen]
-pub fn build_from_code(code: &str) -> Vec<u8> {
+pub fn build_from_code(code: &str) -> Result<Vec<u8>, JsValue> {
     unsafe {
         let engine = match &mut ENGINE {
             Some(engine) => engine,
             None => panic!("Engine not initialized"),
         };
 
-        let (module, _) = engine
+        let (module, _) = match engine
             .module_loader()
             .load_module_with_source(
                 ModuleIdentifier("main".to_string()),
                 ModuleUID::from_string("main".to_string()),
                 &code.to_string(),
                 &PanicImporter
-            ).unwrap();
+            ) {
+            Ok(val) => val,
+            Err(err) => return Err(JsValue::from(err.to_string()))
+        };
 
-        engine.build_module_source(module.uid).unwrap()
+        match engine.build_module_source(module.uid) {
+            Ok(data) => Ok(data),
+            Err(err) => Err(JsValue::from(err.to_string()))
+        }
     }
 }
 
