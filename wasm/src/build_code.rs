@@ -1035,7 +1035,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
     #[inline]
     fn assert_stack_size(&self, size: usize) -> Result<(), LangError> {
-        if self.type_stack.len() > size {
+        if self.type_stack.len() >= size {
             Ok(())
         } else {
             Err(LangError::build(BuildErrorKind::InvalidStackSize(size, self.type_stack.len())))
