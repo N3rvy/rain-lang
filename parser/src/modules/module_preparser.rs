@@ -2,11 +2,11 @@ use common::ast::types::{Attribute, ClassKind, LiteralKind, OperatorKind, Parent
 use common::errors::{LangError, ParserErrorKind};
 use common::module::{ModuleIdentifier, ModuleUID};
 use common::tokens::{TokenKind, Token};
-use tokenizer::iterator::Tokens;
+use common::tokens_iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::{expect_open_body, expect_token};
 use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
-use crate::modules::parsable_types::{ParsableClass, ParsableFunction, ParsableModule, ParsableVariable};
+use common::parsable_types::{ParsableClass, ParsableFunction, ParsableModule, ParsableVariable};
 use crate::modules::preparsing_utils::{preparse_parameter_names, preparse_type_error, preparse_type_option};
 use crate::utils::TokensExtensions;
 

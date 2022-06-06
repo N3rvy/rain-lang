@@ -31,21 +31,33 @@ struct ReplImporter {
 
 impl ReplImporter {
     fn get_path(&self, identifier: &ModuleIdentifier) -> PathBuf {
-        self.src_dir.join(identifier.0.clone() + ".vrs")
+        let mut path = identifier.0.clone();
+        if path.starts_with("/") {
+            path.remove(0);
+        }
+        path += ".vrs";
+
+        self.src_dir.join(path)
     }
 }
 
 impl ModuleImporter for ReplImporter {
     fn get_unique_identifier(&self, identifier: &ModuleIdentifier) -> Option<ModuleUID> {
-        let path = self.get_path(identifier);
+        let uid = if identifier.0.starts_with("/") {
+            let path = self.get_path(identifier);
 
-        let path = fs::canonicalize(&path).ok()?;
-        Some(ModuleUID::from_string(path.to_str().unwrap().to_string()))
+            let path = fs::canonicalize(&path).ok()?;
+            path.to_str().unwrap().to_string()
+        } else {
+            identifier.0.clone()
+        };
+
+        Some(ModuleUID::from_string(uid))
     }
 
     fn load_module(&self, identifier: &ModuleIdentifier) -> Option<String> {
         let path = self.get_path(identifier);
 
-        std::fs::read_to_string(path.to_str()?).ok()
+        fs::read_to_string(path.to_str()?).ok()
     }
 }

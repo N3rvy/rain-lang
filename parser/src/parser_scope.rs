@@ -6,7 +6,7 @@ use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, Parenth
 use smallvec::SmallVec;
 use common::constants::CLASS_CONSTRUCTOR_NAME;
 use common::module::ModuleUID;
-use tokenizer::iterator::Tokens;
+use common::tokens_iterator::Tokens;
 use crate::utils::{parse_type_option, TokensExtensions};
 use crate::{expect_token, errors::ParsingErrorHelper, expect_open_body};
 use crate::parser_module_scope::{ModuleParserScope, ScopeGetResult};

@@ -1,8 +1,9 @@
 use std::str::Chars;
 
 use common::{errors::LangError, tokens::{Token, TokenKind}};
+use common::tokens_iterator::Tokens;
 
-use crate::{resolvers::{resolver::{Resolver, AddResult}, whitespace_resolver::WhitespaceResolver}, iterator::Tokens};
+use crate::{resolvers::{resolver::{AddResult, Resolver}, whitespace_resolver::WhitespaceResolver}};
 
 pub struct Tokenizer<'a> {
     current_resolver: Box<dyn Resolver>,

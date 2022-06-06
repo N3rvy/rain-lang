@@ -11,7 +11,7 @@ use crate::modules::module_preparser::ModulePreParser;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_parser::ModuleParser;
 use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
-use crate::modules::parsable_types::ParsableModule;
+use common::parsable_types::ParsableModule;
 
 // TODO: Move this to the core crate
 
@@ -160,7 +160,8 @@ impl ModuleLoader {
                 None => return Err(anyhow!(format_load(LoadErrorKind::ModuleNotFound(import.0.clone())))),
             };
 
-            if self.modules.borrow().contains_key(&uid) {
+            if let Some(module) = self.modules.borrow().get(&uid) {
+                vec.push(module.parsable_module.clone());
                 continue
             }
 

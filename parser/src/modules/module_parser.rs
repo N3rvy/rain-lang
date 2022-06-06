@@ -6,11 +6,11 @@ use common::constants::CLASS_SELF_REFERENCE;
 use common::errors::{BuildErrorKind, LangError, LoadErrorKind, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
 use common::tokens::{Token, TokenKind};
-use tokenizer::iterator::Tokens;
+use common::tokens_iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::modules::module_importer::ModuleImporter;
 use crate::modules::module_loader::ModuleLoader;
-use crate::modules::parsable_types::ParsableModule;
+use common::parsable_types::ParsableModule;
 use crate::parser_scope::ParserScope;
 use crate::parser_module_scope::ModuleParserScope;
 use crate::utils::TokensExtensions;
@@ -28,7 +28,7 @@ pub struct ParsingModule {
 /// and through parsing it converts it to a definition
 pub struct ModuleParser<'a> {
     pub module_loader: &'a ModuleLoader,
-    pub modules: HashMap<ModuleUID, ParsingModule>,
+    pub parsing_modules: HashMap<ModuleUID, ParsingModule>,
     pub parsable_modules: Vec<Arc<ParsableModule>>,
 }
 
@@ -36,7 +36,7 @@ impl<'a> ModuleParser<'a> {
     pub fn new(module_loader: &'a ModuleLoader, modules: Vec<Arc<ParsableModule>>) -> Self {
         let mut parser = Self {
             module_loader,
-            modules: HashMap::new(),
+            parsing_modules: HashMap::new(),
             parsable_modules: modules,
         };
         // Loading all the types (classes)
@@ -55,7 +55,7 @@ impl<'a> ModuleParser<'a> {
                 types.insert(name.clone(), class_type);
             }
 
-            parser.modules.insert(module.uid, ParsingModule {
+            parser.parsing_modules.insert(module.uid, ParsingModule {
                 types,
                 module: module.clone(),
                 loaded: Cell::new(false),
@@ -66,7 +66,7 @@ impl<'a> ModuleParser<'a> {
     }
 
     pub fn parse_module(&self, uid: ModuleUID, importer: &impl ModuleImporter) -> Result<Module, LangError> {
-        let module = match self.modules.get(&uid) {
+        let module = match self.parsing_modules.get(&uid) {
             Some(module) => module,
             None => return Err(LangError::parser(
                 &Token::new(TokenKind::NewLine, 0, 0),
@@ -209,6 +209,7 @@ impl<'a> ModuleParser<'a> {
 
             imports,
             features,
+            parsable_module: module.module.clone(),
         };
 
         Ok(module)
@@ -236,7 +237,7 @@ impl<'a> ModuleParser<'a> {
                 None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone()))),
             };
 
-            let parsing_module = match self.modules.get(&uid) {
+            let parsing_module = match self.parsing_modules.get(&uid) {
                 Some(module) => module,
                 None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
             };
@@ -266,7 +267,7 @@ impl<'a> ModuleParser<'a> {
                 None => return Err(LangError::load(LoadErrorKind::LoadModuleError(import.0.clone()))),
             };
 
-            let parsing_module = match self.modules.get(&uid) {
+            let parsing_module = match self.parsing_modules.get(&uid) {
                 Some(module) => module,
                 None => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: could not found parsing module".to_string()))),
             };

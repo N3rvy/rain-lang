@@ -1,5 +1,5 @@
 use common::{ast::{ASTBody, ASTNode, types::{ParenthesisKind, ParenthesisState, OperatorKind, TypeKind, MathOperatorKind}}, errors::{LangError, ParserErrorKind}, tokens::{Token, TokenKind}};
-use tokenizer::iterator::Tokens;
+use common::tokens_iterator::Tokens;
 use crate::{errors::ParsingErrorHelper, parser_scope::ParserScope};
 
 #[macro_export]

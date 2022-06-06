@@ -1,8 +1,8 @@
-use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
-use common::ast::types::ClassKind;
-use common::module::{ModuleIdentifier, ModuleUID};
-use common::tokens::TokenSnapshot;
-use tokenizer::iterator::Tokens;
+use crate::ast::parsing_types::{ParsableFunctionType, ParsableType};
+use crate::ast::types::ClassKind;
+use crate::module::{ModuleIdentifier, ModuleUID};
+use crate::tokens::TokenSnapshot;
+use crate::tokens_iterator::Tokens;
 
 pub struct ParsableVariable {
     pub type_kind: ParsableType,

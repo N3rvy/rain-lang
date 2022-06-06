@@ -1,7 +1,7 @@
 use common::ast::types::{OperatorKind, ParenthesisKind, ParenthesisState};
 use common::errors::{LangError, ParserErrorKind};
 use common::tokens::TokenKind;
-use tokenizer::iterator::Tokens;
+use common::tokens_iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use common::ast::parsing_types::ParsableType;
 use crate::utils::TokensExtensions;

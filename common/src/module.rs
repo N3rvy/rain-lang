@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
+use crate::parsable_types::ParsableModule;
 
 #[derive(Clone)]
 pub struct ModuleIdentifier(pub String);
@@ -66,6 +67,7 @@ pub struct Module {
 
     pub imports: Vec<ModuleUID>,
     pub features: HashMap<String, ModuleFeature>,
+    pub parsable_module: Arc<ParsableModule>,
 }
 
 impl Module {
