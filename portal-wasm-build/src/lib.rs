@@ -1,4 +1,3 @@
-use wasm_bindgen::__rt::IntoJsResult;
 use core::parser::ModuleImporter;
 use core::{Engine, EngineBuildSource};
 use common::module::{ModuleIdentifier, ModuleUID};
