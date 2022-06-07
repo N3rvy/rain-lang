@@ -7,9 +7,14 @@ use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, Varia
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
-use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION};
+use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION, INTERNAL_MEMORY_ALLOC_INC};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
+
+pub enum ModuleDataKind {
+    Standard,
+    StaticMemoryOffset,
+}
 
 pub struct FunctionData {
     pub name: String,
@@ -30,6 +35,7 @@ pub struct FunctionImport {
 }
 
 pub struct ModuleData {
+    pub kind: ModuleDataKind,
     pub offset: u32,
     pub bytes: Vec<u8>,
 }
@@ -158,13 +164,18 @@ impl<'a> ModuleBuilder<'a> {
             LiteralKind::Bool(b) => (if *b { 1u32 } else { 0u32 }).to_le_bytes().to_vec(),
             LiteralKind::String(s) => {
                 let data = FunctionBuilder::string_to_bytes(s.clone());
-                let offset = self.push_data(data);
+                let offset = self.push_data(data, ModuleDataKind::Standard);
 
                 offset.to_le_bytes().to_vec()
             },
         };
 
-        let offset = self.push_data(data);
+        let kind = match name {
+            INTERNAL_MEMORY_ALLOC_INC => ModuleDataKind::StaticMemoryOffset,
+            _ => ModuleDataKind::Standard,
+        };
+
+        let offset = self.push_data(data, kind);
 
         self.global_names.push(name.to_string());
         self.globals.push((var_type.clone(), offset));
@@ -200,12 +211,13 @@ impl<'a> ModuleBuilder<'a> {
         }
     }
 
-    fn push_data(&mut self, data: Vec<u8>) -> u32 {
+    fn push_data(&mut self, data: Vec<u8>, kind: ModuleDataKind) -> u32 {
         let data_len = data.len() as u32;
 
         let offset = self.data_offset_accumulator;
 
         self.data.push(ModuleData {
+            kind,
             bytes: data,
             offset: self.data_offset_accumulator,
         });
@@ -519,7 +531,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     LiteralKind::String(string) => {
                         let data = Self::string_to_bytes(string.clone());
 
-                        let offset = self.module_builder.push_data(data);
+                        let offset = self.module_builder.push_data(data, ModuleDataKind::Standard);
 
                         self.instructions.push(Instruction::I32Const(offset as i32));
                         self.type_stack.push(TypeKind::String);

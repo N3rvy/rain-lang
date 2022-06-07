@@ -3,7 +3,7 @@ use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, 
 use common::ast::types::{ClassKind, ClassType, TypeKind};
 use common::errors::LangError;
 use core::parser::ModuleLoader;
-use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData};
+use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData, ModuleDataKind};
 
 pub struct WasmBuilder<'a> {
     module_loader: &'a ModuleLoader,
@@ -138,8 +138,19 @@ impl<'a> WasmBuilder<'a> {
     fn build_data(result: Vec<ModuleData>) -> DataSection {
         let mut data_sec = DataSection::new();
 
+        let mut total_size = 0;
+        for data in &result {
+            total_size += data.bytes.len();
+        }
+
         for data in result {
-            data_sec.active(0, &Instruction::I32Const(data.offset as i32), data.bytes);
+            let offset = data.offset as i32;
+            let data = match data.kind {
+                ModuleDataKind::Standard => data.bytes,
+                ModuleDataKind::StaticMemoryOffset => i32::to_le_bytes(total_size as i32).to_vec(),
+            };
+
+            data_sec.active(0, &Instruction::I32Const(offset), data);
         }
 
         data_sec
