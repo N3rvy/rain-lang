@@ -7,6 +7,7 @@ use super::ASTBody;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Attribute {
     Data,
+    Import,
 }
 
 #[derive(Clone, Debug, PartialEq)]

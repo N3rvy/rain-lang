@@ -68,16 +68,23 @@ impl ModulePreParser {
                 // import [path]
 
                 // Should not have any attributes (at least for now)
-                for attribute in attributes {
+                for attribute in attributes as &Vec<Attribute> {
                     return match attribute {
                         _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
                 // [path]
-                let path = match tokens.pop_err()?.kind {
-                    TokenKind::Literal(LiteralKind::String(path)) => path,
-                    _ => return Err(LangError::new_parser_unexpected_token(&token)),
+                let path = match tokens.peek_err()?.kind {
+                    TokenKind::Literal(LiteralKind::String(path)) => {
+                        tokens.pop();
+                        path
+                    },
+                    _ => {
+                        attributes.push(Attribute::Import);
+
+                        return Self::parse_declaration(tokens, module, attributes);
+                    }
                 };
 
                 // new line
@@ -104,14 +111,15 @@ impl ModulePreParser {
                 // Definition:  func <name>((<param_name> (type))*) (type) {body}
                 // Declaration: func <name>((<param_name> (type))*) (type)
 
-                // Should not have any attributes (at least for now)
+                let mut import = false;
                 for attribute in attributes {
-                    return match attribute {
-                        _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    match attribute {
+                        Attribute::Import => import = true,
+                        _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
-                let (name, func) = Self::parse_function(tokens)?;
+                let (name, func) = Self::parse_function(tokens, import)?;
 
                 Ok(DeclarationParseAction::Function(
                     name,
@@ -129,10 +137,12 @@ impl ModulePreParser {
                 */
 
                 let mut kind = ClassKind::Normal;
-                for attribute in attributes {
+                let mut import = false;
+                for attribute in attributes as &Vec<Attribute> {
                     match attribute {
                         Attribute::Data => kind = ClassKind::Data,
-                        // _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                        Attribute::Import => import = true,
+                        //_ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
@@ -146,7 +156,7 @@ impl ModulePreParser {
                 // {
                 expect_open_body!(tokens);
 
-                let class = Self::parse_class_declaration(tokens, kind, name.clone(), module)?;
+                let class = Self::parse_class_declaration(tokens, kind, name.clone(), module, import)?;
 
                 Ok(DeclarationParseAction::Class(name, class))
             },
@@ -159,7 +169,7 @@ impl ModulePreParser {
         }
     }
 
-    fn parse_class_declaration(tokens: &mut Tokens, kind: ClassKind, name: String, module: ModuleUID) -> Result<ParsableClass, LangError> {
+    fn parse_class_declaration(tokens: &mut Tokens, kind: ClassKind, name: String, module: ModuleUID, import: bool) -> Result<ParsableClass, LangError> {
         let mut fields = Vec::new();
         let mut methods = Vec::new();
 
@@ -184,7 +194,7 @@ impl ModulePreParser {
                                 ParserErrorKind::Unsupported("Methods in data classes are not yet supported".to_string())))
                     }
 
-                    let (name, method) = Self::parse_function(tokens)?;
+                    let (name, method) = Self::parse_function(tokens, import)?;
 
                     methods.push((
                         name,
@@ -246,7 +256,7 @@ impl ModulePreParser {
         ))
     }
 
-    fn parse_function(tokens: &mut Tokens) -> Result<(String, ParsableFunction), LangError> {
+    fn parse_function(tokens: &mut Tokens, import: bool) -> Result<(String, ParsableFunction), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -279,7 +289,8 @@ impl ModulePreParser {
 
                 Some(body)
             },
-            _ => None,
+            _ if import => None,
+            _ => return Err(LangError::new_parser_unexpected_token(&token)),
         };
 
         Ok((
