@@ -2,6 +2,7 @@ use std::env;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::PathBuf;
+use common::constants::CORE_MODULE_ID;
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 use crate::{Args, Engine, EngineBuildSource, ReplImporter};
@@ -21,8 +22,8 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     // Loading core lib
     engine.module_loader()
         .load_module_with_source(
-            ModuleIdentifier("core".to_string()),
-            ModuleUID::from_string("core".to_string()),
+            ModuleIdentifier(CORE_MODULE_ID.to_string()),
+            ModuleUID::from_string(CORE_MODULE_ID.to_string()),
             &include_str!("../../core_lib/lib.vrs").to_string(),
             &importer,
         )?;

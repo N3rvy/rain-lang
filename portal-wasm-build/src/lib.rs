@@ -3,6 +3,7 @@ use core::{Engine, EngineBuildSource};
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
 use wasm_bindgen::prelude::*;
+use common::constants::CORE_MODULE_ID;
 
 static mut MODULES: Vec<(String, String)> = Vec::new();
 static mut ENGINE: Option<WasmEngine> = None;
@@ -21,8 +22,8 @@ pub fn init_engine() -> Result<(), JsValue> {
 
         match engine.module_loader()
             .load_module_with_source(
-                ModuleIdentifier("core".to_string()),
-                ModuleUID::from_string("core".to_string()),
+                ModuleIdentifier(CORE_MODULE_ID.to_string()),
+                ModuleUID::from_string(CORE_MODULE_ID.to_string()),
                 &include_str!("../../core_lib/lib.vrs").to_string(),
                 &PanicImporter,
             ) {

@@ -1,5 +1,6 @@
 use wasm_encoder::{Instruction, MemArg, ValType};
 use common::ast::types::TypeKind;
+use common::constants::{CORE_MODULE_ID, INTERNAL_MEMORY_ALLOC};
 use common::errors::LangError;
 use common::module::ModuleUID;
 use crate::build::convert_type;
@@ -59,8 +60,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
     pub(crate) fn build_memory_alloc(&mut self, size: i32) -> Result<(), LangError> {
         let (alloc_func_id, _, _) = self.module_builder.get_func(
-            ModuleUID::from_string("core".to_string()),
-            &"__internal_memory_alloc".to_string())?;
+            ModuleUID::from_string(CORE_MODULE_ID.to_string()),
+            &INTERNAL_MEMORY_ALLOC.to_string())?;
 
         self.instructions.push(Instruction::I32Const(size));
         self.instructions.push(Instruction::Call(alloc_func_id));

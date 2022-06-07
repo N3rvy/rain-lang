@@ -7,7 +7,7 @@ use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, Varia
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
-use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE};
+use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
@@ -881,7 +881,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 self.build_memory_alloc(values.len() as i32 * 4)?;
 
                 // TODO: Support multiple allocations in the same method
-                let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                let ids = self.push_local(INTERNAL_ALLOC_LOCATION.to_string(), TypeKind::Int);
                 let id = *ids.index(0);
 
                 self.instructions.push(Instruction::LocalTee(id));
@@ -938,7 +938,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                         if let Some((_, _)) = class_type.methods.borrow().iter().find(|(n, _)| n == CLASS_CONSTRUCTOR_NAME) {
                             // TODO: Support multiple allocations in the same method
-                            let ids = self.push_local("__internal_alloc_location".to_string(), TypeKind::Int);
+                            let ids = self.push_local(INTERNAL_ALLOC_LOCATION.to_string(), TypeKind::Int);
                             let id = *ids.index(0);
 
                             self.instructions.push(Instruction::LocalTee(id));
