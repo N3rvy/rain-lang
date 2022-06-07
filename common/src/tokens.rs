@@ -30,6 +30,7 @@ pub enum TokenKind {
     Return,
     Break,
     If,
+    Else,
     For,
     While,
     Import,

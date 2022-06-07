@@ -1,6 +1,6 @@
 use std::ops::Index;
 use wasm_encoder::{BlockType, Instruction, ValType, MemArg};
-use common::ast::{ASTNode, NodeKind};
+use common::ast::{ASTBody, ASTNode, ElseType, NodeKind};
 use common::ast::types::{LiteralKind, FunctionType, Function, TypeKind, ClassKind, ClassType};
 use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, VariableDefinition};
@@ -576,22 +576,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 self.instructions.push(Instruction::Return);
             },
-            NodeKind::IfStatement { condition, body } => {
-                self.build_statement(condition)?;
-
-                self.type_stack.pop();
-
-                let stack_size = self.type_stack.len();
-
-                self.instructions.push(Instruction::If(BlockType::Empty));
-
-                for node in body {
-                    self.build_statement(node)?;
-                }
-
-                self.assert_stack_size(stack_size)?;
-
-                self.instructions.push(Instruction::End);
+            NodeKind::IfStatement { condition, body, else_ } => {
+                self.build_if_statement(condition, body, else_)?;
             },
             NodeKind::ForStatement { iter_name, left, right, body } => {
                 self.build_statement(left)?;
@@ -970,6 +956,41 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             },
         }
         Ok(())
+    }
+
+    fn build_if_statement(&mut self, condition: &ASTNode, body: &ASTBody, else_: &ElseType) -> Result<(), LangError> {
+        self.build_statement(condition)?;
+
+        self.type_stack.pop();
+
+        let stack_size = self.type_stack.len();
+
+        self.instructions.push(Instruction::If(BlockType::Empty));
+
+        for node in body {
+            self.build_statement(node)?;
+        }
+
+        match else_ {
+            ElseType::None => (),
+            ElseType::ElseIf { condition, body, else_ } => {
+                self.instructions.push(Instruction::Else);
+                self.build_if_statement(condition, body, else_)?;
+            },
+            ElseType::Else { body } => {
+                self.instructions.push(Instruction::Else);
+
+                for node in body {
+                    self.build_statement(node)?;
+                }
+            },
+        }
+
+        self.assert_stack_size(stack_size)?;
+
+        self.instructions.push(Instruction::End);
+
+        return Ok(())
     }
 
     fn string_to_bytes(string: String) -> Vec<u8> {

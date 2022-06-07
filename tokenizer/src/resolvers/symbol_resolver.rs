@@ -23,6 +23,7 @@ impl SymbolResolver {
             "break" => TokenKind::Break,
             "in" => TokenKind::Operator(OperatorKind::In),
             "if" => TokenKind::If,
+            "else" => TokenKind::Else,
             "for" => TokenKind::For,
             "while" => TokenKind::While,
             "import" => TokenKind::Import,

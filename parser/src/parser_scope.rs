@@ -4,6 +4,7 @@ use common::errors::ParserErrorKind;
 use common::tokens::{TokenKind, Token, PrimitiveType};
 use common::{ast::{ASTNode, NodeKind, types::{TypeKind, ParenthesisKind, ParenthesisState, OperatorKind, ReturnKind, FunctionType, LiteralKind}}, errors::LangError, constants::SCOPE_SIZE};
 use smallvec::SmallVec;
+use common::ast::ElseType;
 use common::constants::CLASS_CONSTRUCTOR_NAME;
 use common::module::ModuleUID;
 use common::tokens_iterator::Tokens;
@@ -214,8 +215,10 @@ impl<'a> ParserScope<'a> {
                 expect_open_body!(tokens);
                 // ...}
                 let body = self.new_child().parse_body(tokens)?;
-                
-                ASTNode::new(NodeKind::new_if_statement(condition, body), TypeKind::Nothing)
+
+                let else_ = self.parse_else_if(tokens)?;
+
+                ASTNode::new(NodeKind::new_if_statement(condition, body, else_), TypeKind::Nothing)
             },
             TokenKind::For => {
                 // iter name
@@ -265,6 +268,7 @@ impl<'a> ParserScope<'a> {
             TokenKind::Import |
             TokenKind::Class |
             TokenKind::Function |
+            TokenKind::Else |
             TokenKind::Attribute(_) => return Err(LangError::new_parser_unexpected_token(&token)),
         };
         
@@ -278,6 +282,35 @@ impl<'a> ParserScope<'a> {
             } else {
                 break res.0;
             }
+        })
+    }
+
+    fn parse_else_if(&self, tokens: &mut Tokens) -> Result<ElseType, LangError> {
+        Ok(match tokens.peek() {
+            Some(Token { kind: TokenKind::Else, .. }) => {
+                tokens.pop();
+
+                if let Some(Token { kind: TokenKind::If, .. }) = tokens.peek() {
+                    tokens.pop();
+
+                    // condition
+                    let condition = self.parse_statement(tokens)?;
+                    // {
+                    expect_open_body!(tokens);
+                    // ...}
+                    let body = self.new_child().parse_body(tokens)?;
+
+                    ElseType::ElseIf { condition, body, else_: Box::new(self.parse_else_if(tokens)?) }
+                } else {
+                    // {
+                    expect_open_body!(tokens);
+                    // ...}
+                    let body = self.new_child().parse_body(tokens)?;
+
+                    ElseType::Else { body }
+                }
+            }
+            _ => ElseType::None,
         })
     }
 

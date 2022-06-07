@@ -8,6 +8,18 @@ pub mod types;
 pub mod parsing_types;
 
 
+pub enum ElseType {
+    None,
+    ElseIf {
+        condition: ASTNode,
+        body: ASTBody,
+        else_: Box<ElseType>,
+    },
+    Else {
+        body: ASTBody,
+    }
+}
+
 pub type ASTBody = Vec<ASTNode>;
 
 pub struct ASTNode {
@@ -70,6 +82,7 @@ pub enum NodeKind {
     IfStatement {
         condition: ASTNode,
         body: ASTBody,
+        else_: ElseType,
     },
     ForStatement {
         left: ASTNode,
@@ -144,8 +157,8 @@ impl NodeKind {
         NodeKind::ReturnStatement { value, kind }
     }
     
-    pub fn new_if_statement(condition: ASTNode, body: ASTBody) -> NodeKind {
-        NodeKind::IfStatement { condition, body }
+    pub fn new_if_statement(condition: ASTNode, body: ASTBody, else_: ElseType) -> NodeKind {
+        NodeKind::IfStatement { condition, body, else_ }
     }
     
     pub fn new_for_statement(left: ASTNode, right: ASTNode, body: ASTBody, iter_name: String) -> NodeKind {
