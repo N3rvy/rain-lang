@@ -75,23 +75,6 @@ impl ModuleLoader {
         Ok((module, dependencies))
     }
 
-    // pub fn load_declaration_module_with_source(
-    //     &mut self,
-    //     id: ModuleIdentifier,
-    //     uid: ModuleUID,
-    //     source: &String,
-    //     _importer: &impl ModuleImporter
-    // ) -> Result<Arc<DeclarationModule>, LangError> {
-    //     let tokens = Tokenizer::tokenize(&source)?;
-    //     let decl_module = Arc::new(ModulePreParser::parse_declaration_module(tokens, id, uid)?);
-    //
-    //     self.modules
-    //         .borrow_mut()
-    //         .insert(uid, ModuleKind::Declaration(decl_module.clone()));
-    //
-    //     Ok(decl_module)
-    // }
-
     pub fn load_module(&mut self, id: &ModuleIdentifier, importer: &impl ModuleImporter) -> anyhow::Result<(Arc<Module>, Vec<Arc<Module>>)> {
         let uid = match importer.get_unique_identifier(id) {
             Some(uid) => uid,
