@@ -5,17 +5,20 @@ use crate::tokens::TokenSnapshot;
 use crate::tokens_iterator::Tokens;
 
 pub struct ParsableVariable {
+    pub custom_attributes: Vec<String>,
     pub type_kind: ParsableType,
     pub body: Option<TokenSnapshot>,
 }
 
 pub struct ParsableFunction {
+    pub custom_attributes: Vec<String>,
     pub func_type: ParsableFunctionType,
     pub params: Vec<String>,
     pub body: Option<TokenSnapshot>,
 }
 
 pub struct ParsableClass {
+    pub custom_attributes: Vec<String>,
     pub kind: ClassKind,
     pub name: String,
     pub module: ModuleUID,

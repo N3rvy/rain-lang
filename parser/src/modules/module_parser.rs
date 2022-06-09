@@ -100,6 +100,7 @@ impl<'a> ModuleParser<'a> {
             features.insert(
                 name.clone(),
                 ModuleFeature::Variable(VariableDefinition {
+                    custom_attributes: var.custom_attributes.clone(),
                     data,
                     metadata,
                 })
@@ -137,6 +138,7 @@ impl<'a> ModuleParser<'a> {
             features.insert(
                 name.clone(),
                 ModuleFeature::Function(FunctionDefinition {
+                    custom_attributes: func.custom_attributes.clone(),
                     data,
                     metadata,
                 })
@@ -178,6 +180,7 @@ impl<'a> ModuleParser<'a> {
                 methods.push((
                     name.clone(),
                     FunctionDefinition {
+                        custom_attributes: Vec::new(),
                         data,
                         metadata: metadata.clone(),
                     }
@@ -187,6 +190,7 @@ impl<'a> ModuleParser<'a> {
             features.insert(
                 name.clone(),
                 ModuleFeature::Class(ClassDefinition {
+                    custom_attributes: class.custom_attributes.clone(),
                     data: Class::new(methods),
                     metadata: class_type,
                 })

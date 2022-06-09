@@ -1,4 +1,5 @@
 
+@AsStaticMemorySize
 var __internal_memory_alloc_inc Int = 4
 
 func __internal_memory_alloc(size Int) Int {

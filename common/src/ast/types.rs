@@ -8,6 +8,7 @@ use super::ASTBody;
 pub enum Attribute {
     Data,
     Import,
+    Custom(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -67,6 +68,7 @@ pub enum OperatorKind {
     Comma,
     Dot,
     Colon,
+    At,
 }
 
 #[derive(Clone, Debug)]

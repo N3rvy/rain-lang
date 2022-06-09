@@ -33,7 +33,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         tokenizer.tokenize_char('\n')?;
-        
+
         Ok(Tokens::from_vec(tokenizer.tokens))
     }
 

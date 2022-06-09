@@ -29,7 +29,7 @@ impl<'a> Tokenizer<'a> {
         match char {
             c if c.is_whitespace() => Box::new(WhitespaceResolver::new()),
             '0'..='9' => Box::new(NumberResolver::new()),
-            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => Box::new(OperatorResolver::new()),
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' | '@' => Box::new(OperatorResolver::new()),
             '(' | ')' | '[' | ']' | '{' | '}' => Box::new(ParenthesisResolver::new()),
             '"' => Box::new(StringResolver::new()),
             _ => Box::new(SymbolResolver::new()),

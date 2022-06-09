@@ -7,7 +7,7 @@ use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, Varia
 use core::parser::ModuleLoader;
 use std::sync::Arc;
 use crate::build::{convert_class, convert_type, convert_types};
-use common::constants::{CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION, INTERNAL_MEMORY_ALLOC_INC};
+use common::constants::{ATTRIB_STATIC_MEMORY, CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
 
@@ -114,7 +114,7 @@ impl<'a> ModuleBuilder<'a> {
         for (name, feature) in &module.features {
             match feature {
                 ModuleFeature::Variable(var @ VariableDefinition { data: Some(ref data), .. }) => {
-                    self.insert_var(name, &var.metadata, data)?;
+                    self.insert_var(name, var, data)?;
                 }
                 _ => (),
             }
@@ -156,7 +156,7 @@ impl<'a> ModuleBuilder<'a> {
         Ok(())
     }
 
-    fn insert_var(&mut self, name: &str, var_type: &TypeKind, literal: &LiteralKind) -> Result<(), LangError> {
+    fn insert_var(&mut self, name: &str, var: &VariableDefinition, literal: &LiteralKind) -> Result<(), LangError> {
         let data = match literal {
             LiteralKind::Nothing => Vec::new(),
             LiteralKind::Int(i) => i.to_le_bytes().to_vec(),
@@ -170,15 +170,15 @@ impl<'a> ModuleBuilder<'a> {
             },
         };
 
-        let kind = match name {
-            INTERNAL_MEMORY_ALLOC_INC => ModuleDataKind::StaticMemoryOffset,
-            _ => ModuleDataKind::Standard,
+        let kind = match var.custom_attributes.iter().any(|s| s == ATTRIB_STATIC_MEMORY) {
+            true => ModuleDataKind::StaticMemoryOffset,
+            false => ModuleDataKind::Standard,
         };
 
         let offset = self.push_data(data, kind);
 
         self.global_names.push(name.to_string());
-        self.globals.push((var_type.clone(), offset));
+        self.globals.push((var.metadata.clone(), offset));
 
         Ok(())
     }

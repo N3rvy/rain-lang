@@ -64,6 +64,25 @@ impl ModulePreParser {
         let token = tokens.pop_err()?;
 
         match token.kind {
+            TokenKind::Operator(OperatorKind::At) => {
+                // @<attribute name>
+
+                let token = tokens.pop_err()?;
+                let name = match token.kind {
+                    TokenKind::Symbol(name) => name,
+                    _ => return Err(LangError::parser(&token, ParserErrorKind::UnexpectedToken)),
+                };
+
+                attributes.push(Attribute::Custom(name));
+
+                loop {
+                    let result = Self::parse_declaration(tokens, module, attributes)?;
+                    match result {
+                        DeclarationParseAction::Nothing => (),
+                        _ => return Ok(result),
+                    }
+                }
+            },
             TokenKind::Import => {
                 // import [path]
 
@@ -96,14 +115,16 @@ impl ModulePreParser {
                 // Definition:  var <name> (type) = [value]
                 // Declaration: var <name> (type)
 
-                // Should not have any attributes (at least for now)
+                let mut custom_attributes = Vec::new();
+
                 for attribute in attributes {
-                    return match attribute {
-                        _ => Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                    match attribute {
+                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
+                        _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
-                let (name, decl) = Self::parse_variable(tokens)?;
+                let (name, decl) = Self::parse_variable(tokens, custom_attributes)?;
 
                 Ok(DeclarationParseAction::Variable(name, decl))
             },
@@ -112,14 +133,17 @@ impl ModulePreParser {
                 // Declaration: func <name>((<param_name> (type))*) (type)
 
                 let mut import = false;
+                let mut custom_attributes = Vec::new();
+
                 for attribute in attributes {
                     match attribute {
                         Attribute::Import => import = true,
+                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
                         _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
-                let (name, func) = Self::parse_function(tokens, import)?;
+                let (name, func) = Self::parse_function(tokens, import, custom_attributes)?;
 
                 Ok(DeclarationParseAction::Function(
                     name,
@@ -138,11 +162,14 @@ impl ModulePreParser {
 
                 let mut kind = ClassKind::Normal;
                 let mut import = false;
+                let mut custom_attributes = Vec::new();
+
                 for attribute in attributes as &Vec<Attribute> {
                     match attribute {
                         Attribute::Data => kind = ClassKind::Data,
                         Attribute::Import => import = true,
-                        //_ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
+                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
+                        // _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
@@ -156,7 +183,13 @@ impl ModulePreParser {
                 // {
                 expect_open_body!(tokens);
 
-                let class = Self::parse_class_declaration(tokens, kind, name.clone(), module, import)?;
+                let class = Self::parse_class_declaration(
+                    tokens,
+                    kind,
+                    name.clone(),
+                    module,
+                    custom_attributes,
+                    import)?;
 
                 Ok(DeclarationParseAction::Class(name, class))
             },
@@ -169,7 +202,14 @@ impl ModulePreParser {
         }
     }
 
-    fn parse_class_declaration(tokens: &mut Tokens, kind: ClassKind, name: String, module: ModuleUID, import: bool) -> Result<ParsableClass, LangError> {
+    fn parse_class_declaration(
+        tokens: &mut Tokens,
+        kind: ClassKind,
+        name: String,
+        module: ModuleUID,
+        custom_attributes: Vec<String>,
+        import: bool,
+    ) -> Result<ParsableClass, LangError> {
         let mut fields = Vec::new();
         let mut methods = Vec::new();
 
@@ -194,7 +234,7 @@ impl ModulePreParser {
                                 ParserErrorKind::Unsupported("Methods in data classes are not yet supported".to_string())))
                     }
 
-                    let (name, method) = Self::parse_function(tokens, import)?;
+                    let (name, method) = Self::parse_function(tokens, import, Vec::new())?;
 
                     methods.push((
                         name,
@@ -208,6 +248,7 @@ impl ModulePreParser {
         }
 
         Ok(ParsableClass {
+            custom_attributes,
             kind,
             name,
             module,
@@ -217,7 +258,7 @@ impl ModulePreParser {
         })
     }
 
-    fn parse_variable(tokens: &mut Tokens) -> Result<(String, ParsableVariable), LangError> {
+    fn parse_variable(tokens: &mut Tokens, custom_attributes: Vec<String>) -> Result<(String, ParsableVariable), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -250,13 +291,14 @@ impl ModulePreParser {
         Ok((
             name,
             ParsableVariable {
+                custom_attributes,
                 type_kind,
                 body,
             },
         ))
     }
 
-    fn parse_function(tokens: &mut Tokens, import: bool) -> Result<(String, ParsableFunction), LangError> {
+    fn parse_function(tokens: &mut Tokens, import: bool, custom_attributes: Vec<String>) -> Result<(String, ParsableFunction), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -296,6 +338,7 @@ impl ModulePreParser {
         Ok((
             name,
             ParsableFunction {
+                custom_attributes,
                 params: param_names,
                 func_type,
                 body,

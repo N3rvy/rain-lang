@@ -20,6 +20,7 @@ impl OperatorResolver {
             "," => TokenKind::Operator(OperatorKind::Comma),
             "." => TokenKind::Operator(OperatorKind::Dot),
             ":" => TokenKind::Operator(OperatorKind::Colon),
+            "@" => TokenKind::Operator(OperatorKind::At),
             
             // Math operator
             "+" => TokenKind::MathOperator(MathOperatorKind::Plus),
@@ -46,7 +47,7 @@ impl OperatorResolver {
 impl Resolver for OperatorResolver {
     fn add(&mut self, char: char) -> AddResult {
         match char {
-            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
+            '=' | '.' | ',' | '!' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '^' | ':' | '@' => {
                 self.chars.push(char);
                 AddResult::Ok
             },

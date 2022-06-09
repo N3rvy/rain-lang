@@ -21,16 +21,19 @@ impl ModuleUID {
 }
 
 pub struct FunctionDefinition {
+    pub custom_attributes: Vec<String>,
     pub data: Option<Arc<Function>>,
     pub metadata: FunctionType,
 }
 
 pub struct VariableDefinition {
+    pub custom_attributes: Vec<String>,
     pub data: Option<LiteralKind>,
     pub metadata: TypeKind,
 }
 
 pub struct ClassDefinition {
+    pub custom_attributes: Vec<String>,
     pub data: Class,
     pub metadata: Arc<ClassType>,
 }
@@ -49,6 +52,7 @@ impl ClassDefinition {
             .and_then(|(_, f)| f.data.clone());
 
         Some(FunctionDefinition {
+            custom_attributes: Vec::new(),
             data,
             metadata,
         })
