@@ -4,7 +4,10 @@ use clap::{ArgEnum, Parser};
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
     #[clap(arg_enum)]
-    pub(crate) task: Task,
+    pub task: Task,
+
+    #[clap(short, long)]
+    pub release: bool,
 
     /// Module config file path
     #[clap(short, long, default_value="./portal.json")]

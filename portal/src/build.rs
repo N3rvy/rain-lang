@@ -2,6 +2,8 @@ use std::env;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::PathBuf;
+use anyhow::anyhow;
+use binaryen::CodegenConfig;
 use common::constants::CORE_MODULE_ID;
 use common::module::{ModuleIdentifier, ModuleUID};
 use wasm::engine::WasmEngine;
@@ -32,7 +34,22 @@ pub fn build(args: Args) -> anyhow::Result<()> {
     let module = engine
         .load_module(config.main, &importer)?;
 
-    let wasm = engine.build_module_source(module)?;
+    let pre_opt_wasm = engine.build_module_source(module)?;
+
+    let wasm = match args.release {
+        false => pre_opt_wasm,
+        true => {
+            let mut module = binaryen::Module::read(pre_opt_wasm.as_slice())
+                .map_err(|_| anyhow!("Error while reading the built wasm"))?;
+            module.optimize(&CodegenConfig {
+                shrink_level: 1,
+                optimization_level: 2,
+                debug_info: false,
+            });
+            module.write()
+        }
+    };
+
 
     let path = env::current_dir()?.join(config.build_path);
     let mut file = File::create(&path)?;
