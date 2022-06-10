@@ -18,6 +18,7 @@ impl SymbolResolver {
         match self.chars.as_str() {
             "func" => TokenKind::Function,
             "class" => TokenKind::Class,
+            "enum" => TokenKind::Enum,
             "var" => TokenKind::Variable,
             "return" => TokenKind::Return,
             "break" => TokenKind::Break,

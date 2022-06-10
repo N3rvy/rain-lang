@@ -6,7 +6,7 @@ use common::tokens_iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use crate::{expect_open_body, expect_token};
 use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
-use common::parsable_types::{ParsableClass, ParsableFunction, ParsableModule, ParsableVariable};
+use common::parsable_types::{ParsableClass, ParsableEnum, ParsableFunction, ParsableModule, ParsableVariable};
 use crate::modules::preparsing_utils::{preparse_parameter_names, preparse_type_error, preparse_type_option};
 use crate::utils::TokensExtensions;
 
@@ -24,6 +24,7 @@ impl ModulePreParser {
         let mut variables = Vec::new();
         let mut functions = Vec::new();
         let mut classes = Vec::new();
+        let mut enums = Vec::new();
 
         loop {
             if !tokens.has_next() { break }
@@ -42,6 +43,9 @@ impl ModulePreParser {
                 Ok(DeclarationParseAction::Class(name, class)) => {
                     classes.push((name, class));
                 },
+                Ok(DeclarationParseAction::Enum(name, enum_)) => {
+                    enums.push((name, enum_));
+                },
                 Ok(DeclarationParseAction::Nothing) => (),
                 Err(err) => return Err(err),
             }
@@ -56,6 +60,7 @@ impl ModulePreParser {
             variables,
             functions,
             classes,
+            enums,
         })
     }
 
@@ -188,6 +193,68 @@ impl ModulePreParser {
                     import)?;
 
                 Ok(DeclarationParseAction::Class(name, class))
+            },
+            TokenKind::Enum => {
+                // enum <name> {
+                //     (<name> Type?,)*
+                // }
+
+                for attribute in attributes {
+                    return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone())));
+                }
+
+                // <name>
+                let name = match tokens.pop() {
+                    Some(Token { kind: TokenKind::Symbol(name), start: _, end: _ }) => name,
+                    Some(token) => return Err(LangError::new_parser_unexpected_token(&token)),
+                    None => return Err(LangError::new_parser_end_of_file()),
+                };
+
+                expect_open_body!(tokens);
+
+                let mut variants = Vec::new();
+
+                let mut variant_name: Option<String> = None;
+                let mut variant_type: Option<ParsableType> = None;
+                loop {
+                    if let Some(_) = &variant_name {
+                        if let None = &variant_type {
+                            let type_ = preparse_type_option(tokens);
+
+                            variant_type = type_;
+                        }
+                    }
+
+                    let token = tokens.pop_err()?;
+
+                    match token.kind {
+                        TokenKind::Symbol(_) if variant_name.is_some() => {
+                            return Err(LangError::new_parser_unexpected_token(&token))
+                        },
+                        TokenKind::Symbol(name) => {
+                            variant_name = Some(name);
+                        },
+                        TokenKind::Operator(OperatorKind::Comma) => {
+                            let name = match variant_name.take() {
+                                Some(n) => n,
+                                None => return Err(LangError::new_parser_unexpected_token(&token)),
+                            };
+
+                            variants.push((name, variant_type.take()));
+                        },
+                        TokenKind::NewLine => (),
+                        TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,
+                        _ => return Err(LangError::new_parser_unexpected_token(&token)),
+                    }
+                }
+
+                Ok(DeclarationParseAction::Enum(
+                    name.clone(),
+                    ParsableEnum {
+                        name,
+                        variants,
+                    })
+                )
             },
             TokenKind::Attribute(attribute) => {
                 attributes.push(attribute);
@@ -378,5 +445,6 @@ enum DeclarationParseAction {
     Variable(String, ParsableVariable),
     Function(String, ParsableFunction),
     Class(String, ParsableClass),
+    Enum(String, ParsableEnum),
     Nothing,
 }

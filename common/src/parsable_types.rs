@@ -27,6 +27,11 @@ pub struct ParsableClass {
     pub methods: Vec<(String, ParsableFunction)>
 }
 
+pub struct ParsableEnum {
+    pub name: String,
+    pub variants: Vec<(String, Option<ParsableType>)>,
+}
+
 /// This represents a module that needs more processing to be parsed
 pub struct ParsableModule {
     pub id: ModuleIdentifier,
@@ -37,4 +42,5 @@ pub struct ParsableModule {
     pub variables: Vec<(String, ParsableVariable)>,
     pub functions: Vec<(String, ParsableFunction)>,
     pub classes: Vec<(String, ParsableClass)>,
+    pub enums: Vec<(String, ParsableEnum)>,
 }
