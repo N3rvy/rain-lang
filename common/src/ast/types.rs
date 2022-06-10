@@ -11,6 +11,15 @@ pub enum Attribute {
     Custom(String),
 }
 
+impl Attribute {
+    pub fn is_custom(&self, value: &str) -> bool {
+        match self {
+            Attribute::Custom(v) => v == value,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClassKind {
     Normal,

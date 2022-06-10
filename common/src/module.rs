@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
+use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind, Attribute};
 use crate::parsable_types::ParsableModule;
 
 #[derive(Clone)]
@@ -21,19 +21,19 @@ impl ModuleUID {
 }
 
 pub struct FunctionDefinition {
-    pub custom_attributes: Vec<String>,
+    pub attributes: Vec<Attribute>,
     pub data: Option<Arc<Function>>,
     pub metadata: FunctionType,
 }
 
 pub struct VariableDefinition {
-    pub custom_attributes: Vec<String>,
+    pub attributes: Vec<Attribute>,
     pub data: Option<LiteralKind>,
     pub metadata: TypeKind,
 }
 
 pub struct ClassDefinition {
-    pub custom_attributes: Vec<String>,
+    pub attributes: Vec<Attribute>,
     pub data: Class,
     pub metadata: Arc<ClassType>,
 }
@@ -52,7 +52,7 @@ impl ClassDefinition {
             .and_then(|(_, f)| f.data.clone());
 
         Some(FunctionDefinition {
-            custom_attributes: Vec::new(),
+            attributes: Vec::new(),
             data,
             metadata,
         })

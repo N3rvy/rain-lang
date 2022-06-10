@@ -115,16 +115,14 @@ impl ModulePreParser {
                 // Definition:  var <name> (type) = [value]
                 // Declaration: var <name> (type)
 
-                let mut custom_attributes = Vec::new();
-
-                for attribute in attributes {
+                for attribute in attributes as &Vec<Attribute> {
                     match attribute {
-                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
+                        Attribute::Custom(_) => (),
                         _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
-                let (name, decl) = Self::parse_variable(tokens, custom_attributes)?;
+                let (name, decl) = Self::parse_variable(tokens, attributes.clone())?;
 
                 Ok(DeclarationParseAction::Variable(name, decl))
             },
@@ -133,17 +131,16 @@ impl ModulePreParser {
                 // Declaration: func <name>((<param_name> (type))*) (type)
 
                 let mut import = false;
-                let mut custom_attributes = Vec::new();
 
-                for attribute in attributes {
+                for attribute in attributes as &Vec<Attribute> {
                     match attribute {
                         Attribute::Import => import = true,
-                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
+                        Attribute::Custom(_) => (),
                         _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
 
-                let (name, func) = Self::parse_function(tokens, import, custom_attributes)?;
+                let (name, func) = Self::parse_function(tokens, import, attributes.clone())?;
 
                 Ok(DeclarationParseAction::Function(
                     name,
@@ -162,13 +159,12 @@ impl ModulePreParser {
 
                 let mut kind = ClassKind::Normal;
                 let mut import = false;
-                let mut custom_attributes = Vec::new();
 
                 for attribute in attributes as &Vec<Attribute> {
                     match attribute {
                         Attribute::Data => kind = ClassKind::Data,
                         Attribute::Import => import = true,
-                        Attribute::Custom(name) => custom_attributes.push(name.clone()),
+                        Attribute::Custom(_) => (),
                         // _ => return Err(LangError::parser(&token, ParserErrorKind::InvalidAttribute(attribute.clone()))),
                     }
                 }
@@ -188,7 +184,7 @@ impl ModulePreParser {
                     kind,
                     name.clone(),
                     module,
-                    custom_attributes,
+                    attributes.clone(),
                     import)?;
 
                 Ok(DeclarationParseAction::Class(name, class))
@@ -207,7 +203,7 @@ impl ModulePreParser {
         kind: ClassKind,
         name: String,
         module: ModuleUID,
-        custom_attributes: Vec<String>,
+        attributes: Vec<Attribute>,
         import: bool,
     ) -> Result<ParsableClass, LangError> {
         let mut fields = Vec::new();
@@ -248,7 +244,7 @@ impl ModulePreParser {
         }
 
         Ok(ParsableClass {
-            custom_attributes,
+            attributes,
             kind,
             name,
             module,
@@ -258,7 +254,7 @@ impl ModulePreParser {
         })
     }
 
-    fn parse_variable(tokens: &mut Tokens, custom_attributes: Vec<String>) -> Result<(String, ParsableVariable), LangError> {
+    fn parse_variable(tokens: &mut Tokens, attributes: Vec<Attribute>) -> Result<(String, ParsableVariable), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -291,14 +287,14 @@ impl ModulePreParser {
         Ok((
             name,
             ParsableVariable {
-                custom_attributes,
+                attributes,
                 type_kind,
                 body,
             },
         ))
     }
 
-    fn parse_function(tokens: &mut Tokens, import: bool, custom_attributes: Vec<String>) -> Result<(String, ParsableFunction), LangError> {
+    fn parse_function(tokens: &mut Tokens, import: bool, attributes: Vec<Attribute>) -> Result<(String, ParsableFunction), LangError> {
         let token = tokens.pop_err()?;
 
         // <name>
@@ -338,7 +334,7 @@ impl ModulePreParser {
         Ok((
             name,
             ParsableFunction {
-                custom_attributes,
+                attributes,
                 params: param_names,
                 func_type,
                 body,

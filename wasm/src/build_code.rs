@@ -170,7 +170,7 @@ impl<'a> ModuleBuilder<'a> {
             },
         };
 
-        let kind = match var.custom_attributes.iter().any(|s| s == ATTRIB_STATIC_MEMORY) {
+        let kind = match var.attributes.iter().any(|s| s.is_custom(ATTRIB_STATIC_MEMORY)) {
             true => ModuleDataKind::StaticMemoryOffset,
             false => ModuleDataKind::Standard,
         };
