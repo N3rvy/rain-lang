@@ -154,7 +154,7 @@ impl<'a> ParserScope<'a> {
                             TypeKind::Class(class_type.clone()))
                     },
                     ScopeGetResult::Enum(_, type_) => {
-                        // EnumType.Variant({value})
+                        // EnumType.Variant (({value}))?
 
                         // .
                         expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Dot));
@@ -183,14 +183,25 @@ impl<'a> ParserScope<'a> {
                             None => return Err(LangError::parser(&token, ParserErrorKind::InvalidEnumVariant(variant_name.clone()))),
                         };
 
-                        // (
-                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+                        // (({value))?
+                        let type_construct = if let Some(
+                            Token { kind: TokenKind::Parenthesis(
+                                ParenthesisKind::Round,
+                                ParenthesisState::Open),
+                                .. }) = tokens.peek()
+                        {
+                            tokens.pop();
 
-                        // {value}
-                        let type_construct = self.parse_statement(tokens)?;
+                            // {value}
+                            let type_construct = self.parse_statement(tokens)?;
 
-                        // )
-                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close));
+                            // )
+                            expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close));
+
+                            type_construct
+                        } else {
+                            ASTNode::new(NodeKind::new_literal(LiteralKind::Nothing), TypeKind::Nothing)
+                        };
 
                         if !type_construct.eval_type.is_compatible(variant_type) {
                             return Err(LangError::parser(
