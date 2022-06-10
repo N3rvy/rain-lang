@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind, Attribute};
+use crate::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind, Attribute, EnumType};
 use crate::parsable_types::ParsableModule;
 
 #[derive(Clone)]
@@ -38,6 +38,10 @@ pub struct ClassDefinition {
     pub metadata: Arc<ClassType>,
 }
 
+pub struct EnumDefinition {
+    pub metadata: EnumType,
+}
+
 impl ClassDefinition {
     pub fn get_method_def(&self, name: &String) -> Option<FunctionDefinition> {
         let metadata = self.metadata.methods
@@ -63,6 +67,7 @@ pub enum ModuleFeature {
     Function(FunctionDefinition),
     Variable(VariableDefinition),
     Class(ClassDefinition),
+    Enum(EnumDefinition)
 }
 
 pub struct Module {

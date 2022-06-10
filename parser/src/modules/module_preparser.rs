@@ -240,7 +240,7 @@ impl ModulePreParser {
                                 None => return Err(LangError::new_parser_unexpected_token(&token)),
                             };
 
-                            variants.push((name, variant_type.take()));
+                            variants.push((name, variant_type.take().unwrap_or(ParsableType::Nothing)));
                         },
                         TokenKind::NewLine => (),
                         TokenKind::Parenthesis(ParenthesisKind::Curly, ParenthesisState::Close) => break,

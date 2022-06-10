@@ -29,7 +29,7 @@ pub struct ParsableClass {
 
 pub struct ParsableEnum {
     pub name: String,
-    pub variants: Vec<(String, Option<ParsableType>)>,
+    pub variants: Vec<(String, ParsableType)>,
 }
 
 /// This represents a module that needs more processing to be parsed

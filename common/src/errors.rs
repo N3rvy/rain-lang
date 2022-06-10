@@ -31,6 +31,7 @@ pub enum ParserErrorKind {
     NotIndexable,
     InvalidArgCount(usize),
     InvalidAttribute(Attribute),
+    InvalidEnumVariant(String),
 }
 
 #[derive(Debug)]
@@ -210,6 +211,7 @@ fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String
         ParserErrorKind::NotIndexable => "Variable is not indexable".to_string(),
         ParserErrorKind::InvalidArgCount(expected) => format!("Expected {} parameters", expected),
         ParserErrorKind::InvalidAttribute(attribute) => format!("Invalid attribute ({:?})", attribute),
+        ParserErrorKind::InvalidEnumVariant(variant) => format!("Invalid enum variant ({:?})", variant),
     };
 
     res + "\n" + &err

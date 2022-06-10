@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use wasm_encoder::{CodeSection, DataSection, EntityType, Export, ExportSection, Function, FunctionSection, ImportSection, Instruction, MemorySection, MemoryType, Module, TypeSection, ValType};
-use common::ast::types::{ClassKind, ClassType, TypeKind};
+use common::ast::types::{ClassKind, ClassType, EnumType, TypeKind};
 use common::errors::LangError;
 use core::parser::ModuleLoader;
 use crate::build_code::{FunctionData, ModuleBuilder, ModuleBuilderResult, ModuleData, ModuleDataKind};
@@ -177,6 +177,7 @@ pub(crate) fn convert_type(type_: &TypeKind) -> Vec<ValType> {
         TypeKind::Vector(_) => vec![ValType::I32],
         TypeKind::Function(_) => todo!(),
         TypeKind::Class(obj) => convert_class(obj),
+        TypeKind::Enum(enum_type) => convert_enum(enum_type),
     }
 }
 
@@ -190,4 +191,20 @@ pub(crate) fn convert_class(class_type: &Arc<ClassType>) -> Vec<ValType> {
     } else {
         vec![ValType::I32]
     }
+}
+
+pub(crate) fn convert_enum(enum_type: &EnumType) -> Vec<ValType> {
+    // FIXME: Temporary workaround
+    let mut max_size = 0;
+
+    let variants = enum_type.variants.borrow();
+    for (_, type_) in variants.iter() {
+        let size = convert_type(type_).len();
+
+        if size > max_size {
+            max_size = size;
+        }
+    }
+
+    return vec![ValType::I32; max_size + 1];
 }

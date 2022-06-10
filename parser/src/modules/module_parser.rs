@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Arc;
-use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind};
+use common::ast::types::{Class, Function, FunctionType, LiteralKind, ClassType, TypeKind, EnumType};
 use common::constants::CLASS_SELF_REFERENCE;
 use common::errors::{BuildErrorKind, LangError, LoadErrorKind, ParserErrorKind};
 use common::module::{ClassDefinition, FunctionDefinition, Module, ModuleFeature, ModuleUID, VariableDefinition};
@@ -16,7 +16,8 @@ use crate::parser_module_scope::ModuleParserScope;
 use crate::utils::TokensExtensions;
 
 pub struct ParsingModule {
-    pub types: HashMap<String, Arc<ClassType>>,
+    pub classes: HashMap<String, Arc<ClassType>>,
+    pub enums: HashMap<String, Arc<EnumType>>,
     pub module: Arc<ParsableModule>,
 
     // Indicates whether the module is loaded or not (this means that all the types are already parsed)
@@ -55,8 +56,21 @@ impl<'a> ModuleParser<'a> {
                 types.insert(name.clone(), class_type);
             }
 
+            let mut enums = HashMap::new();
+
+            for (name, _) in &module.enums {
+                let enum_type = EnumType {
+                    name: name.clone(),
+                    variants: Default::default(),
+                };
+
+                enums.insert(name.clone(), Arc::new(enum_type));
+            }
+
             parser.parsing_modules.insert(module.uid, ParsingModule {
-                types,
+                classes: types,
+                enums,
+
                 module: module.clone(),
                 loaded: Cell::new(false),
             });
@@ -226,13 +240,21 @@ impl<'a> ModuleParser<'a> {
 
         // Adds all the types to the scope (they still don't contain anything)
         for (name, _) in &module.classes {
-            let class_type = match parsing_module.types.get(name)
-            {
+            let class_type = match parsing_module.classes.get(name) {
                 Some(class) => class.clone(),
                 _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: variable is not a class".to_string()))),
             };
 
             scope.declare_class(name.clone(), class_type);
+        }
+
+        for (name, _) in &module.enums {
+            let enum_type = match parsing_module.enums.get(name) {
+                Some(enum_type) => enum_type.clone(),
+                _ => return Err(LangError::build(BuildErrorKind::UnexpectedError("create_scope: variable is not an enum".to_string()))),
+            };
+
+            scope.declare_enum(name.clone(), enum_type);
         }
 
         for import in &module.imports {
@@ -247,7 +269,7 @@ impl<'a> ModuleParser<'a> {
             };
 
             for (name, _) in &parsing_module.module.classes {
-                let class = parsing_module.types.get(name).unwrap();
+                let class = parsing_module.classes.get(name).unwrap();
 
                 scope.declare_external_class(name.clone(), uid, class.clone());
             }
@@ -308,6 +330,18 @@ impl<'a> ModuleParser<'a> {
                 for (name, field) in &parsable_class.fields {
                     let field = scope.convert_parsable_type(&field)?;
                     fields.push((name.clone(), field));
+                }
+            }
+
+            for (name, parsable_enum) in &parsing_module.module.enums {
+                let enum_type = scope.get_enum(name)?;
+
+                let mut variants = enum_type.variants.borrow_mut();
+
+                for (name, variant) in &parsable_enum.variants {
+                    let variant = scope.convert_parsable_type(variant)?;
+
+                    variants.push((name.clone(), Box::new(variant)))
                 }
             }
 

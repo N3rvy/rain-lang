@@ -153,6 +153,52 @@ impl<'a> ParserScope<'a> {
                             NodeKind::new_construct_class(parameters, class_type.clone()),
                             TypeKind::Class(class_type.clone()))
                     },
+                    ScopeGetResult::Enum(_, type_) => {
+                        expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Dot));
+
+                        let token = tokens.pop_err()?;
+                        let variant_name = match &token.kind {
+                            TokenKind::Symbol(name) => name,
+                            _ => return Err(LangError::new_parser_unexpected_token(&token)),
+                        };
+
+                        let variants = type_.variants.borrow();
+                        let variant = variants
+                            .iter()
+                            .enumerate()
+                            .find_map(|(i, (v, t))| {
+                                if v == variant_name {
+                                    Some((i, t))
+                                } else {
+                                    None
+                                }
+                            });
+
+                        let (variant_id, variant_type) = match variant {
+                            Some(v) => v,
+                            None => return Err(LangError::parser(&token, ParserErrorKind::InvalidEnumVariant(variant_name.clone()))),
+                        };
+
+                        let type_construct = self.parse_statement(tokens)?;
+
+                        if !type_construct.eval_type.is_compatible(variant_type) {
+                            return Err(LangError::parser(
+                                &token,
+                                ParserErrorKind::WrontType(
+                                    variant_type.as_ref().clone(),
+                                    type_construct.eval_type.clone())))
+                        }
+
+                        ASTNode::new(
+                            NodeKind::new_construct_enum_variant(
+                                type_construct,
+                                variant_type.as_ref().clone(),
+                                variant_id as u32,
+                                type_.clone(),
+                            ),
+                            TypeKind::Enum(type_.clone()),
+                        )
+                    },
                     ScopeGetResult::Ref(uid, type_) => {
                         let var_ref = NodeKind::new_variable_ref(uid, name.clone());
                         ASTNode::new(var_ref, type_)

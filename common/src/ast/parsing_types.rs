@@ -59,6 +59,7 @@ impl From<&TypeKind> for ParsableType {
                 ))
             }
             TypeKind::Class(class_type) => ParsableType::Custom(class_type.name.to_string()),
+            TypeKind::Enum(enum_type) => ParsableType::Custom(enum_type.name.clone()),
         }
     }
 }

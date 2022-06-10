@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::ast::types::ClassType;
+use crate::ast::types::{ClassType, EnumType};
 use crate::module::ModuleUID;
 
 use self::types::{BoolOperatorKind, Function, LiteralKind, MathOperatorKind, ReturnKind, TypeKind};
@@ -121,6 +121,12 @@ pub enum NodeKind {
     ConstructClass {
         parameters: ASTBody,
         class_type: Arc<ClassType>,
+    },
+    ConstructEnumVariant {
+        value: ASTNode,
+        variant_type: TypeKind,
+        variant_id: u32,
+        enum_type: Arc<EnumType>,
     }
 }
 
@@ -195,5 +201,9 @@ impl NodeKind {
 
     pub fn new_construct_class(parameters: ASTBody, class_type: Arc<ClassType>) -> NodeKind {
         NodeKind::ConstructClass { parameters, class_type }
+    }
+
+    pub fn new_construct_enum_variant(value: ASTNode, variant_type: TypeKind, variant_id: u32, enum_type: Arc<EnumType>) -> NodeKind {
+        NodeKind::ConstructEnumVariant { value, variant_type, enum_type, variant_id }
     }
 }

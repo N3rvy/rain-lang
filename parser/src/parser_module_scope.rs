@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use common::ast::parsing_types::{ParsableFunctionType, ParsableType};
-use common::ast::types::{ClassType, FunctionType, TypeKind};
+use common::ast::types::{ClassType, EnumType, FunctionType, TypeKind};
 use common::errors::{LangError, ParserErrorKind};
 use common::module::ModuleUID;
 use common::tokens::{Token, TokenKind};
@@ -9,6 +9,7 @@ use crate::parser_scope::ParserScope;
 
 pub enum ScopeGetResult {
     Class(ModuleUID, Arc<ClassType>),
+    Enum(ModuleUID, Arc<EnumType>),
     Ref(ModuleUID, TypeKind),
     None,
 }
@@ -17,6 +18,7 @@ pub enum GlobalKind {
     Var(ModuleUID, TypeKind),
     Func(ModuleUID, FunctionType),
     Class(ModuleUID, Arc<ClassType>),
+    Enum(ModuleUID, Arc<EnumType>),
 }
 
 pub struct ModuleParserScope {
@@ -42,6 +44,7 @@ impl ModuleParserScope {
             Some(GlobalKind::Func(uid, type_))
                 => ScopeGetResult::Ref(*uid, TypeKind::Function(type_.clone())),
             Some(GlobalKind::Class(uid, type_)) => ScopeGetResult::Class(*uid, type_.clone()),
+            Some(GlobalKind::Enum(uid, type_)) => ScopeGetResult::Enum(*uid, type_.clone()),
             None => ScopeGetResult::None,
         }
     }
@@ -81,6 +84,7 @@ impl ModuleParserScope {
 
                 match self.globals.get(name) {
                     Some(GlobalKind::Class(_, type_)) => TypeKind::Class(type_.clone()),
+                    Some(GlobalKind::Enum(_, type_)) => TypeKind::Enum(type_.clone()),
                     _ => return Err(LangError::parser(
                         &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
                         ParserErrorKind::UnexpectedError(
@@ -105,6 +109,11 @@ impl ModuleParserScope {
             .insert(name, GlobalKind::Class(self.uid, class_type));
     }
 
+    pub fn declare_enum(&mut self, name: String, enum_type: Arc<EnumType>) {
+        self.globals
+            .insert(name, GlobalKind::Enum(self.uid, enum_type));
+    }
+
     pub fn declare_external_func(&mut self, name: String, module: ModuleUID, func_type: FunctionType) {
         self.globals
             .insert(name, GlobalKind::Func(module, func_type));
@@ -120,6 +129,11 @@ impl ModuleParserScope {
             .insert(name, GlobalKind::Class(module, class_type));
     }
 
+    pub fn declare_external_enum(&mut self, name: String, module: ModuleUID, enum_type: Arc<EnumType>) {
+        self.globals
+            .insert(name, GlobalKind::Enum(module, enum_type));
+    }
+
     pub fn get_class(&self, name: &String) -> Result<Arc<ClassType>, LangError> {
         match self.globals.get(name) {
             Some(GlobalKind::Class(_, class_type)) => Ok(class_type.clone()),
@@ -127,6 +141,16 @@ impl ModuleParserScope {
                 &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
                 ParserErrorKind::UnexpectedError(
                     "get_class: class not found".to_string()))),
+        }
+    }
+
+    pub fn get_enum(&self, name: &String) -> Result<Arc<EnumType>, LangError> {
+        match self.globals.get(name) {
+            Some(GlobalKind::Enum(_, enum_type)) => Ok(enum_type.clone()),
+            _ => return Err(LangError::parser(
+                &Token::new(TokenKind::Symbol(name.clone()), 0, 0),
+                ParserErrorKind::UnexpectedError(
+                    "get_enum: enum not found".to_string()))),
         }
     }
 }

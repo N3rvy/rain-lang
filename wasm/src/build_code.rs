@@ -6,7 +6,7 @@ use common::errors::{LangError, BuildErrorKind};
 use common::module::{ModuleUID, Module, FunctionDefinition, ModuleFeature, VariableDefinition};
 use core::parser::ModuleLoader;
 use std::sync::Arc;
-use crate::build::{convert_class, convert_type, convert_types};
+use crate::build::{convert_class, convert_enum, convert_type, convert_types};
 use common::constants::{ATTRIB_STATIC_MEMORY, CLASS_CONSTRUCTOR_NAME, CLASS_SELF_REFERENCE, INTERNAL_ALLOC_LOCATION};
 
 // TODO: Right now memory alignment is at 0 so it's 1 byte, better alignment would be cool (probably 2)
@@ -966,6 +966,24 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     },
                 }
             },
+            NodeKind::ConstructEnumVariant { value, variant_type, enum_type, variant_id } => {
+                self.instructions.push(Instruction::I32Const(*variant_id as i32));
+
+                self.build_statement(value)?;
+
+                let type_ = self.type_stack.pop().unwrap();
+                if !type_.is_compatible(variant_type) {
+                    return Err(LangError::build(BuildErrorKind::InvalidStackType));
+                }
+
+                let enum_size = convert_enum(enum_type).len() as i32;
+                let variant_size = convert_type(variant_type).len() as i32;
+                for _ in 0..(enum_size - variant_size -  1) {
+                    self.instructions.push(Instruction::I32Const(0));
+                }
+
+                self.type_stack.push(TypeKind::Enum(enum_type.clone()));
+            },
         }
         Ok(())
     }
@@ -1050,10 +1068,11 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             TypeKind::String => 4,
             TypeKind::Bool => 4,
             TypeKind::Vector(_) => 4,
-            TypeKind::Class(_) => 4,
+            TypeKind::Class(type_) => convert_class(type_).len() * 4,
             TypeKind::Nothing => 0,
             TypeKind::Unknown => 0,
             TypeKind::Function(_) => 4,
+            TypeKind::Enum(type_) => convert_enum(type_).len() * 4,
         }
     }
 

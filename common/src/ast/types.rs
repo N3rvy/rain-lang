@@ -29,6 +29,15 @@ pub enum ClassKind {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType(pub Vec<TypeKind>, pub Box<TypeKind>);
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnumType {
+    pub name: String,
+    pub variants: RefCell<Vec<(String, Box<TypeKind>)>>,
+}
+
+unsafe impl Send for EnumType {}
+unsafe impl Sync for EnumType {}
+
 #[derive(Debug)]
 pub struct ClassType {
     pub name: String,
@@ -118,6 +127,7 @@ pub enum TypeKind {
     Vector(Box<TypeKind>),
     Function(FunctionType),
     Class(Arc<ClassType>),
+    Enum(Arc<EnumType>),
 }
 
 impl From<&PrimitiveType> for TypeKind {
