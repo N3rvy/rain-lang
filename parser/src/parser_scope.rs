@@ -81,7 +81,7 @@ impl<'a> ParserScope<'a> {
         }
         
         let token = token.unwrap();
-        
+
         let result = match &token.kind {
             TokenKind::Variable => {
                 // name
@@ -154,8 +154,12 @@ impl<'a> ParserScope<'a> {
                             TypeKind::Class(class_type.clone()))
                     },
                     ScopeGetResult::Enum(_, type_) => {
+                        // EnumType.Variant({value})
+
+                        // .
                         expect_token!(tokens.pop(), TokenKind::Operator(OperatorKind::Dot));
 
+                        // Variant
                         let token = tokens.pop_err()?;
                         let variant_name = match &token.kind {
                             TokenKind::Symbol(name) => name,
@@ -179,7 +183,14 @@ impl<'a> ParserScope<'a> {
                             None => return Err(LangError::parser(&token, ParserErrorKind::InvalidEnumVariant(variant_name.clone()))),
                         };
 
+                        // (
+                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Open));
+
+                        // {value}
                         let type_construct = self.parse_statement(tokens)?;
+
+                        // )
+                        expect_token!(tokens.pop(), TokenKind::Parenthesis(ParenthesisKind::Round, ParenthesisState::Close));
 
                         if !type_construct.eval_type.is_compatible(variant_type) {
                             return Err(LangError::parser(

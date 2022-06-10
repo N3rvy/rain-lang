@@ -513,7 +513,9 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             },
             NodeKind::Literal { value } => {
                 match value {
-                    LiteralKind::Nothing => (),
+                    LiteralKind::Nothing => {
+                        self.type_stack.push(TypeKind::Nothing);
+                    },
                     LiteralKind::Int(i) => {
                         self.instructions.push(Instruction::I32Const(*i));
                         self.type_stack.push(TypeKind::Int);
