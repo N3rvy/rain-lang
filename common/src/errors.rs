@@ -200,7 +200,11 @@ fn format_parser(source: &String, token: Token, kind: ParserErrorKind) -> String
         ParserErrorKind::Unsupported(feature) => format!("Unsupported feature ({})", feature),
         ParserErrorKind::UnexpectedToken => format!("Unexpected token {:?}", token.kind),
         ParserErrorKind::UnexpectedEndOfFile => format!("Unexpected end of file"),
-        ParserErrorKind::WrontType(expected, found) => format!("Expected type {:?}, instead found {:?}", expected, found),
+        ParserErrorKind::WrontType(expected, found) =>
+            format!(
+                "Expected type {}, instead found {}",
+                Into::<String>::into(&expected),
+                Into::<String>::into(&found)),
         ParserErrorKind::ParametersExpectedComma => "Expected comma".to_string(),
         ParserErrorKind::ParametersExpectedParam => "Expected parameter".to_string(),
         ParserErrorKind::VarNotFound => "Variable not found".to_string(),
@@ -249,5 +253,22 @@ pub fn format_runtime(kind: RuntimeErrorKind) -> String {
         RuntimeErrorKind::ValueNotNumber => "Variable is not a number".to_string(),
         RuntimeErrorKind::ValueNotFunc => "Variable is not a function".to_string(),
         RuntimeErrorKind::ModuleNotFound(uid) => format!("Module not found ({:?})", uid),
+    }
+}
+
+impl Into<String> for &TypeKind {
+    fn into(self) -> String {
+        match self {
+            TypeKind::Nothing => "Nothing".to_string(),
+            TypeKind::Int => "Int".to_string(),
+            TypeKind::Float => "Float".to_string(),
+            TypeKind::String => "String".to_string(),
+            TypeKind::Bool => "Bool".to_string(),
+            TypeKind::Class(class) => format!("Class ({})", class.name),
+            TypeKind::Enum(uid) => format!("Enum ({:?})", uid),
+            TypeKind::Vector(t) => format!("Vector of {}", Into::<String>::into(t.as_ref())),
+            TypeKind::Unknown => "Unknown".to_string(),
+            TypeKind::Function(_) => format!("Function"),
+        }
     }
 }
