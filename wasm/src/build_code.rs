@@ -419,8 +419,8 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
 
                 let ids = self.push_local(name.clone(), type_).clone();
 
-                for id in ids {
-                    self.instructions.push(Instruction::LocalSet(id));
+                for id in ids.iter().rev() {
+                    self.instructions.push(Instruction::LocalSet(*id));
                 }
             },
             NodeKind::VariableRef { module: _, name } => {
