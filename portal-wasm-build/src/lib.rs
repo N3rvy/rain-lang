@@ -24,7 +24,7 @@ pub fn init_engine() -> Result<(), JsValue> {
             .load_module_with_source(
                 ModuleIdentifier(CORE_MODULE_ID.to_string()),
                 ModuleUID::from_string(CORE_MODULE_ID.to_string()),
-                &include_str!("../../core_lib/lib.vrs").to_string(),
+                &include_str!("../../core_lib/lib.rn").to_string(),
                 &PanicImporter,
             ) {
             Err(err) => return Err(JsValue::from(err.to_string())),

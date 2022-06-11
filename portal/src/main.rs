@@ -35,7 +35,7 @@ impl ReplImporter {
         if path.starts_with("/") {
             path.remove(0);
         }
-        path += ".vrs";
+        path += ".rn";
 
         self.src_dir.join(path)
     }
