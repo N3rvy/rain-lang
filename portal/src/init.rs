@@ -23,7 +23,7 @@ pub fn init(args: Args) -> anyhow::Result<()> {
 
     fs::create_dir_all(config.src_dir.clone())?;
 
-    let main_path = Path::new(&config.src_dir).join(Path::new(&config.main));
+    let main_path = Path::new(&config.src_dir).join(&(config.main.clone() + ".rn"));
 
     if main_path.exists() {
         return Err(anyhow!("Main file already exists in {}", main_path.to_str().unwrap()))
