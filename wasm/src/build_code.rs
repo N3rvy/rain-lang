@@ -885,44 +885,66 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                 let id = *ids.index(0);
 
                 self.instructions.push(Instruction::LocalTee(id));
+                
+                let mut type_ = None;
 
                 for (offset, val) in values.iter().enumerate() {
                     self.instructions.push(Instruction::LocalGet(id));
 
                     self.build_statement(val)?;
+                    
+                    let val_type = match self.type_stack.pop() {
+                        Some(t) => t,
+                        None => panic!(), // FIXME: Remove panic
+                    };
+                    
+                    match type_ {
+                        Some(t) if t != val_type => return Err(LangError::build(BuildErrorKind::InvalidStackType)),
+                        None => type_ = Some(val_type.clone()),
+                        _ => (),
+                    };
 
-                    self.instructions.push(Instruction::I32Store(MemArg {
+                    self.build_mem_store(&val_type, MemArg {
                         offset: offset as u64 * 4,
                         align: 0,
                         memory_index: 0
-                    }));
+                    });
                 }
 
-                self.type_stack.push(TypeKind::Vector(Box::new(TypeKind::Int)));
+                self.type_stack.push(TypeKind::Vector(Box::new(type_.unwrap_or(TypeKind::Nothing))));
             },
             NodeKind::ObjectLiteral { .. } => todo!(),
             NodeKind::FunctionLiteral { .. } => todo!(),
             NodeKind::ValueFieldAccess { variable, value } => {
                 // TODO: Make other types work (for now only ints)
 
-                // TODO: Support other types of values
-                let index = match value.kind.as_ref() {
-                    NodeKind::Literal { value: LiteralKind::Int(i) } => *i as u64,
-                    _ => todo!(),
-                };
-
+                // Vector position
                 self.build_statement(variable)?;
-
                 let var_type = self.type_stack.pop().unwrap();
+                
+                // Access index
+                self.build_statement(value)?;
+                
+                // Check index is int
+                match self.type_stack.pop() {
+                    Some(TypeKind::Int) => (),
+                    _ => return Err(LangError::build(BuildErrorKind::InvalidStackType)),
+                } 
+                
+                // Multiply index by 4
+                self.instructions.push(Instruction::I32Const(4));
+                self.instructions.push(Instruction::I32Mul);
+                
+                self.instructions.push(Instruction::I32Add); 
 
                 if let TypeKind::Vector(type_) = var_type {
-                    if *type_ != TypeKind::Int { todo!() }
-
-                    self.instructions.push(Instruction::I32Load(MemArg {
+                    self.build_mem_load(&type_, MemArg {
                         align: 0,
-                        offset: index * 4,
+                        offset: 0,
                         memory_index: 0,
-                    }));
+                    });
+                    
+                    self.type_stack.push((*type_).clone());
                 }
             },
             NodeKind::ConstructClass { parameters, class_type } => {
@@ -931,8 +953,7 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                         let size = class_type.fields
                             .borrow()
                             .iter()
-                            .map(|(_, type_)| Self::get_type_byte_size(type_) as i32)
-                            .sum();
+                            .map(|(_, type_)| Self::get_type_byte_size(type_) as i32) .sum();
 
                         self.build_memory_alloc(size)?;
 
