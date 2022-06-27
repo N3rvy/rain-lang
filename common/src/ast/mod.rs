@@ -118,6 +118,11 @@ pub enum NodeKind {
         variable: ASTNode,
         value: ASTNode,
     },
+    ValueFieldAssign {
+        variable: ASTNode,
+        offset: ASTNode,
+        asgn_value: ASTNode,
+    },
     ConstructClass {
         parameters: ASTBody,
         class_type: Arc<ClassType>,
@@ -197,6 +202,10 @@ impl NodeKind {
  
     pub fn new_value_field_access(variable: ASTNode, value: ASTNode) -> NodeKind {
         NodeKind::ValueFieldAccess { variable, value }
+    }
+
+    pub fn new_value_field_assignment(variable: ASTNode, offset: ASTNode, asgn_value: ASTNode) -> NodeKind {
+        NodeKind::ValueFieldAssign { variable, offset, asgn_value }
     }
 
     pub fn new_construct_class(parameters: ASTBody, class_type: Arc<ClassType>) -> NodeKind {

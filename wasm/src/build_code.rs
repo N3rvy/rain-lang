@@ -916,8 +916,6 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
             NodeKind::ObjectLiteral { .. } => todo!(),
             NodeKind::FunctionLiteral { .. } => todo!(),
             NodeKind::ValueFieldAccess { variable, value } => {
-                // TODO: Make other types work (for now only ints)
-
                 // Vector position
                 self.build_statement(variable)?;
                 let var_type = self.type_stack.pop().unwrap();
@@ -945,6 +943,41 @@ impl<'a, 'b> FunctionBuilder<'a, 'b> {
                     });
                     
                     self.type_stack.push((*type_).clone());
+                }
+            },
+            NodeKind::ValueFieldAssign { variable, offset, asgn_value } => {
+                // TODO: This is the same as above, with some changes
+
+                // Vector position
+                self.build_statement(variable)?;
+                let var_type = self.type_stack.pop().unwrap();
+                
+                // Access index
+                self.build_statement(offset)?;
+                
+                // Check index is int
+                match self.type_stack.pop() {
+                    Some(TypeKind::Int) => (),
+                    _ => return Err(LangError::build(BuildErrorKind::InvalidStackType)),
+                } 
+                
+                // Multiply index by 4
+                self.instructions.push(Instruction::I32Const(4));
+                self.instructions.push(Instruction::I32Mul);
+                
+                self.instructions.push(Instruction::I32Add); 
+                
+                self.build_statement(asgn_value)?;
+                self.type_stack.pop();
+
+                if let TypeKind::Vector(type_) = var_type {
+                    self.build_mem_store(&type_, MemArg {
+                        align: 0,
+                        offset: 0,
+                        memory_index: 0,
+                    });
+                    
+                    self.type_stack.push(TypeKind::Nothing);
                 }
             },
             NodeKind::ConstructClass { parameters, class_type } => {

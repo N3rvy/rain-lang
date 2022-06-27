@@ -522,7 +522,14 @@ impl<'a> ParserScope<'a> {
                                 TypeKind::Nothing),
                             true))
                     },
-                    _ => Ok((node, false)),
+                    NodeKind::ValueFieldAccess { variable, value: offset } => {
+                        Ok((
+                            ASTNode::new(
+                                NodeKind::new_value_field_assignment(variable, offset, value),
+                                TypeKind::Nothing),
+                            true))
+                    },
+                    _ => return Err(LangError::parser(&infix, ParserErrorKind::UnexpectedError("Invalid assignment".to_string()))),
                 }
             },
             
