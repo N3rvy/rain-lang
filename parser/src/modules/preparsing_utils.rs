@@ -1,19 +1,17 @@
 use common::ast::types::{OperatorKind, ParenthesisKind, ParenthesisState};
 use common::errors::{LangError, ParserErrorKind};
-use common::tokens::TokenKind;
+use common::tokens::{TokenKind, Token};
 use common::tokens_iterator::Tokens;
 use crate::errors::ParsingErrorHelper;
 use common::ast::parsing_types::ParsableType;
 use crate::utils::TokensExtensions;
 
 pub fn preparse_type_error(tokens: &mut Tokens) -> Result<ParsableType, LangError> {
-    let token = tokens.pop_err()?;
+    let token = tokens.peek_err()?;
 
-    // type
-    match token.kind {
-        TokenKind::Type(tk) => Ok(ParsableType::from(&tk)),
-        TokenKind::Symbol(name) => Ok(ParsableType::Custom(name)),
-        _ => Err(LangError::new_parser_unexpected_token(&token)),
+    match preparse_type_option(tokens) {
+        Some(t) => Ok(t),
+        None => Err(LangError::new_parser_unexpected_token(&token)),
     }
 }
 
@@ -34,7 +32,19 @@ pub fn preparse_type_option(tokens: &mut Tokens) -> Option<ParsableType> {
         TokenKind::Symbol(name) =>{
             tokens.pop();
             Some(ParsableType::Custom(name))
-        }
+        },
+        TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Open) => {
+            tokens.pop();
+
+            let type_ = preparse_type_option(tokens).unwrap_or(ParsableType::Nothing);
+            
+            match tokens.pop() {
+                Some(Token { kind: TokenKind::Parenthesis(ParenthesisKind::Square, ParenthesisState::Close), .. }) => (),
+                _ => panic!(), // FIXME: NO PANIC
+            }
+            
+            Some(ParsableType::Vector(Box::new(type_)))
+        },
         _ => None,
     }
 }
